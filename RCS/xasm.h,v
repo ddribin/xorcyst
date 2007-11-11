@@ -1,0 +1,191 @@
+head	1.7;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.7
+date	2007.08.19.11.19.17;	author khansen;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2007.08.12.18.59.10;	author khansen;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2007.08.11.01.25.18;	author khansen;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2007.08.10.20.21.26;	author khansen;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2007.07.22.13.35.20;	author khansen;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.12.18.11.32.11;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.12.18.11.31.48;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@xasm.h
+@
+
+
+1.7
+log
+@--case-insensitive option
+@
+text
+@/* $Id: xasm.h,v 1.6 2007/08/12 18:59:10 khansen Exp khansen $
+ * $Log: xasm.h,v $
+ * Revision 1.6  2007/08/12 18:59:10  khansen
+ * ability to generate pure 6502 binary
+ *
+ * Revision 1.5  2007/08/11 01:25:18  khansen
+ * includepaths support (-I option)
+ *
+ * Revision 1.4  2007/08/10 20:21:26  khansen
+ * *** empty log message ***
+ *
+ * Revision 1.3  2007/07/22 13:35:20  khansen
+ * convert tabs to whitespaces
+ *
+ * Revision 1.2  2004/12/18 11:32:11  kenth
+ * added debug flag
+ *
+ * Revision 1.1  2004/12/18 11:31:48  kenth
+ * Initial revision
+ *
+ */
+#ifndef XASM_H
+#define XASM_H
+
+struct tag_xasm_arguments {
+    const char *input_file;
+    int debug;
+    int silent;
+    int verbose;
+    int swap_parens;
+    int no_warn;
+    int pure_binary;
+    int case_insensitive;
+    const char *output_file;
+    char **include_paths;
+    int include_path_count;
+};
+
+typedef struct tag_xasm_arguments xasm_arguments;
+
+extern xasm_arguments xasm_args;
+
+#endif  /* !XASM_H */
+@
+
+
+1.6
+log
+@ability to generate pure 6502 binary
+@
+text
+@d1 1
+a1 1
+/* $Id: xasm.h,v 1.5 2007/08/11 01:25:18 khansen Exp khansen $
+d3 3
+d33 1
+@
+
+
+1.5
+log
+@includepaths support (-I option)
+@
+text
+@d1 1
+a1 1
+/* $Id: xasm.h,v 1.4 2007/08/10 20:21:26 khansen Exp khansen $
+d3 3
+d29 1
+@
+
+
+1.4
+log
+@*** empty log message ***
+@
+text
+@d1 1
+a1 1
+/* $Id: xasm.h,v 1.3 2007/07/22 13:35:20 khansen Exp khansen $
+d3 3
+d27 2
+@
+
+
+1.3
+log
+@convert tabs to whitespaces
+@
+text
+@d1 1
+a1 1
+/* $Id: xasm.h,v 1.2 2004/12/18 11:32:11 kenth Exp khansen $
+d3 3
+d17 1
+a17 1
+    char *input_file;
+d23 1
+a23 1
+    char *output_file;
+@
+
+
+1.2
+log
+@added debug flag
+@
+text
+@d1 1
+a1 1
+/* $Id: xasm.h,v 1.1 2004/12/18 11:31:48 kenth Exp kenth $
+d3 3
+d14 7
+a20 7
+	char *input_file;
+	int debug;
+	int silent;
+	int verbose;
+	int swap_parens;
+	int no_warn;
+	char *output_file;
+d27 1
+a27 1
+#endif	/* !XASM_H */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 5
+a5 2
+/* $Id$
+ * $Log$
+d12 1
+@

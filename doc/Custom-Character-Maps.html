@@ -1,0 +1,57 @@
+<html lang="en">
+<head>
+<title>Custom Character Maps - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Object-Code-Format.html#Object-Code-Format" title="Object Code Format">
+<link rel="next" href="Error-and-Warning-Messages.html#Error-and-Warning-Messages" title="Error and Warning Messages">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Custom-Character-Maps"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">Error and Warning Messages</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Object-Code-Format.html#Object-Code-Format">Object Code Format</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="appendix">Appendix E Custom Character Maps</h2>
+
+<!-- Using custom character maps is a convenient way of mapping ASCII characters to a different encoding. -->
+<p>A custom character map is a plaintext file containing statements of the form
+<pre class="example">     <var>key</var> = <var>value</var>
+</pre>
+   <p>where <var>key</var> is a character or escape sequence and <var>value</var> is the integer literal instances of this character should be mapped to when occuring as argument to the <code>.char</code> assembler directive.
+
+   <p>There is a also a shorthand form for mapping a range of characters at once:
+<pre class="example">     <var>low_key</var>-<var>high_key</var> = <var>value</var>
+</pre>
+   <p>This is most useful when mapping the decimal digits and the alphabet. Instead of typing monotonic statements like
+<pre class="example">     0=0x10
+     1=0x11
+     ...
+     9=0x19
+</pre>
+   <p>you can achieve the same result from the statement
+<pre class="example">     0-9=0x10
+</pre>
+   </body></html>
+

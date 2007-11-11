@@ -1,0 +1,152 @@
+<html lang="en">
+<head>
+<title>The Linker - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="The-Assembler.html#The-Assembler" title="The Assembler">
+<link rel="next" href="Implementation-Details.html#Implementation-Details" title="Implementation Details">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="The-Linker"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Implementation-Details.html#Implementation-Details">Implementation Details</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="The-Assembler.html#The-Assembler">The Assembler</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="chapter">4 The Linker</h2>
+
+<p>The main job of the linker is to take object code files (units) created by the assembler, resolve any dependencies among them and reduce them to pure 6502 binaries.
+
+   <p>The XORcyst linker takes as input a linker script. The linker script is a plaintext file containing a sequence of commands which describe the layout and contents of the linker output. (For a complete list and description of script commands, see <a href="Linker-Script-Commands.html#Linker-Script-Commands">Linker Script Commands</a>.) The final output of the linker process is a single binary file containing all the 6502 code properly relocated and resolved, plus any other data specified in the linker script.
+
+<h3 class="section">4.1 Invoking the linker (<span class="command">xlnk</span>)</h3>
+
+<p>The basic usage is
+
+   <p><span class="samp">xlnk </span><var>script-file</var>
+
+   <p>where <var>script-file</var> is the linker script file containing commands to be processed by the linker.
+
+   <p>To have the linker print some information on what it is doing, give the <code>--verbose</code> switch.
+
+<h3 class="section">4.2 A simple linker script example</h3>
+
+<p>The example below shows what a very simple linker script may look like. It is the simplest case, where you have a single unit <span class="file">my_unit.o</span> (created by the assembler, presumably from <span class="file">my_unit.asm</span>), and want to create executable 6502 code from it. For small, single-source projects you won't need much more than this.
+
+<pre class="example">     ram{start=0x0000,end=0x0800}           # define an available range of 6502 RAM
+     output{file=program.bin}               # set the output file
+     link{file=my_unit.o, origin=0xC000}    # relocate my_unit.o to 0xC000 and write it to output
+</pre>
+   <p>Commands in the script are of the form <var>command-name</var><code>{</code><em>[</em><var>arg-name</var><em>=</em><var>value</var><em>, </em><var>arg-name</var><em>=</em><var>value</var><em>, ...]</em><code>}</code>. The kind and number of valid arguments depends on the particular command. Some arguments are optional while others are mandatory, again depending on the particular command. (Even if the command has no arguments, you have to have a pair of empty braces).
+
+   <p>The <code>ram</code>-command tells the linker that it has available a chunk of RAM in the 6502's memory starting at address 0x0000 and ending at 0x0800. The linker will map the contents of data segments to physical addresses in this region.
+
+   <p>The <code>output</code>-command is used to tell the linker which file to direct its output to.
+
+   <p>The <code>link</code>-command tells the linker to relocate the given unit and output the resulting binary representation.
+
+   <p>As you can see, a line comment in the script is initiated with a <code>#</code>-character.
+
+<h3 class="section">4.3 Linking multiple units</h3>
+
+<p>In principle, linking more than one unit into the same output file is simple: Just add appropriate <code>link</code>-commands to the linker script. For example, say you have written a small library of functions you commonly use across all your projects and assembled it to <span class="file">my_lib.o</span>. Assume that your main program, say, <span class="file">my_unit.o</span> depends on <span class="file">my_lib.o</span>; it calls one or more functions exported from the library. You would then add an additional line to the previous example script:
+
+<pre class="example">     ram{start=0x0000,end=0x0800}
+     output{file=program.bin}
+     link{file=my_unit.o, origin=0xC000}
+     link{file=my_lib.o}                     # my_lib will be relocated to directly after my_unit.o
+</pre>
+   <p>Note that there is no <span class="option">origin</span>-argument to the latter <code>link</code>-command. This is because we generally don't know how much space the code from <span class="file">my_unit.o</span> will occupy. So we let the linker take care of it; when no origin is specified, the unit will be relocated to the location where the previous entity processed by the linker ended (the linker manages a &ldquo;pseudo-Program Counter&rdquo; internally to keep track of where it is in 6502 memory). So if the code for <span class="file">my_unit.o</span> was <code>0x0ABC</code> bytes in size, <span class="file">my_lib.o</span> would be relocated to <code>0xCABC</code>.
+
+<h3 class="section">4.4 Separating units into banks</h3>
+
+<p>You will get an error during linking if the Program Counter exceeds 64K. To write larger programs you normally have to divide the program into banks and manually switch them in and out of 6502 memory as they are needed. How the switching is done is very system-specific, so The XORcyst doesn't corcern itself with that. However, it does allow you to manage banks.
+
+   <p>The linker script command <code>bank</code> is used to start a new bank. There are two (semi-optional) arguments to <code>bank</code>:
+     <ul>
+<li><span class="option">size</span>, which specifies the bank size in bytes. If a size is not specified, the size of the previous bank is used; and
+
+     <li><span class="option">origin</span>, which specifies the bank's origin in 6502 memory. This is the address where the bank must be located when it resides in memory during program execution. If an origin is not specified, the origin of the previous bank is used.
+
+   </ul>
+
+   <p>For example,
+<pre class="example">     bank{size=0x4000, origin=0x8000}
+</pre>
+   <p>indicates the start of a bank that is to be 16KBytes in size, and its contents should be linked relative to address 0x8000.
+
+   <p>So to build on our previous example script, say that you for some reason want to put the library in a separate bank from your main program:
+
+<pre class="example">     ram{start=0x0000,end=0x0800}
+     output{file=program.bin}
+     bank{size=0x4000, origin=0x8000}
+     link{file=my_unit.o}
+     bank{size=0x4000, origin=0xC000}
+     link{file=my_lib.o}                     # my_lib will be relocated to directly after my_unit.o
+</pre>
+   <p>This will create an output 32KBytes in size, the first 16KBytes being the bank containing the code from <span class="file">my_unit.o</span> and the latter 16KBytes containing <span class="file">my_lib.o</span>'s code.
+
+   <p>A couple of things worth mentioning:
+     <ol type=1 start=1>
+
+     <li>It isn't necessary to specify the origin in any of the <code>link</code>-commands anymore, since an origin is specified in the owning bank instead. If you do specify an origin in the <code>link</code>-command, it will override the internal linker origin.
+
+     <li>When you start a new bank, the previous bank may not have been completely &ldquo;filled up&rdquo; with code and/or data; in this case the output is automatically padded with zeroes so that the size of the output matches the given bank size. (In addition to the 16-bit Program Counter, the linker also keeps track of the current 0-relative bank offset, and advances it as stuff is added to output.)
+
+        </ol>
+
+<h3 class="section">4.5 Partitioning 6502 RAM</h3>
+
+<p>Usually you don't want to let the linker have <em>all</em> the 6502 RAM at its disposal for data mapping; some regions of memory have special meaning and should generally be off-limits to the linker. For example, the 6502 has a stack which grows down from address 0x01FF. So it would be good idea to reserve some space there for the stack.
+
+   <p>Partitioning the RAM is easy. Just put multiple <code>ram</code>-commands in the linker script, leaving out the reserved regions. For example, this is a typical configuration I use for NES game programming:
+<pre class="example">     ram{start=0x0000, end=0x0180}
+     ram{start=0x0300, end=0x0800}
+     ram{start=0x6000, end=0x6000}    # only if the board has WRAM
+</pre>
+   <p>Here I have left out the region <code>0x0180</code>...<code>0x0300</code>. Address <code>0x0180</code> up to and including <code>0x01FF</code> is where the stack lives, while the page starting at <code>0x0200</code> is used to hold game sprite data; this address is hard-coded in the assembly source.
+
+   <p>The order of <code>ram</code>-commands is significant. The order defines the order in which the linker will attempt to map data segments' symbols to RAM. This is why the region containing the zeropage should preferably come first, since we generally want as much data as possible to be mapped here. Only when the linker runs out of space in the first region will it try the next one, and so on.
+
+<h3 class="section">4.6 Copying files to linker output</h3>
+
+<p>Analogous to the assembler directive <code>.incbin</code>, the linker script command <code>copy</code> allows you to copy a file straight to the linker's output file. For example, you might like to prepend your 6502 executable with a header. So you create a custom header file called, say, <span class="file">header.bin</span> and, prior to the <code>bank</code>-commands, you issue the command
+
+<pre class="example">     copy{file=header.bin}
+</pre>
+   <p>You can also use the <code>copy</code>-command inside banks of course, anywhere you like. In this case the internal Program Counter and bank offset will be advanced in the same manner as when a unit is linked and copied to the output with the <code>link</code>-command. The only difference is that you can tell in advance how much the offsets will be increased (by looking at the size of the file that is copied).
+
+<h3 class="section">4.7 Padding the output</h3>
+
+<p>You can pad the output explicitly with the <code>pad</code>-command. This will write an appropriate number of zero-bytes to the output file. The following are the (mutually exclusive) arguments to the command.
+     <ul>
+<li><code>size</code> : Pad as many bytes as indicated
+
+     <!-- @item @code{origin} : Pad until Program Counter equals the given origin -->
+<li><code>offset</code> : Pad until bank offset equals the given offset
+
+   </ul>
+
+<!-- @section Specifying options -->
+</body></html>
+

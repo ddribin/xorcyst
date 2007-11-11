@@ -1,0 +1,1726 @@
+head	1.14;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.14
+date	2007.11.11.22.35.51;	author khansen;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2007.08.19.11.19.47;	author khansen;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2007.08.12.18.59.00;	author khansen;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2007.08.11.01.25.50;	author khansen;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2007.07.22.13.34.38;	author khansen;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2005.01.05.02.28.40;	author kenth;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2004.12.29.21.45.26;	author kenth;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2004.12.19.19.59.14;	author kenth;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2004.12.16.13.22.27;	author kenth;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2004.12.14.01.50.42;	author kenth;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2004.12.11.02.12.41;	author kenth;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.12.09.11.17.15;	author kenth;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.12.06.05.06.21;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.06.30.07.57.03;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.14
+log
+@compile on mac
+@
+text
+@%{
+/*
+ * $Id: parser.y,v 1.13 2007/08/19 11:19:47 khansen Exp khansen $
+ * $Log: parser.y,v $
+ * Revision 1.13  2007/08/19 11:19:47  khansen
+ * --case-insensitive option
+ *
+ * Revision 1.12  2007/08/12 18:59:00  khansen
+ * ability to generate pure 6502 binary
+ *
+ * Revision 1.11  2007/08/11 01:25:50  khansen
+ * includepaths support (-I option)
+ *
+ * Revision 1.10  2007/07/22 13:34:38  khansen
+ * convert tabs to whitespaces
+ *
+ * Revision 1.9  2005/01/05 02:28:40  kenth
+ * anonymous union parsing
+ *
+ * Revision 1.8  2004/12/29 21:45:26  kenth
+ * xorcyst 1.4.2
+ * static indexing
+ *
+ * Revision 1.7  2004/12/19 19:59:14  kenth
+ * xorcyst 1.4.0
+ *
+ * Revision 1.6  2004/12/16 13:22:27  kenth
+ * xorcyst 1.3.5
+ *
+ * Revision 1.5  2004/12/14 01:50:42  kenth
+ * xorcyst 1.3.0
+ *
+ * Revision 1.4  2004/12/11 02:12:41  kenth
+ * xorcyst 1.2.0
+ *
+ * Revision 1.3  2004/12/09 11:17:15  kenth
+ * added: warning_statement, error_statement
+ *
+ * Revision 1.2  2004/12/06 05:06:21  kenth
+ * xorcyst 1.1.0
+ *
+ * Revision 1.1  2004/06/30 07:57:03  kenth
+ * Initial revision
+ *
+ */
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "symtab.h"
+#include "loc.h"
+#include "xasm.h"
+//#define YYDEBUG 1
+int yyparse(void);
+void yyerror(const char *);   /* In lexer */
+int yylex(void);    /* In lexer */
+int yypushandrestart(const char *);   /* In lexer */
+void __yy_memcpy(char *, char *, int);
+extern char *yytext;    /* In lexer */
+extern YYLTYPE yylloc;  /* In lexer */
+extern astnode *root_node;  /* Root of the generated parse tree */
+void handle_incsrc(astnode *);  /* See below */
+void handle_incbin(astnode *);  /* See below */
+%}
+
+%union {
+    long integer;
+    int mnemonic;
+    const char *string;
+    const char *label;
+    const char *ident;
+    astnode *node;
+};
+
+%error-verbose
+
+%token <integer> INTEGER_LITERAL
+%token <string> STRING_LITERAL
+%token <string> FILE_PATH
+%token <ident> IDENTIFIER
+%token <ident> LOCAL_ID
+%token <ident> FORWARD_BRANCH
+%token <ident> BACKWARD_BRANCH
+%token <label> LABEL
+%token <label> LOCAL_LABEL
+%token <mnemonic> MNEMONIC
+
+%type <node> identifier identifier_opt local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement org_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt indexed_identifier
+
+%token _LABEL_ BYTE CHAR WORD DWORD DSB DSW DSD DATASEG CODESEG IF IFDEF IFNDEF ELSE ELIF ENDIF INCSRC INCBIN MACRO REPT WHILE ENDM ALIGN EQU DEFINE END PUBLIC EXTRN CHARMAP STRUC UNION ENDS RECORD ENUM ENDE PROC ENDP SIZEOF MASK TAG MESSAGE WARNING ERROR ZEROPAGE ORG
+
+%token '\n'
+%token ':'
+%token '@@'
+%token SCOPE_OP
+%token 'A' 'X' 'Y'
+%token '='
+%token '$'
+%token '{' '}'
+%token '[' ']'
+%left ','
+%token '.'
+%right '#'
+%right LO_OP HI_OP
+%left '|'
+%left '^'
+%left '&'
+%left EQ_OP NE_OP
+%left LE_OP GE_OP '>' '<'
+%left SHL_OP SHR_OP
+%left '+' '-'
+%right UMINUS
+%left '*' '/' '%'
+%right '!' '~'
+%left '('
+%right ')'
+%start assembly_unit
+%%
+assembly_unit:
+    statement_list end_opt { root_node = astnode_create_list($1); }
+    ;
+
+end_opt:
+    END line_tail { ; }
+    | /* empty */
+    ;
+
+statement_list:
+    labelable_statement { $$ = $1; }
+    | statement_list labelable_statement {
+         if ($1 != NULL) { $$ = $1; astnode_add_sibling($$, $2); }
+         else { $$ = $2; }
+        }
+    ;
+
+labelable_statement:
+    label_decl statement { $$ = $1; astnode_add_sibling($$, $2); }
+    | statement { $$ = $1; }
+    ;
+
+statement:
+    if_statement { $$ = $1; }
+    | ifdef_statement { $$ = $1; }
+    | ifndef_statement { $$ = $1; }
+    | macro_decl_statement { $$ = $1; }
+    | macro_statement { $$ = $1; }
+    | incsrc_statement { $$ = $1; }
+    | incbin_statement { $$ = $1; }
+    | equ_statement { $$ = $1; }
+    | assign_statement { $$ = $1; }
+    | public_statement { $$ = $1; }
+    | extrn_statement { $$ = $1; }
+    | instruction_statement { $$ = $1; }
+    | data_statement { $$ = $1; }
+    | storage_statement { $$ = $1; }
+    | dataseg_statement { $$ = $1; }
+    | codeseg_statement { $$ = $1; }
+    | charmap_statement { $$ = $1; }
+    | struc_decl_statement { $$ = $1; }
+    | union_decl_statement { $$ = $1; }
+    | enum_decl_statement { $$ = $1; }
+    | record_decl_statement { $$ = $1; }
+    | proc_statement { $$ = $1; }
+    | rept_statement { $$ = $1; }
+    | while_statement { $$ = $1; }
+    | label_statement { $$ = $1; }
+    | message_statement { $$ = $1; }
+    | warning_statement { $$ = $1; }
+    | error_statement { $$ = $1; }
+    | define_statement { $$ = $1; }
+    | align_statement { $$ = $1; }
+    | org_statement { $$ = $1; }
+    | null_statement { $$ = $1; }
+    | error line_tail { $$ = NULL; }
+    ;
+
+org_statement:
+    ORG expression line_tail { $$ = astnode_create_org($2, @@$); }
+    ;
+
+align_statement:
+    ALIGN identifier_list expression line_tail { $$ = astnode_create_align($2, $3, @@$); }
+    ;
+
+warning_statement:
+    WARNING expression line_tail { $$ = astnode_create_warning($2, @@$); }
+    ;
+
+error_statement:
+    ERROR expression line_tail { $$ = astnode_create_error($2, @@$); }
+    ;
+
+message_statement:
+    MESSAGE expression line_tail { $$ = astnode_create_message($2, @@$); }
+    ;
+
+label_statement:
+    _LABEL_ identifier label_addr_part_opt label_type_part_opt line_tail { $$ = astnode_create_label($2->label, $3, $4, @@$); }
+    ;
+
+label_addr_part_opt:
+    '=' expression { $$ = $2; }
+    | { $$ = NULL; }
+    ;
+
+label_type_part_opt:
+    ':' symbol_type { $$ = $2; }
+    | { $$ = NULL; }
+    ;
+
+while_statement:
+    WHILE expression line_tail statement_list ENDM line_tail { $$ = astnode_create_while($2, $4, @@$); }
+    ;
+
+rept_statement:
+    REPT expression line_tail statement_list ENDM line_tail { $$ = astnode_create_rept($2, $4, @@$); }
+    ;
+
+proc_statement:
+    PROC identifier line_tail statement_list ENDP line_tail { $$ = astnode_create_proc($2, $4, @@$); }
+    ;
+
+struc_decl_statement:
+    STRUC identifier line_tail statement_list ENDS line_tail { $$ = astnode_create_struc_decl($2, $4, @@$); }
+    ;
+
+union_decl_statement:
+    UNION identifier_opt line_tail statement_list ENDS line_tail { $$ = astnode_create_union_decl($2, $4, @@$); }
+    ;
+
+enum_decl_statement:
+    ENUM identifier line_tail enum_item_list ENDE line_tail { $$ = astnode_create_enum_decl($2, $4, @@$); }
+    ;
+
+enum_item_list:
+    enum_item { $$ = $1; }
+    | enum_item_list enum_item { $$ = $1; astnode_add_sibling($$, $2); }
+    ;
+
+enum_item:
+    assign_statement { $$ = $1; }
+    | identifier line_tail { $$ = $1; }
+    ;
+
+record_decl_statement:
+    RECORD identifier record_field_list line_tail { $$ = astnode_create_record_decl($2, $3, @@$); }
+    ;
+
+record_field_list:
+    record_field { $$ = $1; }
+    | record_field_list ',' record_field { $$ = $1; astnode_add_sibling($$, $3); }
+    ;
+
+record_field:
+    identifier ':' expression { $$ = astnode_create_bitfield_decl($1, $3, @@$); }
+    ;
+
+charmap_statement:
+    CHARMAP file_specifier line_tail { $$ = astnode_create_charmap($2, @@$); }
+    ;
+
+dataseg_statement:
+    DATASEG line_tail { $$ = astnode_create_dataseg(0, @@$); }
+    | DATASEG ZEROPAGE line_tail { $$ = astnode_create_dataseg(ZEROPAGE_FLAG, @@$); }
+
+codeseg_statement:
+    CODESEG line_tail { $$ = astnode_create_codeseg(@@$); }
+    ;
+
+null_statement:
+    line_tail { $$ = NULL; }
+    ;
+
+label_decl:
+    label { $$ = $1; }
+    ;
+
+line_tail:
+    newline { ; }
+    | ':' { ; }
+    ;
+
+newline:
+    '\n' { ; }
+    ;
+
+instruction_statement:
+    instruction line_tail { $$ = $1; }
+    ;
+
+instruction:
+    MNEMONIC { $$ = astnode_create_instruction($1, IMPLIED_MODE, NULL, @@$); }
+    | MNEMONIC 'A' { $$ = astnode_create_instruction($1, ACCUMULATOR_MODE, NULL, @@$); }
+    | MNEMONIC '#' expression { $$ = astnode_create_instruction($1, IMMEDIATE_MODE, $3, @@$); }
+    | MNEMONIC expression { $$ = astnode_create_instruction($1, ABSOLUTE_MODE, $2, @@$); }
+    | MNEMONIC expression ',' 'X' { $$ = astnode_create_instruction($1, ABSOLUTE_X_MODE, $2, @@$); }
+    | MNEMONIC expression ',' 'Y' { $$ = astnode_create_instruction($1, ABSOLUTE_Y_MODE, $2, @@$); }
+    | MNEMONIC '[' expression ',' 'X' ']' { $$ = astnode_create_instruction($1, PREINDEXED_INDIRECT_MODE, $3, @@$); }
+    | MNEMONIC '[' expression ']' ',' 'Y' { $$ = astnode_create_instruction($1, POSTINDEXED_INDIRECT_MODE, $3, @@$); }
+    | MNEMONIC '[' expression ']' { $$ = astnode_create_instruction($1, INDIRECT_MODE, $3, @@$); }
+    ;
+
+expression:
+    indexed_identifier { $$ = $1; }
+    | SIZEOF sizeof_arg { $$ = astnode_create_sizeof($2, @@$); }
+    | scope_access { $$ = $1; }
+    | struc_access { $$ = $1; }
+    | local_id { $$ = $1; }
+    | literal { $$ = $1; }
+    | '$' { $$ = astnode_create_pc(@@$); }
+    | arithmetic_expression { $$ = $1; }
+    | comparison_expression { $$ = $1; }
+    | '(' expression ')' { $$ = $2; }
+    | '+' { $$ = astnode_create_forward_branch("+", @@$); }
+    | '-' { $$ = astnode_create_backward_branch("-", @@$); }
+    | FORWARD_BRANCH { $$ = astnode_create_forward_branch($1, @@$); }
+    | BACKWARD_BRANCH { $$ = astnode_create_backward_branch($1, @@$); }
+    | MASK scope_access { $$ = astnode_create_mask($2, @@$); }
+    ;
+
+indexed_identifier:
+    identifier { $$ = $1; }
+    | identifier '[' expression ']' { $$ = astnode_create_index($1, $3, @@$); }
+    | identifier '(' expression ')' { $$ = astnode_create_index($1, $3, @@$); }
+    ;
+
+extended_expression:
+    expression { $$ = $1; }
+    | struc_initializer { $$ = $1; }
+    ;
+
+sizeof_arg:
+    identifier { $$ = $1; }
+    | datatype { $$ = $1; }
+    ;
+
+expression_opt:
+    expression { $$ = $1; }
+    | { $$ = NULL; }
+    ;
+
+scope_access:
+    identifier SCOPE_OP identifier { $$ = astnode_create_scope($1, $3, @@$); }
+    ;
+
+struc_access:
+    indexed_identifier '.' struc_access { $$ = astnode_create_dot($1, $3, @@$); }
+    | indexed_identifier '.' indexed_identifier { $$ = astnode_create_dot($1, $3, @@$); }
+    ;
+
+struc_initializer:
+    '{' field_initializer_list_opt '}' { $$ = astnode_create_struc($2, @@$); }
+    ;
+
+field_initializer_list_opt:
+    field_initializer_list { $$ = $1; }
+    | { $$ = NULL; }
+    ;
+
+field_initializer_list:
+    field_initializer { $$ = $1; }
+    | field_initializer_list ',' field_initializer { $$ = $1; astnode_add_sibling($$, $3); }
+    ;
+
+field_initializer:
+    extended_expression { $$ = $1; }
+    | { $$ = astnode_create_null(@@$); }
+    ;
+
+local_id:
+    LOCAL_ID { $$ = astnode_create_local_id($1, @@$); }
+    ;
+
+arithmetic_expression:
+    expression '+' expression { $$ = astnode_create_arithmetic(PLUS_OPERATOR, $1, $3, @@$); }
+    | expression '-' expression { $$ = astnode_create_arithmetic(MINUS_OPERATOR, $1, $3, @@$); }
+    | expression '*' expression { $$ = astnode_create_arithmetic(MUL_OPERATOR, $1, $3, @@$); }
+    | expression '/' expression { $$ = astnode_create_arithmetic(DIV_OPERATOR, $1, $3, @@$); }
+    | expression '%' expression { $$ = astnode_create_arithmetic(MOD_OPERATOR, $1, $3, @@$); }
+    | expression '&' expression { $$ = astnode_create_arithmetic(AND_OPERATOR, $1, $3, @@$); }
+    | expression '|' expression { $$ = astnode_create_arithmetic(OR_OPERATOR, $1, $3, @@$); }
+    | expression '^' expression { $$ = astnode_create_arithmetic(XOR_OPERATOR, $1, $3, @@$); }
+    | expression SHL_OP expression { $$ = astnode_create_arithmetic(SHL_OPERATOR, $1, $3, @@$); }
+    | expression SHR_OP expression { $$ = astnode_create_arithmetic(SHR_OPERATOR, $1, $3, @@$); }
+    | '~' expression { $$ = astnode_create_arithmetic(NEG_OPERATOR, $2, NULL, @@$); }
+    | '!' expression { $$ = astnode_create_arithmetic(NOT_OPERATOR, $2, NULL, @@$); }
+    | '^' identifier { $$ = astnode_create_arithmetic(BANK_OPERATOR, $2, NULL, @@$); }
+    | '<' expression %prec LO_OP { $$ = astnode_create_arithmetic(LO_OPERATOR, $2, NULL, @@$); }
+    | '>' expression %prec HI_OP { $$ = astnode_create_arithmetic(HI_OPERATOR, $2, NULL, @@$); }
+    | '-' expression %prec UMINUS { $$ = astnode_create_arithmetic(UMINUS_OPERATOR, $2, NULL, @@$); }
+    ;
+
+comparison_expression:
+    expression EQ_OP expression { $$ = astnode_create_arithmetic(EQ_OPERATOR, $1, $3, @@$); }
+    | expression NE_OP expression { $$ = astnode_create_arithmetic(NE_OPERATOR, $1, $3, @@$); }
+    | expression '>' expression { $$ = astnode_create_arithmetic(GT_OPERATOR, $1, $3, @@$); }
+    | expression '<' expression { $$ = astnode_create_arithmetic(LT_OPERATOR, $1, $3, @@$); }
+    | expression GE_OP expression { $$ = astnode_create_arithmetic(GE_OPERATOR, $1, $3, @@$); }
+    | expression LE_OP expression { $$ = astnode_create_arithmetic(LE_OPERATOR, $1, $3, @@$); }
+    ;
+
+label:
+    LABEL { $$ = astnode_create_label($1, NULL, NULL, @@$); }
+    | LOCAL_LABEL { $$ = astnode_create_local_label($1, @@$); }
+    | '+' { $$ = astnode_create_forward_branch_decl("+", @@$); }
+    | '-' { $$ = astnode_create_backward_branch_decl("-", @@$); }
+    | FORWARD_BRANCH { $$ = astnode_create_forward_branch_decl($1, @@$); }
+    | BACKWARD_BRANCH { $$ = astnode_create_backward_branch_decl($1, @@$); }
+    ;
+
+identifier:
+    IDENTIFIER { $$ = astnode_create_identifier($1, @@$); }
+    ;
+
+identifier_opt:
+    identifier { $$ = $1; }
+    | { $$ = astnode_create_null(@@$); }
+    ;
+
+literal:
+    INTEGER_LITERAL { $$ = astnode_create_integer($1, @@$); }
+    | STRING_LITERAL { $$ = astnode_create_string($1, @@$); }
+    ;
+
+if_statement:
+    IF expression line_tail statement_list elif_statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_if($2, $4, $5, $6, @@$); }
+    ;
+
+elif_statement_list_opt:
+    elif_statement_list { $$ = $1; }
+    | { $$ = NULL; }
+    ;
+
+elif_statement_list:
+    elif_statement { $$ = $1; }
+    | elif_statement_list elif_statement { $$ = $1; astnode_add_sibling($$, $2); }
+    ;
+
+elif_statement:
+    ELIF expression line_tail statement_list { $$ = astnode_create_case($2, $4, @@$); }
+    ;
+
+else_part_opt:
+    ELSE line_tail statement_list { $$ = $3; }
+    | { $$ = NULL; }
+    ;
+
+ifdef_statement:
+    IFDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifdef($2, $4, $5, @@$); }
+    ;
+
+ifndef_statement:
+    IFNDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifndef($2, $4, $5, @@$); }
+    ;
+
+data_statement:
+    named_data_statement line_tail { $$ = $1; }
+    | unnamed_data_statement line_tail { $$ = $1; }
+    ;
+
+named_data_statement:
+    identifier unnamed_data_statement { $$ = astnode_create_var_decl(0, $1, $2, @@$); }
+    | ZEROPAGE identifier unnamed_data_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG, $2, $3, @@$); }
+    | PUBLIC identifier unnamed_data_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG, $2, $3, @@$); }
+    | ZEROPAGE PUBLIC identifier unnamed_data_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG | PUBLIC_FLAG, $3, $4, @@$); }
+    | PUBLIC ZEROPAGE identifier unnamed_data_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG | ZEROPAGE_FLAG, $3, $4, @@$); }
+    ;
+
+unnamed_data_statement:
+    datatype expression_list { $$ = astnode_create_data($1, $2, @@$); }
+    | datatype { $$ = astnode_create_storage($1, NULL, @@$); }
+    | datatype '[' expression ']' { $$ = astnode_create_storage($1, $3, @@$); }
+    ;
+
+datatype:
+    BYTE { $$ = astnode_create_datatype(BYTE_DATATYPE, NULL, @@$); }
+    | CHAR { $$ = astnode_create_datatype(CHAR_DATATYPE, NULL, @@$); }
+    | WORD { $$ = astnode_create_datatype(WORD_DATATYPE, NULL, @@$); }
+    | DWORD { $$ = astnode_create_datatype(DWORD_DATATYPE, NULL, @@$); }
+    | TAG identifier { $$ = astnode_create_datatype(USER_DATATYPE, $2, @@$); }
+    | '.' identifier { $$ = astnode_create_datatype(USER_DATATYPE, $2, @@$); }
+    ;
+
+expression_list:
+    extended_expression { $$ = $1; }
+    | expression_list ',' extended_expression { $$ = $1; astnode_add_sibling($$, $3); }
+    ;
+
+incsrc_statement:
+    INCSRC file_specifier line_tail { $$ = astnode_create_incsrc($2, @@$); handle_incsrc($$); }
+    ;
+
+incbin_statement:
+    INCBIN file_specifier line_tail { $$ = astnode_create_incbin($2, @@$); handle_incbin($$); }
+    ;
+
+file_specifier:
+    STRING_LITERAL { $$ = astnode_create_string($1, @@$); }
+    | FILE_PATH { $$ = astnode_create_file_path($1, @@$); }
+    ;
+
+macro_decl_statement:
+    MACRO identifier param_list_opt line_tail statement_list ENDM line_tail { $$ = astnode_create_macro_decl($2, $3, $5, @@$); }
+    ;
+
+param_list_opt:
+    identifier_list { $$ = $1; }
+    | { $$ = NULL; }
+    ;
+
+macro_statement:
+    identifier arg_list_opt line_tail { $$ = astnode_create_macro($1, $2, @@$); }
+    ;
+
+arg_list_opt:
+    expression_list { $$ = $1; }
+    | { $$ = NULL; }
+    ;
+
+identifier_list:
+    identifier { $$ = $1; }
+    | identifier_list ',' identifier { $$ = $1; astnode_add_sibling($$, $3); }
+    ;
+
+equ_statement:
+    identifier EQU extended_expression line_tail { $$ = astnode_create_equ($1, $3, @@$); }
+    ;
+
+assign_statement:
+    identifier '=' extended_expression line_tail { $$ = astnode_create_assign($1, $3, @@$); }
+    ;
+
+define_statement:
+    DEFINE identifier line_tail { $$ = astnode_create_equ($2, astnode_create_integer(0, @@$), @@$); }
+    | DEFINE identifier extended_expression line_tail { $$ = astnode_create_equ($2, $3, @@$); }
+    ;
+
+public_statement:
+    PUBLIC identifier_list line_tail { $$ = astnode_create_public($2, @@$); }
+    ;
+
+extrn_statement:
+    EXTRN identifier_list ':' symbol_type from_part_opt line_tail { $$ = astnode_create_extrn($2, $4, $5, @@$); }
+    ;
+
+from_part_opt:
+    '@@' identifier { $$ = $2; }
+    | { $$ = NULL; }
+    ;
+
+symbol_type:
+    datatype { $$ = $1; }
+    | identifier { $$ = astnode_create_datatype(USER_DATATYPE, $1, @@$); }
+    | PROC { $$ = astnode_create_integer(PROC_SYMBOL, @@$); }
+    | _LABEL_ { $$ = astnode_create_integer(LABEL_SYMBOL, @@$); }
+    ;
+
+storage_statement:
+    named_storage_statement { $$ = $1; }
+    | unnamed_storage_statement { $$ = $1; }
+    ;
+
+named_storage_statement:
+    identifier unnamed_storage_statement { $$ = astnode_create_var_decl(0, $1, $2, @@$); }
+    | ZEROPAGE identifier unnamed_storage_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG, $2, $3, @@$); }
+    | PUBLIC identifier unnamed_storage_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG, $2, $3, @@$); }
+    | ZEROPAGE PUBLIC identifier unnamed_storage_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG | PUBLIC_FLAG, $3, $4, @@$); }
+    | PUBLIC ZEROPAGE identifier unnamed_storage_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG | ZEROPAGE_FLAG, $3, $4, @@$); }
+    ;
+
+unnamed_storage_statement:
+    storage expression_opt line_tail { $$ = astnode_create_storage($1, $2, @@$); }
+    ;
+
+storage:
+    DSB { $$ = astnode_create_datatype(BYTE_DATATYPE, NULL, @@$); }
+    | DSW { $$ = astnode_create_datatype(WORD_DATATYPE, NULL, @@$); }
+    | DSD { $$ = astnode_create_datatype(DWORD_DATATYPE, NULL, @@$); }
+    ;
+%%
+/**
+ * Takes care of switching to a new scanner input stream when a "incsrc" statement
+ * has been encountered.
+ * The current stream is pushed on a stack, and will be popped when EOF is reached
+ * in the new stream.
+ * @@param n A node of type INCSRC_NODE
+ */
+void handle_incsrc(astnode *n)
+{
+    char errs[512];
+    /* Get the node which describes the file to include */
+    astnode *file = astnode_get_child(n, 0);
+
+    switch (astnode_get_type(file)) {
+        case STRING_NODE:
+        /* TODO: add path searching */
+        case FILE_PATH_NODE:
+        switch (yypushandrestart(file->string)) {
+            case 0:
+            /* Success */
+            break;
+            case 1:
+            /* Failed to open file */
+            sprintf(errs, "could not open '%s' for reading", file->string);
+            yyerror(errs);
+            break;
+            case 2:
+            /* Stack overflow */
+            yyerror("Maximum include nesting level reached");
+            break;
+        }
+        break;
+
+        default: break;
+    }
+}
+
+// TODO: This shouldn't be done here but rather in astproc module.
+
+/**
+ * Takes care of including the binary contents of the file specified by a parsed
+ * "incbin" statement.
+ * Calls yyerror() if the file can't be included for some reason.
+ * @@param n A node of type INCBIN_NODE
+ */
+void handle_incbin(astnode *n)
+{
+    FILE *fp;
+    unsigned char *data;
+    int size;
+    char errs[512];
+    /* Get the node which describes the file to include */
+    astnode *file = astnode_get_child(n, 0);
+    const char *filename = file->string;
+
+    switch (astnode_get_type(file)) {
+        case STRING_NODE:
+        /* TODO: add path searching */
+        case FILE_PATH_NODE:
+        /* Attempt to open file */
+        fp = fopen(filename, "rb");
+        if (!fp && (filename[0] != '/')) {
+            /* Try search paths */
+            /* ### copied from scanner.l -- generalize */
+            int i;
+            for (i = 0; i < xasm_args.include_path_count; ++i) {
+                const char *include_path = xasm_args.include_paths[i];
+                char *path = (char *)malloc(
+                    strlen(include_path) + strlen("/") + strlen(filename) + 1);
+                strcpy(path, include_path);
+                strcat(path, "/");
+                strcat(path, filename);
+                fp = fopen(path, "rb");
+                free(path);
+                if (fp)
+                    break;
+            }
+        }
+        if (fp) {
+            /* Get filesize */
+            fseek(fp, 0, SEEK_END);
+            size = ftell(fp);
+            rewind(fp);
+            if (size > 0) {
+                /* Allocate buffer to hold file contents */
+                data = (unsigned char *)malloc(size);
+                /* Read file contents into buffer */
+                fread(data, 1, size, fp);
+                /* Insert binary node */
+                astnode_add_sibling(n, astnode_create_binary(data, size, n->loc) );
+            }
+            /* Close file */
+            fclose(fp);
+        }
+        else {
+            /* Couldn't open file */
+            sprintf(errs, "could not open '%s' for reading", file->string);
+            yyerror(errs);
+        }
+        break;
+
+        default: break;
+    }
+}
+@
+
+
+1.13
+log
+@--case-insensitive option
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.12 2007/08/12 18:59:00 khansen Exp khansen $
+d5 3
+d46 1
+a46 1
+#include <malloc.h>
+@
+
+
+1.12
+log
+@ability to generate pure 6502 binary
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.11 2007/08/11 01:25:50 khansen Exp khansen $
+d5 3
+d51 1
+a51 1
+void yyerror(char *);   /* In lexer */
+d53 1
+a53 1
+int yypushandrestart(char *);   /* In lexer */
+d65 3
+a67 3
+    char *string;
+    char *label;
+    char *ident;
+@
+
+
+1.11
+log
+@includepaths support (-I option)
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.10 2007/07/22 13:34:38 khansen Exp khansen $
+d5 3
+d81 1
+a81 1
+%type <node> identifier identifier_opt local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt indexed_identifier
+d83 1
+a83 1
+%token _LABEL_ BYTE CHAR WORD DWORD DSB DSW DSD DATASEG CODESEG IF IFDEF IFNDEF ELSE ELIF ENDIF INCSRC INCBIN MACRO REPT WHILE ENDM ALIGN EQU DEFINE END PUBLIC EXTRN CHARMAP STRUC UNION ENDS RECORD ENUM ENDE PROC ENDP SIZEOF MASK TAG MESSAGE WARNING ERROR ZEROPAGE
+d165 1
+d170 4
+d195 1
+a195 1
+    '=' INTEGER_LITERAL { $$ = astnode_create_integer($2, @@$); }
+@
+
+
+1.10
+log
+@convert tabs to whitespaces
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.9 2005/01/05 02:28:40 kenth Exp khansen $
+d5 3
+d42 1
+d619 1
+d626 18
+a643 1
+        fp = fopen(file->string, "rb");
+@
+
+
+1.9
+log
+@anonymous union parsing
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.8 2004/12/29 21:45:26 kenth Exp kenth $
+d5 3
+d41 3
+a43 3
+void yyerror(char *);	/* In lexer */
+int yylex(void);	/* In lexer */
+int yypushandrestart(char *);	/* In lexer */
+d45 5
+a49 5
+extern char *yytext;	/* In lexer */
+extern YYLTYPE yylloc;	/* In lexer */
+extern astnode *root_node;	/* Root of the generated parse tree */
+void handle_incsrc(astnode *);	/* See below */
+void handle_incbin(astnode *);	/* See below */
+d106 2
+a107 2
+	statement_list end_opt { root_node = astnode_create_list($1); }
+	;
+d110 3
+a112 3
+	END line_tail { ; }
+	| /* empty */
+	;
+d115 6
+a120 6
+	labelable_statement { $$ = $1; }
+	| statement_list labelable_statement {
+		 if ($1 != NULL) { $$ = $1; astnode_add_sibling($$, $2); }
+		 else { $$ = $2; }
+		}
+	;
+d123 3
+a125 3
+	label_decl statement { $$ = $1; astnode_add_sibling($$, $2); }
+	| statement { $$ = $1; }
+	;
+d128 33
+a160 33
+	if_statement { $$ = $1; }
+	| ifdef_statement { $$ = $1; }
+	| ifndef_statement { $$ = $1; }
+	| macro_decl_statement { $$ = $1; }
+	| macro_statement { $$ = $1; }
+	| incsrc_statement { $$ = $1; }
+	| incbin_statement { $$ = $1; }
+	| equ_statement { $$ = $1; }
+	| assign_statement { $$ = $1; }
+	| public_statement { $$ = $1; }
+	| extrn_statement { $$ = $1; }
+	| instruction_statement { $$ = $1; }
+	| data_statement { $$ = $1; }
+	| storage_statement { $$ = $1; }
+	| dataseg_statement { $$ = $1; }
+	| codeseg_statement { $$ = $1; }
+	| charmap_statement { $$ = $1; }
+	| struc_decl_statement { $$ = $1; }
+	| union_decl_statement { $$ = $1; }
+	| enum_decl_statement { $$ = $1; }
+	| record_decl_statement { $$ = $1; }
+	| proc_statement { $$ = $1; }
+	| rept_statement { $$ = $1; }
+	| while_statement { $$ = $1; }
+	| label_statement { $$ = $1; }
+	| message_statement { $$ = $1; }
+	| warning_statement { $$ = $1; }
+	| error_statement { $$ = $1; }
+	| define_statement { $$ = $1; }
+	| align_statement { $$ = $1; }
+	| null_statement { $$ = $1; }
+	| error line_tail { $$ = NULL; }
+	;
+d163 2
+a164 2
+	ALIGN identifier_list expression line_tail { $$ = astnode_create_align($2, $3, @@$); }
+	;
+d167 2
+a168 2
+	WARNING expression line_tail { $$ = astnode_create_warning($2, @@$); }
+	;
+d171 2
+a172 2
+	ERROR expression line_tail { $$ = astnode_create_error($2, @@$); }
+	;
+d175 2
+a176 2
+	MESSAGE expression line_tail { $$ = astnode_create_message($2, @@$); }
+	;
+d179 2
+a180 2
+	_LABEL_ identifier label_addr_part_opt label_type_part_opt line_tail { $$ = astnode_create_label($2->label, $3, $4, @@$); }
+	;
+d183 3
+a185 3
+	'=' INTEGER_LITERAL { $$ = astnode_create_integer($2, @@$); }
+	| { $$ = NULL; }
+	;
+d188 3
+a190 3
+	':' symbol_type { $$ = $2; }
+	| { $$ = NULL; }
+	;
+d193 2
+a194 2
+	WHILE expression line_tail statement_list ENDM line_tail { $$ = astnode_create_while($2, $4, @@$); }
+	;
+d197 2
+a198 2
+	REPT expression line_tail statement_list ENDM line_tail { $$ = astnode_create_rept($2, $4, @@$); }
+	;
+d201 2
+a202 2
+	PROC identifier line_tail statement_list ENDP line_tail { $$ = astnode_create_proc($2, $4, @@$); }
+	;
+d205 2
+a206 2
+	STRUC identifier line_tail statement_list ENDS line_tail { $$ = astnode_create_struc_decl($2, $4, @@$); }
+	;
+d209 2
+a210 2
+	UNION identifier_opt line_tail statement_list ENDS line_tail { $$ = astnode_create_union_decl($2, $4, @@$); }
+	;
+d213 2
+a214 2
+	ENUM identifier line_tail enum_item_list ENDE line_tail { $$ = astnode_create_enum_decl($2, $4, @@$); }
+	;
+d217 3
+a219 3
+	enum_item { $$ = $1; }
+	| enum_item_list enum_item { $$ = $1; astnode_add_sibling($$, $2); }
+	;
+d222 3
+a224 3
+	assign_statement { $$ = $1; }
+	| identifier line_tail { $$ = $1; }
+	;
+d227 2
+a228 2
+	RECORD identifier record_field_list line_tail { $$ = astnode_create_record_decl($2, $3, @@$); }
+	;
+d231 3
+a233 3
+	record_field { $$ = $1; }
+	| record_field_list ',' record_field { $$ = $1; astnode_add_sibling($$, $3); }
+	;
+d236 2
+a237 2
+	identifier ':' expression { $$ = astnode_create_bitfield_decl($1, $3, @@$); }
+	;
+d240 2
+a241 2
+	CHARMAP file_specifier line_tail { $$ = astnode_create_charmap($2, @@$); }
+	;
+d244 2
+a245 2
+	DATASEG line_tail { $$ = astnode_create_dataseg(0, @@$); }
+	| DATASEG ZEROPAGE line_tail { $$ = astnode_create_dataseg(ZEROPAGE_FLAG, @@$); }
+d248 2
+a249 2
+	CODESEG line_tail { $$ = astnode_create_codeseg(@@$); }
+	;
+d252 2
+a253 2
+	line_tail { $$ = NULL; }
+	;
+d256 2
+a257 2
+	label { $$ = $1; }
+	;
+d260 3
+a262 3
+	newline { ; }
+	| ':' { ; }
+	;
+d265 2
+a266 2
+	'\n' { ; }
+	;
+d269 2
+a270 2
+	instruction line_tail { $$ = $1; }
+	;
+d273 10
+a282 10
+	MNEMONIC { $$ = astnode_create_instruction($1, IMPLIED_MODE, NULL, @@$); }
+	| MNEMONIC 'A' { $$ = astnode_create_instruction($1, ACCUMULATOR_MODE, NULL, @@$); }
+	| MNEMONIC '#' expression { $$ = astnode_create_instruction($1, IMMEDIATE_MODE, $3, @@$); }
+	| MNEMONIC expression { $$ = astnode_create_instruction($1, ABSOLUTE_MODE, $2, @@$); }
+	| MNEMONIC expression ',' 'X' { $$ = astnode_create_instruction($1, ABSOLUTE_X_MODE, $2, @@$); }
+	| MNEMONIC expression ',' 'Y' { $$ = astnode_create_instruction($1, ABSOLUTE_Y_MODE, $2, @@$); }
+	| MNEMONIC '[' expression ',' 'X' ']' { $$ = astnode_create_instruction($1, PREINDEXED_INDIRECT_MODE, $3, @@$); }
+	| MNEMONIC '[' expression ']' ',' 'Y' { $$ = astnode_create_instruction($1, POSTINDEXED_INDIRECT_MODE, $3, @@$); }
+	| MNEMONIC '[' expression ']' { $$ = astnode_create_instruction($1, INDIRECT_MODE, $3, @@$); }
+	;
+d285 16
+a300 16
+	indexed_identifier { $$ = $1; }
+	| SIZEOF sizeof_arg { $$ = astnode_create_sizeof($2, @@$); }
+	| scope_access { $$ = $1; }
+	| struc_access { $$ = $1; }
+	| local_id { $$ = $1; }
+	| literal { $$ = $1; }
+	| '$' { $$ = astnode_create_pc(@@$); }
+	| arithmetic_expression { $$ = $1; }
+	| comparison_expression { $$ = $1; }
+	| '(' expression ')' { $$ = $2; }
+	| '+' { $$ = astnode_create_forward_branch("+", @@$); }
+	| '-' { $$ = astnode_create_backward_branch("-", @@$); }
+	| FORWARD_BRANCH { $$ = astnode_create_forward_branch($1, @@$); }
+	| BACKWARD_BRANCH { $$ = astnode_create_backward_branch($1, @@$); }
+	| MASK scope_access { $$ = astnode_create_mask($2, @@$); }
+	;
+d303 4
+a306 4
+	identifier { $$ = $1; }
+	| identifier '[' expression ']' { $$ = astnode_create_index($1, $3, @@$); }
+	| identifier '(' expression ')' { $$ = astnode_create_index($1, $3, @@$); }
+	;
+d309 3
+a311 3
+	expression { $$ = $1; }
+	| struc_initializer { $$ = $1; }
+	;
+d314 3
+a316 3
+	identifier { $$ = $1; }
+	| datatype { $$ = $1; }
+	;
+d319 3
+a321 3
+	expression { $$ = $1; }
+	| { $$ = NULL; }
+	;
+d324 2
+a325 2
+	identifier SCOPE_OP identifier { $$ = astnode_create_scope($1, $3, @@$); }
+	;
+d328 3
+a330 3
+	indexed_identifier '.' struc_access { $$ = astnode_create_dot($1, $3, @@$); }
+	| indexed_identifier '.' indexed_identifier { $$ = astnode_create_dot($1, $3, @@$); }
+	;
+d333 2
+a334 2
+	'{' field_initializer_list_opt '}' { $$ = astnode_create_struc($2, @@$); }
+	;
+d337 3
+a339 3
+	field_initializer_list { $$ = $1; }
+	| { $$ = NULL; }
+	;
+d342 3
+a344 3
+	field_initializer { $$ = $1; }
+	| field_initializer_list ',' field_initializer { $$ = $1; astnode_add_sibling($$, $3); }
+	;
+d347 3
+a349 3
+	extended_expression { $$ = $1; }
+	| { $$ = astnode_create_null(@@$); }
+	;
+d352 2
+a353 2
+	LOCAL_ID { $$ = astnode_create_local_id($1, @@$); }
+	;
+d356 17
+a372 17
+	expression '+' expression { $$ = astnode_create_arithmetic(PLUS_OPERATOR, $1, $3, @@$); }
+	| expression '-' expression { $$ = astnode_create_arithmetic(MINUS_OPERATOR, $1, $3, @@$); }
+	| expression '*' expression { $$ = astnode_create_arithmetic(MUL_OPERATOR, $1, $3, @@$); }
+	| expression '/' expression { $$ = astnode_create_arithmetic(DIV_OPERATOR, $1, $3, @@$); }
+	| expression '%' expression { $$ = astnode_create_arithmetic(MOD_OPERATOR, $1, $3, @@$); }
+	| expression '&' expression { $$ = astnode_create_arithmetic(AND_OPERATOR, $1, $3, @@$); }
+	| expression '|' expression { $$ = astnode_create_arithmetic(OR_OPERATOR, $1, $3, @@$); }
+	| expression '^' expression { $$ = astnode_create_arithmetic(XOR_OPERATOR, $1, $3, @@$); }
+	| expression SHL_OP expression { $$ = astnode_create_arithmetic(SHL_OPERATOR, $1, $3, @@$); }
+	| expression SHR_OP expression { $$ = astnode_create_arithmetic(SHR_OPERATOR, $1, $3, @@$); }
+	| '~' expression { $$ = astnode_create_arithmetic(NEG_OPERATOR, $2, NULL, @@$); }
+	| '!' expression { $$ = astnode_create_arithmetic(NOT_OPERATOR, $2, NULL, @@$); }
+	| '^' identifier { $$ = astnode_create_arithmetic(BANK_OPERATOR, $2, NULL, @@$); }
+	| '<' expression %prec LO_OP { $$ = astnode_create_arithmetic(LO_OPERATOR, $2, NULL, @@$); }
+	| '>' expression %prec HI_OP { $$ = astnode_create_arithmetic(HI_OPERATOR, $2, NULL, @@$); }
+	| '-' expression %prec UMINUS { $$ = astnode_create_arithmetic(UMINUS_OPERATOR, $2, NULL, @@$); }
+	;
+d375 7
+a381 7
+	expression EQ_OP expression { $$ = astnode_create_arithmetic(EQ_OPERATOR, $1, $3, @@$); }
+	| expression NE_OP expression { $$ = astnode_create_arithmetic(NE_OPERATOR, $1, $3, @@$); }
+	| expression '>' expression { $$ = astnode_create_arithmetic(GT_OPERATOR, $1, $3, @@$); }
+	| expression '<' expression { $$ = astnode_create_arithmetic(LT_OPERATOR, $1, $3, @@$); }
+	| expression GE_OP expression { $$ = astnode_create_arithmetic(GE_OPERATOR, $1, $3, @@$); }
+	| expression LE_OP expression { $$ = astnode_create_arithmetic(LE_OPERATOR, $1, $3, @@$); }
+	;
+d384 7
+a390 7
+	LABEL { $$ = astnode_create_label($1, NULL, NULL, @@$); }
+	| LOCAL_LABEL { $$ = astnode_create_local_label($1, @@$); }
+	| '+' { $$ = astnode_create_forward_branch_decl("+", @@$); }
+	| '-' { $$ = astnode_create_backward_branch_decl("-", @@$); }
+	| FORWARD_BRANCH { $$ = astnode_create_forward_branch_decl($1, @@$); }
+	| BACKWARD_BRANCH { $$ = astnode_create_backward_branch_decl($1, @@$); }
+	;
+d393 2
+a394 2
+	IDENTIFIER { $$ = astnode_create_identifier($1, @@$); }
+	;
+d397 3
+a399 3
+	identifier { $$ = $1; }
+	| { $$ = astnode_create_null(@@$); }
+	;
+d402 3
+a404 3
+	INTEGER_LITERAL { $$ = astnode_create_integer($1, @@$); }
+	| STRING_LITERAL { $$ = astnode_create_string($1, @@$); }
+	;
+d407 2
+a408 2
+	IF expression line_tail statement_list elif_statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_if($2, $4, $5, $6, @@$); }
+	;
+d411 3
+a413 3
+	elif_statement_list { $$ = $1; }
+	| { $$ = NULL; }
+	;
+d416 3
+a418 3
+	elif_statement { $$ = $1; }
+	| elif_statement_list elif_statement { $$ = $1; astnode_add_sibling($$, $2); }
+	;
+d421 2
+a422 2
+	ELIF expression line_tail statement_list { $$ = astnode_create_case($2, $4, @@$); }
+	;
+d425 3
+a427 3
+	ELSE line_tail statement_list { $$ = $3; }
+	| { $$ = NULL; }
+	;
+d430 2
+a431 2
+	IFDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifdef($2, $4, $5, @@$); }
+	;
+d434 2
+a435 2
+	IFNDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifndef($2, $4, $5, @@$); }
+	;
+d438 3
+a440 3
+	named_data_statement line_tail { $$ = $1; }
+	| unnamed_data_statement line_tail { $$ = $1; }
+	;
+d443 6
+a448 6
+	identifier unnamed_data_statement { $$ = astnode_create_var_decl(0, $1, $2, @@$); }
+	| ZEROPAGE identifier unnamed_data_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG, $2, $3, @@$); }
+	| PUBLIC identifier unnamed_data_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG, $2, $3, @@$); }
+	| ZEROPAGE PUBLIC identifier unnamed_data_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG | PUBLIC_FLAG, $3, $4, @@$); }
+	| PUBLIC ZEROPAGE identifier unnamed_data_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG | ZEROPAGE_FLAG, $3, $4, @@$); }
+	;
+d451 4
+a454 4
+	datatype expression_list { $$ = astnode_create_data($1, $2, @@$); }
+	| datatype { $$ = astnode_create_storage($1, NULL, @@$); }
+	| datatype '[' expression ']' { $$ = astnode_create_storage($1, $3, @@$); }
+	;
+d457 7
+a463 7
+	BYTE { $$ = astnode_create_datatype(BYTE_DATATYPE, NULL, @@$); }
+	| CHAR { $$ = astnode_create_datatype(CHAR_DATATYPE, NULL, @@$); }
+	| WORD { $$ = astnode_create_datatype(WORD_DATATYPE, NULL, @@$); }
+	| DWORD { $$ = astnode_create_datatype(DWORD_DATATYPE, NULL, @@$); }
+	| TAG identifier { $$ = astnode_create_datatype(USER_DATATYPE, $2, @@$); }
+	| '.' identifier { $$ = astnode_create_datatype(USER_DATATYPE, $2, @@$); }
+	;
+d466 3
+a468 3
+	extended_expression { $$ = $1; }
+	| expression_list ',' extended_expression { $$ = $1; astnode_add_sibling($$, $3); }
+	;
+d471 2
+a472 2
+	INCSRC file_specifier line_tail { $$ = astnode_create_incsrc($2, @@$); handle_incsrc($$); }
+	;
+d475 2
+a476 2
+	INCBIN file_specifier line_tail { $$ = astnode_create_incbin($2, @@$); handle_incbin($$); }
+	;
+d479 3
+a481 3
+	STRING_LITERAL { $$ = astnode_create_string($1, @@$); }
+	| FILE_PATH { $$ = astnode_create_file_path($1, @@$); }
+	;
+d484 2
+a485 2
+	MACRO identifier param_list_opt line_tail statement_list ENDM line_tail { $$ = astnode_create_macro_decl($2, $3, $5, @@$); }
+	;
+d488 3
+a490 3
+	identifier_list { $$ = $1; }
+	| { $$ = NULL; }
+	;
+d493 2
+a494 2
+	identifier arg_list_opt line_tail { $$ = astnode_create_macro($1, $2, @@$); }
+	;
+d497 3
+a499 3
+	expression_list { $$ = $1; }
+	| { $$ = NULL; }
+	;
+d502 3
+a504 3
+	identifier { $$ = $1; }
+	| identifier_list ',' identifier { $$ = $1; astnode_add_sibling($$, $3); }
+	;
+d507 2
+a508 2
+	identifier EQU extended_expression line_tail { $$ = astnode_create_equ($1, $3, @@$); }
+	;
+d511 2
+a512 2
+	identifier '=' extended_expression line_tail { $$ = astnode_create_assign($1, $3, @@$); }
+	;
+d515 3
+a517 3
+	DEFINE identifier line_tail { $$ = astnode_create_equ($2, astnode_create_integer(0, @@$), @@$); }
+	| DEFINE identifier extended_expression line_tail { $$ = astnode_create_equ($2, $3, @@$); }
+	;
+d520 2
+a521 2
+	PUBLIC identifier_list line_tail { $$ = astnode_create_public($2, @@$); }
+	;
+d524 2
+a525 2
+	EXTRN identifier_list ':' symbol_type from_part_opt line_tail { $$ = astnode_create_extrn($2, $4, $5, @@$); }
+	;
+d528 3
+a530 3
+	'@@' identifier { $$ = $2; }
+	| { $$ = NULL; }
+	;
+d533 5
+a537 5
+	datatype { $$ = $1; }
+	| identifier { $$ = astnode_create_datatype(USER_DATATYPE, $1, @@$); }
+	| PROC { $$ = astnode_create_integer(PROC_SYMBOL, @@$); }
+	| _LABEL_ { $$ = astnode_create_integer(LABEL_SYMBOL, @@$); }
+	;
+d540 3
+a542 3
+	named_storage_statement { $$ = $1; }
+	| unnamed_storage_statement { $$ = $1; }
+	;
+d545 6
+a550 6
+	identifier unnamed_storage_statement { $$ = astnode_create_var_decl(0, $1, $2, @@$); }
+	| ZEROPAGE identifier unnamed_storage_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG, $2, $3, @@$); }
+	| PUBLIC identifier unnamed_storage_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG, $2, $3, @@$); }
+	| ZEROPAGE PUBLIC identifier unnamed_storage_statement { $$ = astnode_create_var_decl(ZEROPAGE_FLAG | PUBLIC_FLAG, $3, $4, @@$); }
+	| PUBLIC ZEROPAGE identifier unnamed_storage_statement { $$ = astnode_create_var_decl(PUBLIC_FLAG | ZEROPAGE_FLAG, $3, $4, @@$); }
+	;
+d553 2
+a554 2
+	storage expression_opt line_tail { $$ = astnode_create_storage($1, $2, @@$); }
+	;
+d557 4
+a560 4
+	DSB { $$ = astnode_create_datatype(BYTE_DATATYPE, NULL, @@$); }
+	| DSW { $$ = astnode_create_datatype(WORD_DATATYPE, NULL, @@$); }
+	| DSD { $$ = astnode_create_datatype(DWORD_DATATYPE, NULL, @@$); }
+	;
+d571 23
+a593 23
+	char errs[512];
+	/* Get the node which describes the file to include */
+	astnode *file = astnode_get_child(n, 0);
+
+	switch (astnode_get_type(file)) {
+		case STRING_NODE:
+		/* TODO: add path searching */
+		case FILE_PATH_NODE:
+		switch (yypushandrestart(file->string)) {
+			case 0:
+			/* Success */
+			break;
+			case 1:
+			/* Failed to open file */
+			sprintf(errs, "could not open '%s' for reading", file->string);
+			yyerror(errs);
+			break;
+			case 2:
+			/* Stack overflow */
+			yyerror("Maximum include nesting level reached");
+			break;
+		}
+		break;
+d595 2
+a596 2
+		default: break;
+	}
+d609 35
+a643 35
+	FILE *fp;
+	unsigned char *data;
+	int size;
+	char errs[512];
+	/* Get the node which describes the file to include */
+	astnode *file = astnode_get_child(n, 0);
+
+	switch (astnode_get_type(file)) {
+		case STRING_NODE:
+		/* TODO: add path searching */
+		case FILE_PATH_NODE:
+		/* Attempt to open file */
+		fp = fopen(file->string, "rb");
+		if (fp) {
+			/* Get filesize */
+			fseek(fp, 0, SEEK_END);
+			size = ftell(fp);
+			rewind(fp);
+			if (size > 0) {
+				/* Allocate buffer to hold file contents */
+				data = (unsigned char *)malloc(size);
+				/* Read file contents into buffer */
+				fread(data, 1, size, fp);
+				/* Insert binary node */
+				astnode_add_sibling(n, astnode_create_binary(data, size, n->loc) );
+			}
+			/* Close file */
+			fclose(fp);
+		}
+		else {
+			/* Couldn't open file */
+			sprintf(errs, "could not open '%s' for reading", file->string);
+			yyerror(errs);
+		}
+		break;
+d645 2
+a646 2
+		default: break;
+	}
+@
+
+
+1.8
+log
+@xorcyst 1.4.2
+static indexing
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.7 2004/12/19 19:59:14 kenth Exp kenth $
+d5 4
+d71 1
+a71 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt indexed_identifier
+d206 1
+a206 1
+	UNION identifier line_tail statement_list ENDS line_tail { $$ = astnode_create_union_decl($2, $4, @@$); }
+d393 5
+@
+
+
+1.7
+log
+@xorcyst 1.4.0
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.6 2004/12/16 13:22:27 kenth Exp kenth $
+d5 3
+d67 1
+a67 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt
+d278 1
+a278 1
+	identifier { $$ = $1; }
+d295 6
+d321 2
+a322 2
+	identifier '.' struc_access { $$ = astnode_create_dot($1, $3, @@$); }
+	| identifier '.' identifier { $$ = astnode_create_dot($1, $3, @@$); }
+@
+
+
+1.6
+log
+@xorcyst 1.3.5
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.5 2004/12/14 01:50:42 kenth Exp kenth $
+d5 3
+d64 1
+a64 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_type_part_opt
+d66 1
+a66 1
+%token _LABEL_ BYTE CHAR WORD DWORD DSB DSW DSD DATASEG CODESEG IF IFDEF IFNDEF ELSE ELIF ENDIF INCSRC INCBIN MACRO REPT WHILE ENDM ALIGN EQU DEFINE END PUBLIC EXTRN CHARMAP STRUC UNION ENDS RECORD ENUM ENDE PROC ENDP SIZEOF MASK TAG MESSAGE WARNING ERROR
+d70 1
+d147 1
+d152 4
+d169 6
+a174 1
+	_LABEL_ identifier label_type_part_opt line_tail { $$ = astnode_create_label($2->label, $3, @@$); }
+d234 2
+a235 2
+	DATASEG line_tail { $$ = astnode_create_dataseg(@@$); }
+	;
+d368 1
+a368 1
+	LABEL { $$ = astnode_create_label($1, NULL, @@$); }
+d422 5
+a426 1
+	identifier unnamed_data_statement { $$ = astnode_create_var_decl($1, $2, @@$); }
+d503 6
+a508 1
+	EXTRN identifier_list ':' symbol_type line_tail { $$ = astnode_create_extrn($2, $4, @@$); }
+d524 5
+a528 1
+	identifier unnamed_storage_statement { $$ = astnode_create_var_decl($1, $2, @@$); }
+@
+
+
+1.5
+log
+@xorcyst 1.3.0
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.4 2004/12/11 02:12:41 kenth Exp kenth $
+d5 3
+d61 3
+a63 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg
+d65 2
+a67 1
+%token ':'
+a88 20
+%token _LABEL_
+%token BYTE CHAR WORD DWORD
+%token DSB DSW DSD
+%token DATASEG CODESEG
+%token IF IFDEF IFNDEF ELSE ELIF ENDIF
+%token INCSRC INCBIN
+%token MACRO REPT WHILE ENDM
+%token ALIGN
+%token EQU
+%token END
+%token PUBLIC EXTRN
+%token CHARMAP
+%token STRUC UNION ENDS
+%token RECORD
+%token ENUM ENDE
+%token PROC ENDP
+%right SIZEOF
+%right MASK
+%token TAG
+%token MESSAGE WARNING ERROR
+d142 1
+d160 6
+a165 1
+	_LABEL_ identifier line_tail { $$ = astnode_create_label($2->label, @@$); }
+a264 1
+	| struc_initializer { $$ = $1; }
+d278 5
+d317 1
+a317 1
+	expression { $$ = $1; }
+d338 1
+a338 1
+	| '^' expression { $$ = astnode_create_arithmetic(BANK_OPERATOR, $2, NULL, @@$); }
+d354 1
+a354 1
+	LABEL { $$ = astnode_create_label($1, @@$); }
+d414 1
+d427 2
+a428 2
+	expression { $$ = $1; }
+	| expression_list ',' expression { $$ = $1; astnode_add_sibling($$, $3); }
+d468 1
+a468 1
+	identifier EQU expression line_tail { $$ = astnode_create_equ($1, $3, @@$); }
+d472 6
+a477 1
+	identifier '=' expression line_tail { $$ = astnode_create_assign($1, $3, @@$); }
+@
+
+
+1.4
+log
+@xorcyst 1.2.0
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.3 2004/12/09 11:17:15 kenth Exp kenth $
+d5 3
+d58 1
+a58 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement instruction expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement symbol_type enum_item_list enum_item sizeof_arg
+d89 1
+a89 1
+%token MACRO REPT ENDM
+d99 2
+a100 1
+%token SIZEOF
+d148 1
+d151 1
+d176 4
+d210 13
+d284 1
+d376 15
+a390 1
+	IF expression line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_if($2, $4, $5, NULL, @@$); }
+d394 1
+a394 1
+	ELSE statement_list { $$ = $2; }
+d426 1
+@
+
+
+1.3
+log
+@added: warning_statement, error_statement
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.2 2004/12/06 05:06:21 kenth Exp kenth $
+d5 3
+d49 2
+d257 4
+d336 4
+@
+
+
+1.2
+log
+@xorcyst 1.1.0
+@
+text
+@d3 1
+a3 1
+ * $Id: parser.y,v 1.1 2004/06/30 07:57:03 kenth Exp kenth $
+d5 3
+d50 1
+a50 1
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement instruction expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement symbol_type enum_item_list enum_item sizeof_arg
+d93 1
+a93 1
+%token MESSAGE
+d143 2
+d149 8
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 5
+a7 2
+ * $Id$
+ * $Log$
+d12 1
+a12 1
+#include "astnode.h"
+d26 1
+a29 1
+    int datatype;
+d35 1
+d37 1
+d46 4
+a49 3
+%token <datatype> DATATYPE
+%token <datatype> STORAGE
+%type <node> identifier local_id assembly_unit statement labelable_statement statement_list if_statement ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement instruction expression arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt
+d54 1
+d69 1
+a69 1
+%right '!' '~' '?'
+d72 3
+d78 1
+a78 1
+%token MACRO ENDM
+d84 7
+d96 1
+d101 1
+d109 1
+d114 1
+d133 7
+d143 39
+d185 1
+d189 1
+d193 1
+d197 1
+d201 1
+d206 1
+d210 1
+d214 1
+d226 1
+d229 4
+d240 39
+d282 1
+d296 1
+a296 1
+	| '?' expression { $$ = astnode_create_arithmetic(BANK_OPERATOR, $2, NULL, @@$); }
+d301 1
+d310 1
+d315 1
+d319 1
+d324 1
+d326 1
+a326 1
+	IF expression line_tail statement_list else_part_opt ENDIF line_tail { astnode_create_if($2, $4, $5, NULL, @@$); }
+d328 1
+d333 1
+d337 1
+d341 1
+d343 6
+a348 1
+	DATATYPE expression_list line_tail { $$ = astnode_create_data($1, $2, @@$); }
+d350 12
+a361 2
+pragma_prefix:
+	'.'
+d363 1
+d366 1
+a366 4
+	| expression_list ',' expression {
+		if ($1 != NULL) { $$ = $1; astnode_add_sibling($$, $3); }
+		else { $$ = $3; }
+		}
+d368 1
+d372 1
+d376 1
+d381 1
+d385 1
+d390 1
+d392 1
+a392 1
+	pragma_prefix identifier arg_list_opt line_tail { $$ = astnode_create_macro($2, $3, @@$); }
+d394 1
+d399 1
+d402 1
+a402 4
+	| identifier_list ',' identifier {
+		 if ($1 != NULL) { $$ = $1; astnode_add_sibling($$, $3); }
+		 else { $$ = $3; }
+		}
+d404 1
+d408 1
+d412 1
+d416 1
+d418 1
+a418 1
+	EXTRN identifier_list line_tail { $$ = astnode_create_extrn($2, @@$); }
+d420 8
+d429 16
+a444 1
+	STORAGE expression line_tail { $$ = astnode_create_storage($1, $2, @@$); }
+@

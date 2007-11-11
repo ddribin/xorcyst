@@ -1,0 +1,472 @@
+head	1.5;
+access;
+symbols;
+locks
+	khansen:1.5; strict;
+comment	@ * @;
+
+
+1.5
+date	2007.08.19.11.19.17;	author khansen;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2007.08.12.18.59.10;	author khansen;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2007.08.11.01.25.18;	author khansen;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2007.07.22.13.35.20;	author khansen;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.12.06.04.54.00;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.5
+log
+@--case-insensitive option
+@
+text
+@/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* Skeleton interface for Bison's Yacc-like parsers in C
+
+   Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
+   Free Software Foundation, Inc.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor,
+   Boston, MA 02110-1301, USA.  */
+
+/* As a special exception, you may create a larger work that contains
+   part or all of the Bison parser skeleton and distribute that work
+   under terms of your choice, so long as that work isn't itself a
+   parser generator using the skeleton or a modified version thereof
+   as a parser skeleton.  Alternatively, if you modify or redistribute
+   the parser skeleton itself, you may (at your option) remove this
+   special exception, which will cause the skeleton and the resulting
+   Bison output files to be licensed under the GNU General Public
+   License without this special exception.
+
+   This special exception was added by the Free Software Foundation in
+   version 2.2 of Bison.  */
+
+/* Tokens.  */
+#ifndef YYTOKENTYPE
+# define YYTOKENTYPE
+   /* Put the tokens into the symbol table, so that GDB and other debuggers
+      know about them.  */
+   enum yytokentype {
+     INTEGER_LITERAL = 258,
+     STRING_LITERAL = 259,
+     FILE_PATH = 260,
+     IDENTIFIER = 261,
+     LOCAL_ID = 262,
+     FORWARD_BRANCH = 263,
+     BACKWARD_BRANCH = 264,
+     LABEL = 265,
+     LOCAL_LABEL = 266,
+     MNEMONIC = 267,
+     _LABEL_ = 268,
+     BYTE = 269,
+     CHAR = 270,
+     WORD = 271,
+     DWORD = 272,
+     DSB = 273,
+     DSW = 274,
+     DSD = 275,
+     DATASEG = 276,
+     CODESEG = 277,
+     IF = 278,
+     IFDEF = 279,
+     IFNDEF = 280,
+     ELSE = 281,
+     ELIF = 282,
+     ENDIF = 283,
+     INCSRC = 284,
+     INCBIN = 285,
+     MACRO = 286,
+     REPT = 287,
+     WHILE = 288,
+     ENDM = 289,
+     ALIGN = 290,
+     EQU = 291,
+     DEFINE = 292,
+     END = 293,
+     PUBLIC = 294,
+     EXTRN = 295,
+     CHARMAP = 296,
+     STRUC = 297,
+     UNION = 298,
+     ENDS = 299,
+     RECORD = 300,
+     ENUM = 301,
+     ENDE = 302,
+     PROC = 303,
+     ENDP = 304,
+     SIZEOF = 305,
+     MASK = 306,
+     TAG = 307,
+     MESSAGE = 308,
+     WARNING = 309,
+     ERROR = 310,
+     ZEROPAGE = 311,
+     ORG = 312,
+     SCOPE_OP = 313,
+     HI_OP = 314,
+     LO_OP = 315,
+     NE_OP = 316,
+     EQ_OP = 317,
+     GE_OP = 318,
+     LE_OP = 319,
+     SHR_OP = 320,
+     SHL_OP = 321,
+     UMINUS = 322
+   };
+#endif
+/* Tokens.  */
+#define INTEGER_LITERAL 258
+#define STRING_LITERAL 259
+#define FILE_PATH 260
+#define IDENTIFIER 261
+#define LOCAL_ID 262
+#define FORWARD_BRANCH 263
+#define BACKWARD_BRANCH 264
+#define LABEL 265
+#define LOCAL_LABEL 266
+#define MNEMONIC 267
+#define _LABEL_ 268
+#define BYTE 269
+#define CHAR 270
+#define WORD 271
+#define DWORD 272
+#define DSB 273
+#define DSW 274
+#define DSD 275
+#define DATASEG 276
+#define CODESEG 277
+#define IF 278
+#define IFDEF 279
+#define IFNDEF 280
+#define ELSE 281
+#define ELIF 282
+#define ENDIF 283
+#define INCSRC 284
+#define INCBIN 285
+#define MACRO 286
+#define REPT 287
+#define WHILE 288
+#define ENDM 289
+#define ALIGN 290
+#define EQU 291
+#define DEFINE 292
+#define END 293
+#define PUBLIC 294
+#define EXTRN 295
+#define CHARMAP 296
+#define STRUC 297
+#define UNION 298
+#define ENDS 299
+#define RECORD 300
+#define ENUM 301
+#define ENDE 302
+#define PROC 303
+#define ENDP 304
+#define SIZEOF 305
+#define MASK 306
+#define TAG 307
+#define MESSAGE 308
+#define WARNING 309
+#define ERROR 310
+#define ZEROPAGE 311
+#define ORG 312
+#define SCOPE_OP 313
+#define HI_OP 314
+#define LO_OP 315
+#define NE_OP 316
+#define EQ_OP 317
+#define GE_OP 318
+#define LE_OP 319
+#define SHR_OP 320
+#define SHL_OP 321
+#define UMINUS 322
+
+
+
+
+#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+typedef union YYSTYPE
+#line 62 "parser.y"
+{
+    long integer;
+    int mnemonic;
+    const char *string;
+    const char *label;
+    const char *ident;
+    astnode *node;
+}
+/* Line 1489 of yacc.c.  */
+#line 192 "parser.h"
+	YYSTYPE;
+# define yystype YYSTYPE /* obsolescent; will be withdrawn */
+# define YYSTYPE_IS_DECLARED 1
+# define YYSTYPE_IS_TRIVIAL 1
+#endif
+
+extern YYSTYPE yylval;
+
+#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
+typedef struct YYLTYPE
+{
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+} YYLTYPE;
+# define yyltype YYLTYPE /* obsolescent; will be withdrawn */
+# define YYLTYPE_IS_DECLARED 1
+# define YYLTYPE_IS_TRIVIAL 1
+#endif
+
+extern YYLTYPE yylloc;
+@
+
+
+1.4
+log
+@ability to generate pure 6502 binary
+@
+text
+@d181 1
+a181 1
+#line 59 "parser.y"
+d185 3
+a187 3
+    char *string;
+    char *label;
+    char *ident;
+@
+
+
+1.3
+log
+@includepaths support (-I option)
+@
+text
+@d96 11
+a106 10
+     SCOPE_OP = 312,
+     HI_OP = 313,
+     LO_OP = 314,
+     NE_OP = 315,
+     EQ_OP = 316,
+     GE_OP = 317,
+     LE_OP = 318,
+     SHR_OP = 319,
+     SHL_OP = 320,
+     UMINUS = 321
+d164 11
+a174 10
+#define SCOPE_OP 312
+#define HI_OP 313
+#define LO_OP 314
+#define NE_OP 315
+#define EQ_OP 316
+#define GE_OP 317
+#define LE_OP 318
+#define SHR_OP 319
+#define SHL_OP 320
+#define UMINUS 321
+d181 1
+a181 1
+#line 56 "parser.y"
+d191 1
+a191 1
+#line 190 "parser.h"
+@
+
+
+1.2
+log
+@convert tabs to whitespaces
+@
+text
+@d179 1
+a179 1
+#line 52 "parser.y"
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+/* A Bison parser, made by GNU Bison 1.875.  */
+d3 4
+a6 2
+/* Skeleton parser for Yacc-like parsing with Bison,
+   Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002 Free Software Foundation, Inc.
+d20 12
+a31 2
+   Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
+d33 2
+a34 4
+/* As a special exception, when this file is copied by Bison into a
+   Bison output file, you may use that output file without restriction.
+   This special exception was added by the Free Software Foundation
+   in version 1.24 of Bison.  */
+d47 59
+a105 51
+     LABEL = 263,
+     LOCAL_LABEL = 264,
+     MNEMONIC = 265,
+     SCOPE_OP = 266,
+     HI_OP = 267,
+     LO_OP = 268,
+     NE_OP = 269,
+     EQ_OP = 270,
+     GE_OP = 271,
+     LE_OP = 272,
+     SHR_OP = 273,
+     SHL_OP = 274,
+     UMINUS = 275,
+     _LABEL_ = 276,
+     BYTE = 277,
+     CHAR = 278,
+     WORD = 279,
+     DWORD = 280,
+     DSB = 281,
+     DSW = 282,
+     DSD = 283,
+     DATASEG = 284,
+     CODESEG = 285,
+     IF = 286,
+     IFDEF = 287,
+     IFNDEF = 288,
+     ELSE = 289,
+     ELIF = 290,
+     ENDIF = 291,
+     INCSRC = 292,
+     INCBIN = 293,
+     MACRO = 294,
+     REPT = 295,
+     ENDM = 296,
+     ALIGN = 297,
+     EQU = 298,
+     END = 299,
+     PUBLIC = 300,
+     EXTRN = 301,
+     CHARMAP = 302,
+     STRUC = 303,
+     UNION = 304,
+     ENDS = 305,
+     RECORD = 306,
+     ENUM = 307,
+     ENDE = 308,
+     PROC = 309,
+     ENDP = 310,
+     SIZEOF = 311,
+     TAG = 312,
+     MESSAGE = 313
+d108 1
+d114 67
+a180 58
+#define LABEL 263
+#define LOCAL_LABEL 264
+#define MNEMONIC 265
+#define SCOPE_OP 266
+#define HI_OP 267
+#define LO_OP 268
+#define NE_OP 269
+#define EQ_OP 270
+#define GE_OP 271
+#define LE_OP 272
+#define SHR_OP 273
+#define SHL_OP 274
+#define UMINUS 275
+#define _LABEL_ 276
+#define BYTE 277
+#define CHAR 278
+#define WORD 279
+#define DWORD 280
+#define DSB 281
+#define DSW 282
+#define DSD 283
+#define DATASEG 284
+#define CODESEG 285
+#define IF 286
+#define IFDEF 287
+#define IFNDEF 288
+#define ELSE 289
+#define ELIF 290
+#define ENDIF 291
+#define INCSRC 292
+#define INCBIN 293
+#define MACRO 294
+#define REPT 295
+#define ENDM 296
+#define ALIGN 297
+#define EQU 298
+#define END 299
+#define PUBLIC 300
+#define EXTRN 301
+#define CHARMAP 302
+#define STRUC 303
+#define UNION 304
+#define ENDS 305
+#define RECORD 306
+#define ENUM 307
+#define ENDE 308
+#define PROC 309
+#define ENDP 310
+#define SIZEOF 311
+#define TAG 312
+#define MESSAGE 313
+
+
+
+
+#if ! defined (YYSTYPE) && ! defined (YYSTYPE_IS_DECLARED)
+#line 27 "parser.y"
+typedef union YYSTYPE {
+d187 4
+a190 3
+} YYSTYPE;
+/* Line 1248 of yacc.c.  */
+#line 161 "y.tab.h"
+d198 1
+a198 1
+#if ! defined (YYLTYPE) && ! defined (YYLTYPE_IS_DECLARED)
+a211 2
+
+
+@

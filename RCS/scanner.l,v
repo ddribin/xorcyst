@@ -1,0 +1,1084 @@
+head	1.15;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.15
+date	2007.11.11.22.35.46;	author khansen;	state Exp;
+branches;
+next	1.14;
+
+1.14
+date	2007.08.19.11.19.47;	author khansen;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2007.08.12.18.58.49;	author khansen;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2007.08.11.01.25.39;	author khansen;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2007.08.10.20.21.36;	author khansen;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2007.07.22.13.34.16;	author khansen;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2005.01.09.11.20.31;	author kenth;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2004.12.19.19.59.08;	author kenth;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2004.12.16.13.22.08;	author kenth;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2004.12.14.01.50.33;	author kenth;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2004.12.11.02.12.32;	author kenth;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2004.12.10.22.43.53;	author kenth;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.12.09.11.15.28;	author kenth;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.12.06.05.06.29;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.06.30.07.56.59;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.15
+log
+@compile on mac
+@
+text
+@%{
+/*
+ * $Id: scanner.l,v 1.14 2007/08/19 11:19:47 khansen Exp khansen $
+ * $Log: scanner.l,v $
+ * Revision 1.14  2007/08/19 11:19:47  khansen
+ * --case-insensitive option
+ *
+ * Revision 1.13  2007/08/12 18:58:49  khansen
+ * ability to generate pure 6502 binary
+ *
+ * Revision 1.12  2007/08/11 01:25:39  khansen
+ * includepaths support (-I option)
+ *
+ * Revision 1.11  2007/08/10 20:21:36  khansen
+ * *** empty log message ***
+ *
+ * Revision 1.10  2007/07/22 13:34:16  khansen
+ * convert tabs to whitespaces
+ *
+ * Revision 1.9  2005/01/09 11:20:31  kenth
+ * xorcyst 1.4.5
+ * BLT, BGE
+ *
+ * Revision 1.8  2004/12/19 19:59:08  kenth
+ * xorcyst 1.4.0
+ *
+ * Revision 1.7  2004/12/16 13:22:08  kenth
+ * added DEFINE parsing
+ *
+ * Revision 1.6  2004/12/14 01:50:33  kenth
+ * xorcyst 1.3.0
+ *
+ * Revision 1.5  2004/12/11 02:12:32  kenth
+ * xorcyst 1.2.0
+ *
+ * Revision 1.4  2004/12/10 22:43:53  kenth
+ * removed FILE_PATH recognition: ".db <a, >b" is erronously parsed otherwise
+ *
+ * Revision 1.3  2004/12/09 11:15:28  kenth
+ * bugfix: close file handle
+ * added: "WARNING", "ERROR" recognition
+ *
+ * Revision 1.2  2004/12/06 05:06:29  kenth
+ * xorcyst 1.1.0
+ *
+ * Revision 1.1  2004/06/30 07:56:59  kenth
+ * Initial revision
+ *
+ */
+int yyparswap;
+int yyignorecase;
+void yyerror(const char *);   /* See below */
+char *strip_label();    /* See below */
+const char *maybe_ignorecase(char *);
+#include "loc.h"
+#include "astnode.h"
+#include "parser.h"
+#include "xasm.h"
+#include <string.h>
+#include <ctype.h>
+/* Each time we match a string, move the end cursor to its end. */
+#define YY_USER_ACTION  yylloc.last_column += yyleng;
+%}
+whitespace      [ \t]+
+comment         ";"[^\n]*
+string_literal      \"[^\n"]*\"
+binary_literal      [0-1]+
+octal_literal       0[0-7]*
+decimal_literal     [1-9][0-9]*
+hex_literal     [0-9A-F]+
+hex_literal2        [0-9][0-9A-F]*
+hex_literal3        0[A-F][0-9A-F]*
+identifier      [A-Z_][A-Z0-9_]{0,254}
+local_id        [0-9A-Z_]{1,255}
+pragma_prefix       "."?
+label_prefix        ^[ \t]*
+%%
+%{
+/* At each yylex invocation, mark the current position as the
+    start of the next token.  */
+LOCATION_STEP (yylloc);
+%}
+{whitespace}        { LOCATION_STEP (yylloc); }
+{comment}       { LOCATION_STEP (yylloc); }
+"%"{binary_literal} { yylval.integer = strtol(&yytext[1], NULL, 2); return(INTEGER_LITERAL); }
+{binary_literal}"B" { yylval.integer = strtol(yytext, NULL, 2); return(INTEGER_LITERAL); }
+{octal_literal}     { yylval.integer = strtol(yytext, NULL, 8); return(INTEGER_LITERAL); }
+{decimal_literal}   { yylval.integer = strtol(yytext, NULL, 10); return(INTEGER_LITERAL); }
+"0X"{hex_literal}   { yylval.integer = strtol(&yytext[2], NULL, 16); return(INTEGER_LITERAL); }
+"$"{hex_literal}    { yylval.integer = strtol(&yytext[1], NULL, 16); return(INTEGER_LITERAL); }
+{hex_literal3}"H"   { yylval.integer = strtol(yytext, NULL, 16); return(INTEGER_LITERAL); }
+{hex_literal2}"H"   { yylval.integer = strtol(yytext, NULL, 16); return(INTEGER_LITERAL); }
+"'"."'"         { yylval.integer = yytext[1]; return(INTEGER_LITERAL); }
+"ADC"           { yylval.mnemonic = ADC_MNEMONIC; return(MNEMONIC); }
+"AND"           { yylval.mnemonic = AND_MNEMONIC; return(MNEMONIC); }
+"ASL"           { yylval.mnemonic = ASL_MNEMONIC; return(MNEMONIC); }
+"BCC"           { yylval.mnemonic = BCC_MNEMONIC; return(MNEMONIC); }
+"BCS"           { yylval.mnemonic = BCS_MNEMONIC; return(MNEMONIC); }
+"BLT"           { yylval.mnemonic = BCC_MNEMONIC; return(MNEMONIC); }
+"BGE"           { yylval.mnemonic = BCS_MNEMONIC; return(MNEMONIC); }
+"BEQ"           { yylval.mnemonic = BEQ_MNEMONIC; return(MNEMONIC); }
+"BIT"           { yylval.mnemonic = BIT_MNEMONIC; return(MNEMONIC); }
+"BMI"           { yylval.mnemonic = BMI_MNEMONIC; return(MNEMONIC); }
+"BNE"           { yylval.mnemonic = BNE_MNEMONIC; return(MNEMONIC); }
+"BPL"           { yylval.mnemonic = BPL_MNEMONIC; return(MNEMONIC); }
+"BRK"           { yylval.mnemonic = BRK_MNEMONIC; return(MNEMONIC); }
+"BVC"           { yylval.mnemonic = BVC_MNEMONIC; return(MNEMONIC); }
+"BVS"           { yylval.mnemonic = BVS_MNEMONIC; return(MNEMONIC); }
+"CLC"           { yylval.mnemonic = CLC_MNEMONIC; return(MNEMONIC); }
+"CLD"           { yylval.mnemonic = CLD_MNEMONIC; return(MNEMONIC); }
+"CLI"           { yylval.mnemonic = CLI_MNEMONIC; return(MNEMONIC); }
+"CLV"           { yylval.mnemonic = CLV_MNEMONIC; return(MNEMONIC); }
+"CMP"           { yylval.mnemonic = CMP_MNEMONIC; return(MNEMONIC); }
+"CPX"           { yylval.mnemonic = CPX_MNEMONIC; return(MNEMONIC); }
+"CPY"           { yylval.mnemonic = CPY_MNEMONIC; return(MNEMONIC); }
+"DEC"           { yylval.mnemonic = DEC_MNEMONIC; return(MNEMONIC); }
+"DEX"           { yylval.mnemonic = DEX_MNEMONIC; return(MNEMONIC); }
+"DEY"           { yylval.mnemonic = DEY_MNEMONIC; return(MNEMONIC); }
+"EOR"           { yylval.mnemonic = EOR_MNEMONIC; return(MNEMONIC); }
+"INC"           { yylval.mnemonic = INC_MNEMONIC; return(MNEMONIC); }
+"INX"           { yylval.mnemonic = INX_MNEMONIC; return(MNEMONIC); }
+"INY"           { yylval.mnemonic = INY_MNEMONIC; return(MNEMONIC); }
+"JMP"           { yylval.mnemonic = JMP_MNEMONIC; return(MNEMONIC); }
+"JSR"           { yylval.mnemonic = JSR_MNEMONIC; return(MNEMONIC); }
+"LDA"           { yylval.mnemonic = LDA_MNEMONIC; return(MNEMONIC); }
+"LDX"           { yylval.mnemonic = LDX_MNEMONIC; return(MNEMONIC); }
+"LDY"           { yylval.mnemonic = LDY_MNEMONIC; return(MNEMONIC); }
+"LSR"           { yylval.mnemonic = LSR_MNEMONIC; return(MNEMONIC); }
+"NOP"           { yylval.mnemonic = NOP_MNEMONIC; return(MNEMONIC); }
+"ORA"           { yylval.mnemonic = ORA_MNEMONIC; return(MNEMONIC); }
+"PHA"           { yylval.mnemonic = PHA_MNEMONIC; return(MNEMONIC); }
+"PHP"           { yylval.mnemonic = PHP_MNEMONIC; return(MNEMONIC); }
+"PLA"           { yylval.mnemonic = PLA_MNEMONIC; return(MNEMONIC); }
+"PLP"           { yylval.mnemonic = PLP_MNEMONIC; return(MNEMONIC); }
+"ROL"           { yylval.mnemonic = ROL_MNEMONIC; return(MNEMONIC); }
+"ROR"           { yylval.mnemonic = ROR_MNEMONIC; return(MNEMONIC); }
+"RTI"           { yylval.mnemonic = RTI_MNEMONIC; return(MNEMONIC); }
+"RTS"           { yylval.mnemonic = RTS_MNEMONIC; return(MNEMONIC); }
+"SBC"           { yylval.mnemonic = SBC_MNEMONIC; return(MNEMONIC); }
+"SEC"           { yylval.mnemonic = SEC_MNEMONIC; return(MNEMONIC); }
+"SED"           { yylval.mnemonic = SED_MNEMONIC; return(MNEMONIC); }
+"SEI"           { yylval.mnemonic = SEI_MNEMONIC; return(MNEMONIC); }
+"STA"           { yylval.mnemonic = STA_MNEMONIC; return(MNEMONIC); }
+"STX"           { yylval.mnemonic = STX_MNEMONIC; return(MNEMONIC); }
+"STY"           { yylval.mnemonic = STY_MNEMONIC; return(MNEMONIC); }
+"TAX"           { yylval.mnemonic = TAX_MNEMONIC; return(MNEMONIC); }
+"TAY"           { yylval.mnemonic = TAY_MNEMONIC; return(MNEMONIC); }
+"TSX"           { yylval.mnemonic = TSX_MNEMONIC; return(MNEMONIC); }
+"TXA"           { yylval.mnemonic = TXA_MNEMONIC; return(MNEMONIC); }
+"TXS"           { yylval.mnemonic = TXS_MNEMONIC; return(MNEMONIC); }
+"TYA"           { yylval.mnemonic = TYA_MNEMONIC; return(MNEMONIC); }
+"X"         { return('X'); }
+"Y"         { return('Y'); }
+"A"         { return('A'); }
+"MASK"          { return(MASK); }
+"SIZEOF"        { return(SIZEOF); }
+{pragma_prefix}"DATA"   { return(DATASEG); }
+{pragma_prefix}"CODE"   { return(CODESEG); }
+{pragma_prefix}"DATASEG" { return(DATASEG); }
+{pragma_prefix}"CODESEG" { return(CODESEG); }
+{pragma_prefix}"IF" { return(IF); }
+{pragma_prefix}"IFDEF"  { return(IFDEF); }
+{pragma_prefix}"IFNDEF" { return(IFNDEF); }
+{pragma_prefix}"ELSE"   { return(ELSE); }
+{pragma_prefix}"ELIF"   { return(ELIF); }
+{pragma_prefix}"ENDIF"  { return(ENDIF); }
+{pragma_prefix}"MACRO"  { return(MACRO); }
+{pragma_prefix}"END"    { return(END); }
+{pragma_prefix}"ENDE"   { return(ENDE); }
+{pragma_prefix}"ENDM"   { return(ENDM); }
+{pragma_prefix}"ENDP"   { return(ENDP); }
+{pragma_prefix}"ENDS"   { return(ENDS); }
+{pragma_prefix}"EQU"    { return(EQU); }
+{pragma_prefix}"DEFINE" { return(DEFINE); }
+{pragma_prefix}"INCLUDE" { return(INCSRC); }
+{pragma_prefix}"INCSRC" { return(INCSRC); }
+{pragma_prefix}"INCBIN" { return(INCBIN); }
+{pragma_prefix}"ALIGN"  { return(ALIGN); }
+{pragma_prefix}"PUBLIC" { return(PUBLIC); }
+{pragma_prefix}"EXTRN"  { return(EXTRN); }
+{pragma_prefix}"ZEROPAGE" { return(ZEROPAGE); }
+{pragma_prefix}"CHARMAP" { return(CHARMAP); }
+{pragma_prefix}"STRUC"  { return(STRUC); }
+{pragma_prefix}"UNION"  { return(UNION); }
+{pragma_prefix}"RECORD" { return(RECORD); }
+{pragma_prefix}"ENUM"   { return(ENUM); }
+{pragma_prefix}"PROC"   { return(PROC); }
+{pragma_prefix}"REPT"   { return(REPT); }
+{pragma_prefix}"TAG"    { return(TAG); }
+{pragma_prefix}"TYPE"   { return(TAG); }
+{pragma_prefix}"LABEL"  { return(_LABEL_); }
+{pragma_prefix}"MESSAGE" { return(MESSAGE); }
+{pragma_prefix}"WARNING" { return(WARNING); }
+{pragma_prefix}"ERROR"  { return(ERROR); }
+{pragma_prefix}"WHILE"  { return(WHILE); }
+{pragma_prefix}"PAD"    { return(DSB); }
+{pragma_prefix}"DB" { return(BYTE); }
+{pragma_prefix}"BYTE"   { return(BYTE); }
+{pragma_prefix}"CHAR"   { return(CHAR); }
+{pragma_prefix}"ASC"    { return(CHAR); }
+{pragma_prefix}"DW" { return(WORD); }
+{pragma_prefix}"WORD"   { return(WORD); }
+{pragma_prefix}"DD" { return(DWORD); }
+{pragma_prefix}"DWORD"  { return(DWORD); }
+{pragma_prefix}"DSB"    { return(DSB); }
+{pragma_prefix}"DSW"    { return(DSW); }
+{pragma_prefix}"DSD"    { return(DSD); }
+{pragma_prefix}"ORG"    { return(ORG); }
+{label_prefix}{identifier}":" { yylval.label = maybe_ignorecase(strip_label()); return(LABEL); }
+{label_prefix}"@@@@"{local_id}":" { yylval.label = maybe_ignorecase(strip_label()); return(LOCAL_LABEL); }
+"@@@@"{local_id}      { yylval.ident = maybe_ignorecase(yytext); return(LOCAL_ID); }
+{identifier}        { yylval.ident = maybe_ignorecase(yytext); return(IDENTIFIER); }
+{string_literal}    { yytext[yyleng-1] = '\0'; yylval.string = &yytext[1]; return(STRING_LITERAL); }
+"+"{2,8}        { yylval.ident = yytext; return(FORWARD_BRANCH); }
+"-"{2,8}        { yylval.ident = yytext; return(BACKWARD_BRANCH); }
+"::"            { return(SCOPE_OP); }
+"."         { return('.'); }
+\n          { LOCATION_LINES (yylloc, yyleng); LOCATION_STEP (yylloc); return('\n'); }
+","         { return(','); }
+":"         { return(':'); }
+"#"         { return('#'); }
+"="         { return('='); }
+"("         { return( yyparswap ? '[' : '(' ); }
+")"         { return( yyparswap ? ']' : ')' ); }
+"["         { return( yyparswap ? '(' : '[' ); }
+"]"         { return( yyparswap ? ')' : ']'); }
+"{"         { return('{'); }
+"}"         { return('}'); }
+"&"         { return('&'); }
+"!"         { return('!'); }
+"~"         { return('~'); }
+"-"         { return('-'); }
+"+"         { return('+'); }
+"*"         { return('*'); }
+"/"         { return('/'); }
+"%"         { return('%'); }
+"<"         { return('<'); }
+">"         { return('>'); }
+"^"         { return('^'); }
+"|"         { return('|'); }
+">>"                    { return(SHR_OP); }
+"<<"                    { return(SHL_OP); }
+"<="                    { return(LE_OP); }
+">="                    { return(GE_OP); }
+"=="                    { return(EQ_OP); }
+"!="                    { return(NE_OP); }
+"$"         { return('$'); }
+"@@"         { return('@@'); }
+.           { yyerror("Skipping invalid character(s)"); LOCATION_STEP (yylloc); }
+%%
+/**
+ * Describes a file stack record.
+ * It holds name, location and buffer state for it.
+ */
+typedef struct tag_file_stack_rec {
+    const char *name; /* Name of the file */
+    YY_BUFFER_STATE buf;    /* flex input buffer */
+    YYLTYPE loc;    /* Current position in file */
+    FILE *fp;   /* File handle */
+} file_stack_rec;
+
+/* Max. nesting depth */
+#define FILE_STACK_SIZE 32
+
+/* Stack of files */
+static file_stack_rec file_stack[FILE_STACK_SIZE];
+
+/* File stack pointer */
+static int file_stack_ptr;
+
+/* Macro to access top of file stack */
+#define FTOS() file_stack[file_stack_ptr]
+
+/**
+ * Resets the location described by yylloc.
+ */
+void yyresetloc(void)
+{
+    LOCATION_RESET(yylloc);
+}
+
+/**
+ * Function called by lexer upon EOF(yyin).
+ */
+int yywrap()
+{
+    /* Discard of buffer that has been scanned */
+    yy_delete_buffer(YY_CURRENT_BUFFER);
+    /* Close current file */
+    fclose(FTOS().fp);
+    /* Resume scanning of previous buffer, if any */
+    if (file_stack_ptr > 0) {
+        /* Pop stack */
+        file_stack_ptr--;
+        /* Restore location */
+        yylloc = FTOS().loc;
+        /* Resume scanning from this buffer */
+        yy_switch_to_buffer(FTOS().buf);
+        /* Not end of all input. */
+        return(0);
+    }
+    else {
+        /* We have reached end of all input. */
+        return(1);
+    }
+}
+
+/**
+ * Opens a file and resumes scanning from there.
+ * The current file's status is pushed on stack.
+ * @@param filename Name of new file to start scanning
+ * @@return error code (0, 1 or 2)
+ */
+int yypushandrestart(const char *filename)
+{
+    FILE *fp;
+    /* Check for stack overflow */
+    if (file_stack_ptr == FILE_STACK_SIZE-1) {
+        /* Error, stack overflow */
+        return 2;
+    }
+    /* Attempt to open file */
+    fp = fopen(filename, "rt");
+    if (!fp && (filename[0] != '/')) {
+        /* Try search paths */
+        int i;
+        for (i = 0; i < xasm_args.include_path_count; ++i) {
+            const char *include_path = xasm_args.include_paths[i];
+            char *path = (char *)malloc(
+                strlen(include_path) + strlen("/") + strlen(filename) + 1);
+            strcpy(path, include_path);
+            strcat(path, "/");
+            strcat(path, filename);
+            fp = fopen(path, "rt");
+            free(path);
+            if (fp)
+                break;
+        }
+    }
+    if (fp) {
+        /* Save position in current file */
+        FTOS().loc = yylloc;
+        /* Push the new file */
+        file_stack_ptr++;
+        FTOS().name = filename;
+        FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
+        FTOS().fp = fp;
+        /* Reset file location */
+        yyresetloc();
+        /* Resume scanning from the new buffer */
+        yy_switch_to_buffer(FTOS().buf);
+        /* Success */
+        return 0;
+    }
+    else {
+        /* Error, couldn't open file */
+        return 1;
+    }
+}
+
+/**
+ * Initializes the lexer, tells it to start tokenizing from the given file.
+ * @@param filename Name of file where scanning is initiated
+ * @@param swap_parens Use ( ) for indirection if 1, [ ] otherwise
+ * @@return 1 if success, 0 otherwise
+ */
+int yybegin(const char *filename, int swap_parens, int ignore_case)
+{
+    FILE *fp;
+    yyparswap = swap_parens;
+    yyignorecase = ignore_case;
+    /* Attempt to open the given file */
+    fp = fopen(filename, "rt");
+    if (fp) {
+        /* Init stack */
+        file_stack_ptr = 0;
+        FTOS().name = filename;
+        FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
+        FTOS().fp = fp;
+        /* Reset file location */
+        yyresetloc();
+        /* Use the new buffer */
+        yy_switch_to_buffer(FTOS().buf);
+        /* Success */
+        return 1;
+    }
+    else {
+        /* Couldn't open file */
+        return 0;
+    }
+}
+
+/**
+ * Gets the name of the file that is currently being tokenized.
+ */
+const char *yy_current_filename()
+{
+    return FTOS().name;
+}
+
+/**
+ * Called by the parser to report an error during parsing.
+ * @@param s Error message
+ */
+void yyerror(const char *s) {
+    int i;
+    /* Print line of form: file:pos:message */
+    fprintf(stderr, "%s:", yy_current_filename());
+    LOCATION_PRINT(stderr, yylloc);
+    fprintf(stderr, ": %s\n", s);
+    /* Print include-trace */
+    for (i=file_stack_ptr-1; i>=0; i--) {
+        fprintf(stderr, "(%s:", file_stack[i].name);
+        LOCATION_PRINT(stderr, file_stack[i].loc);
+        fprintf(stderr, ")\n");
+    }
+}
+
+/**
+ * Call when yytext is a label to remove whitespace and punctuation.
+ */
+char *strip_label()
+{
+    int start;
+    /* Kill the ':' at the end */
+    yytext[strlen(yytext)-1] = 0;
+    /* Skip the whitespace, if any */
+    start = 0;
+    while ((yytext[start] == ' ') || (yytext[start] == '\t')) start++;
+    return &yytext[start];
+}
+
+static char *__strupr(char *str)
+{
+    char *p = str;
+    while (*p) {
+        *p = toupper(*p);
+        ++p;
+    }
+    return str;
+}
+
+const char *maybe_ignorecase(char *str)
+{
+    if (yyignorecase)
+        __strupr(str);
+    return str;
+}
+@
+
+
+1.14
+log
+@--case-insensitive option
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.13 2007/08/12 18:58:49 khansen Exp khansen $
+d5 3
+d60 1
+d433 10
+d445 3
+a447 1
+    return yyignorecase ? strupr(str) : str;
+@
+
+
+1.13
+log
+@ability to generate pure 6502 binary
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.12 2007/08/11 01:25:39 khansen Exp khansen $
+d5 3
+d48 2
+a49 1
+void yyerror(char *);   /* See below */
+d51 1
+d205 4
+a208 4
+{label_prefix}{identifier}":" { yylval.label = strip_label(); return(LABEL); }
+{label_prefix}"@@@@"{local_id}":" { yylval.label = strip_label(); return(LOCAL_LABEL); }
+"@@@@"{local_id}      { yylval.ident = yytext; return(LOCAL_ID); }
+{identifier}        { yylval.ident = yytext; return(IDENTIFIER); }
+d310 1
+a310 1
+int yypushandrestart(char *filename)
+d363 1
+a363 1
+int yybegin(const char *filename, int swap_parens)
+d367 1
+d401 1
+a401 1
+void yyerror(char *s) {
+d428 5
+@
+
+
+1.12
+log
+@includepaths support (-I option)
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.11 2007/08/10 20:21:36 khansen Exp khansen $
+d5 3
+d199 1
+@
+
+
+1.11
+log
+@*** empty log message ***
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.10 2007/07/22 13:34:16 khansen Exp khansen $
+d5 3
+d47 1
+d311 16
+@
+
+
+1.10
+log
+@convert tabs to whitespaces
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.9 2005/01/09 11:20:31 kenth Exp khansen $
+d5 3
+d239 1
+a239 1
+    char *name; /* Name of the file */
+d334 1
+a334 1
+int yybegin(char *filename, int swap_parens)
+d362 1
+a362 1
+char *yy_current_filename()
+@
+
+
+1.9
+log
+@xorcyst 1.4.5
+BLT, BGE
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.8 2004/12/19 19:59:08 kenth Exp kenth $
+d5 4
+d36 2
+a37 2
+void yyerror(char *);	/* See below */
+char *strip_label();	/* See below */
+d45 13
+a57 13
+whitespace		[ \t]+
+comment			";"[^\n]*
+string_literal		\"[^\n"]*\"
+binary_literal		[0-1]+
+octal_literal		0[0-7]*
+decimal_literal		[1-9][0-9]*
+hex_literal		[0-9A-F]+
+hex_literal2		[0-9][0-9A-F]*
+hex_literal3		0[A-F][0-9A-F]*
+identifier		[A-Z_][A-Z0-9_]{0,254}
+local_id		[0-9A-Z_]{1,255}
+pragma_prefix		"."?
+label_prefix		^[ \t]*
+d61 1
+a61 1
+	start of the next token.  */
+d64 74
+a137 74
+{whitespace}		{ LOCATION_STEP (yylloc); }
+{comment}		{ LOCATION_STEP (yylloc); }
+"%"{binary_literal}	{ yylval.integer = strtol(&yytext[1], NULL, 2); return(INTEGER_LITERAL); }
+{binary_literal}"B"	{ yylval.integer = strtol(yytext, NULL, 2); return(INTEGER_LITERAL); }
+{octal_literal}		{ yylval.integer = strtol(yytext, NULL, 8); return(INTEGER_LITERAL); }
+{decimal_literal}	{ yylval.integer = strtol(yytext, NULL, 10); return(INTEGER_LITERAL); }
+"0X"{hex_literal}	{ yylval.integer = strtol(&yytext[2], NULL, 16); return(INTEGER_LITERAL); }
+"$"{hex_literal}	{ yylval.integer = strtol(&yytext[1], NULL, 16); return(INTEGER_LITERAL); }
+{hex_literal3}"H"	{ yylval.integer = strtol(yytext, NULL, 16); return(INTEGER_LITERAL); }
+{hex_literal2}"H"	{ yylval.integer = strtol(yytext, NULL, 16); return(INTEGER_LITERAL); }
+"'"."'"			{ yylval.integer = yytext[1]; return(INTEGER_LITERAL); }
+"ADC"			{ yylval.mnemonic = ADC_MNEMONIC; return(MNEMONIC); }
+"AND"			{ yylval.mnemonic = AND_MNEMONIC; return(MNEMONIC); }
+"ASL"			{ yylval.mnemonic = ASL_MNEMONIC; return(MNEMONIC); }
+"BCC"			{ yylval.mnemonic = BCC_MNEMONIC; return(MNEMONIC); }
+"BCS"			{ yylval.mnemonic = BCS_MNEMONIC; return(MNEMONIC); }
+"BLT"			{ yylval.mnemonic = BCC_MNEMONIC; return(MNEMONIC); }
+"BGE"			{ yylval.mnemonic = BCS_MNEMONIC; return(MNEMONIC); }
+"BEQ"			{ yylval.mnemonic = BEQ_MNEMONIC; return(MNEMONIC); }
+"BIT"			{ yylval.mnemonic = BIT_MNEMONIC; return(MNEMONIC); }
+"BMI"			{ yylval.mnemonic = BMI_MNEMONIC; return(MNEMONIC); }
+"BNE"			{ yylval.mnemonic = BNE_MNEMONIC; return(MNEMONIC); }
+"BPL"			{ yylval.mnemonic = BPL_MNEMONIC; return(MNEMONIC); }
+"BRK"			{ yylval.mnemonic = BRK_MNEMONIC; return(MNEMONIC); }
+"BVC"			{ yylval.mnemonic = BVC_MNEMONIC; return(MNEMONIC); }
+"BVS"			{ yylval.mnemonic = BVS_MNEMONIC; return(MNEMONIC); }
+"CLC"			{ yylval.mnemonic = CLC_MNEMONIC; return(MNEMONIC); }
+"CLD"			{ yylval.mnemonic = CLD_MNEMONIC; return(MNEMONIC); }
+"CLI"			{ yylval.mnemonic = CLI_MNEMONIC; return(MNEMONIC); }
+"CLV"			{ yylval.mnemonic = CLV_MNEMONIC; return(MNEMONIC); }
+"CMP"			{ yylval.mnemonic = CMP_MNEMONIC; return(MNEMONIC); }
+"CPX"			{ yylval.mnemonic = CPX_MNEMONIC; return(MNEMONIC); }
+"CPY"			{ yylval.mnemonic = CPY_MNEMONIC; return(MNEMONIC); }
+"DEC"			{ yylval.mnemonic = DEC_MNEMONIC; return(MNEMONIC); }
+"DEX"			{ yylval.mnemonic = DEX_MNEMONIC; return(MNEMONIC); }
+"DEY"			{ yylval.mnemonic = DEY_MNEMONIC; return(MNEMONIC); }
+"EOR"			{ yylval.mnemonic = EOR_MNEMONIC; return(MNEMONIC); }
+"INC"			{ yylval.mnemonic = INC_MNEMONIC; return(MNEMONIC); }
+"INX"			{ yylval.mnemonic = INX_MNEMONIC; return(MNEMONIC); }
+"INY"			{ yylval.mnemonic = INY_MNEMONIC; return(MNEMONIC); }
+"JMP"			{ yylval.mnemonic = JMP_MNEMONIC; return(MNEMONIC); }
+"JSR"			{ yylval.mnemonic = JSR_MNEMONIC; return(MNEMONIC); }
+"LDA"			{ yylval.mnemonic = LDA_MNEMONIC; return(MNEMONIC); }
+"LDX"			{ yylval.mnemonic = LDX_MNEMONIC; return(MNEMONIC); }
+"LDY"			{ yylval.mnemonic = LDY_MNEMONIC; return(MNEMONIC); }
+"LSR"			{ yylval.mnemonic = LSR_MNEMONIC; return(MNEMONIC); }
+"NOP"			{ yylval.mnemonic = NOP_MNEMONIC; return(MNEMONIC); }
+"ORA"			{ yylval.mnemonic = ORA_MNEMONIC; return(MNEMONIC); }
+"PHA"			{ yylval.mnemonic = PHA_MNEMONIC; return(MNEMONIC); }
+"PHP"			{ yylval.mnemonic = PHP_MNEMONIC; return(MNEMONIC); }
+"PLA"			{ yylval.mnemonic = PLA_MNEMONIC; return(MNEMONIC); }
+"PLP"			{ yylval.mnemonic = PLP_MNEMONIC; return(MNEMONIC); }
+"ROL"			{ yylval.mnemonic = ROL_MNEMONIC; return(MNEMONIC); }
+"ROR"			{ yylval.mnemonic = ROR_MNEMONIC; return(MNEMONIC); }
+"RTI"			{ yylval.mnemonic = RTI_MNEMONIC; return(MNEMONIC); }
+"RTS"			{ yylval.mnemonic = RTS_MNEMONIC; return(MNEMONIC); }
+"SBC"			{ yylval.mnemonic = SBC_MNEMONIC; return(MNEMONIC); }
+"SEC"			{ yylval.mnemonic = SEC_MNEMONIC; return(MNEMONIC); }
+"SED"			{ yylval.mnemonic = SED_MNEMONIC; return(MNEMONIC); }
+"SEI"			{ yylval.mnemonic = SEI_MNEMONIC; return(MNEMONIC); }
+"STA"			{ yylval.mnemonic = STA_MNEMONIC; return(MNEMONIC); }
+"STX"			{ yylval.mnemonic = STX_MNEMONIC; return(MNEMONIC); }
+"STY"			{ yylval.mnemonic = STY_MNEMONIC; return(MNEMONIC); }
+"TAX"			{ yylval.mnemonic = TAX_MNEMONIC; return(MNEMONIC); }
+"TAY"			{ yylval.mnemonic = TAY_MNEMONIC; return(MNEMONIC); }
+"TSX"			{ yylval.mnemonic = TSX_MNEMONIC; return(MNEMONIC); }
+"TXA"			{ yylval.mnemonic = TXA_MNEMONIC; return(MNEMONIC); }
+"TXS"			{ yylval.mnemonic = TXS_MNEMONIC; return(MNEMONIC); }
+"TYA"			{ yylval.mnemonic = TYA_MNEMONIC; return(MNEMONIC); }
+"X"			{ return('X'); }
+"Y"			{ return('Y'); }
+"A"			{ return('A'); }
+"MASK"			{ return(MASK); }
+"SIZEOF"		{ return(SIZEOF); }
+d142 13
+a154 13
+{pragma_prefix}"IF"	{ return(IF); }
+{pragma_prefix}"IFDEF"	{ return(IFDEF); }
+{pragma_prefix}"IFNDEF"	{ return(IFNDEF); }
+{pragma_prefix}"ELSE"	{ return(ELSE); }
+{pragma_prefix}"ELIF"	{ return(ELIF); }
+{pragma_prefix}"ENDIF"	{ return(ENDIF); }
+{pragma_prefix}"MACRO"	{ return(MACRO); }
+{pragma_prefix}"END"	{ return(END); }
+{pragma_prefix}"ENDE"	{ return(ENDE); }
+{pragma_prefix}"ENDM"	{ return(ENDM); }
+{pragma_prefix}"ENDP"	{ return(ENDP); }
+{pragma_prefix}"ENDS"	{ return(ENDS); }
+{pragma_prefix}"EQU"	{ return(EQU); }
+d157 5
+a161 5
+{pragma_prefix}"INCSRC"	{ return(INCSRC); }
+{pragma_prefix}"INCBIN"	{ return(INCBIN); }
+{pragma_prefix}"ALIGN"	{ return(ALIGN); }
+{pragma_prefix}"PUBLIC"	{ return(PUBLIC); }
+{pragma_prefix}"EXTRN"	{ return(EXTRN); }
+d170 3
+a172 3
+{pragma_prefix}"TAG"	{ return(TAG); }
+{pragma_prefix}"TYPE"	{ return(TAG); }
+{pragma_prefix}"LABEL"	{ return(_LABEL_); }
+d177 12
+a188 12
+{pragma_prefix}"PAD"	{ return(DSB); }
+{pragma_prefix}"DB"	{ return(BYTE); }
+{pragma_prefix}"BYTE"	{ return(BYTE); }
+{pragma_prefix}"CHAR"	{ return(CHAR); }
+{pragma_prefix}"ASC"	{ return(CHAR); }
+{pragma_prefix}"DW"	{ return(WORD); }
+{pragma_prefix}"WORD"	{ return(WORD); }
+{pragma_prefix}"DD"	{ return(DWORD); }
+{pragma_prefix}"DWORD"	{ return(DWORD); }
+{pragma_prefix}"DSB"	{ return(DSB); }
+{pragma_prefix}"DSW"	{ return(DSW); }
+{pragma_prefix}"DSD"	{ return(DSD); }
+d191 30
+a220 30
+"@@@@"{local_id}		{ yylval.ident = yytext; return(LOCAL_ID); }
+{identifier}		{ yylval.ident = yytext; return(IDENTIFIER); }
+{string_literal}	{ yytext[yyleng-1] = '\0'; yylval.string = &yytext[1]; return(STRING_LITERAL); }
+"+"{2,8}		{ yylval.ident = yytext; return(FORWARD_BRANCH); }
+"-"{2,8}		{ yylval.ident = yytext; return(BACKWARD_BRANCH); }
+"::"			{ return(SCOPE_OP); }
+"."			{ return('.'); }
+\n			{ LOCATION_LINES (yylloc, yyleng); LOCATION_STEP (yylloc); return('\n'); }
+","			{ return(','); }
+":"			{ return(':'); }
+"#"			{ return('#'); }
+"="			{ return('='); }
+"("			{ return( yyparswap ? '[' : '(' ); }
+")"			{ return( yyparswap ? ']' : ')' ); }
+"["			{ return( yyparswap ? '(' : '[' ); }
+"]"			{ return( yyparswap ? ')' : ']'); }
+"{"			{ return('{'); }
+"}"			{ return('}'); }
+"&"			{ return('&'); }
+"!"			{ return('!'); }
+"~"			{ return('~'); }
+"-"			{ return('-'); }
+"+"			{ return('+'); }
+"*"			{ return('*'); }
+"/"			{ return('/'); }
+"%"			{ return('%'); }
+"<"			{ return('<'); }
+">"			{ return('>'); }
+"^"			{ return('^'); }
+"|"			{ return('|'); }
+d227 3
+a229 3
+"$"			{ return('$'); }
+"@@"			{ return('@@'); }
+.			{ yyerror("Skipping invalid character(s)"); LOCATION_STEP (yylloc); }
+d236 4
+a239 4
+	char *name;	/* Name of the file */
+	YY_BUFFER_STATE buf;	/* flex input buffer */
+	YYLTYPE loc;	/* Current position in file */
+	FILE *fp;	/* File handle */
+d259 1
+a259 1
+	LOCATION_RESET(yylloc);
+d267 19
+a285 19
+	/* Discard of buffer that has been scanned */
+	yy_delete_buffer(YY_CURRENT_BUFFER);
+	/* Close current file */
+	fclose(FTOS().fp);
+	/* Resume scanning of previous buffer, if any */
+	if (file_stack_ptr > 0) {
+		/* Pop stack */
+		file_stack_ptr--;
+		/* Restore location */
+		yylloc = FTOS().loc;
+		/* Resume scanning from this buffer */
+		yy_switch_to_buffer(FTOS().buf);
+		/* Not end of all input. */
+		return(0);
+	}
+	else {
+		/* We have reached end of all input. */
+		return(1);
+	}
+d296 27
+a322 27
+	FILE *fp;
+	/* Check for stack overflow */
+	if (file_stack_ptr == FILE_STACK_SIZE-1) {
+		/* Error, stack overflow */
+		return 2;
+	}
+	/* Attempt to open file */
+	fp = fopen(filename, "rt");
+	if (fp) {
+		/* Save position in current file */
+		FTOS().loc = yylloc;
+		/* Push the new file */
+		file_stack_ptr++;
+		FTOS().name = filename;
+		FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
+		FTOS().fp = fp;
+		/* Reset file location */
+		yyresetloc();
+		/* Resume scanning from the new buffer */
+		yy_switch_to_buffer(FTOS().buf);
+		/* Success */
+		return 0;
+	}
+	else {
+		/* Error, couldn't open file */
+		return 1;
+	}
+d333 21
+a353 21
+	FILE *fp;
+	yyparswap = swap_parens;
+	/* Attempt to open the given file */
+	fp = fopen(filename, "rt");
+	if (fp) {
+		/* Init stack */
+		file_stack_ptr = 0;
+		FTOS().name = filename;
+		FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
+		FTOS().fp = fp;
+		/* Reset file location */
+		yyresetloc();
+		/* Use the new buffer */
+		yy_switch_to_buffer(FTOS().buf);
+		/* Success */
+		return 1;
+	}
+	else {
+		/* Couldn't open file */
+		return 0;
+	}
+d361 1
+a361 1
+	return FTOS().name;
+d369 11
+a379 11
+	int i;
+	/* Print line of form: file:pos:message */
+	fprintf(stderr, "%s:", yy_current_filename());
+	LOCATION_PRINT(stderr, yylloc);
+	fprintf(stderr, ": %s\n", s);
+	/* Print include-trace */
+	for (i=file_stack_ptr-1; i>=0; i--) {
+		fprintf(stderr, "(%s:", file_stack[i].name);
+		LOCATION_PRINT(stderr, file_stack[i].loc);
+		fprintf(stderr, ")\n");
+	}
+d387 7
+a393 7
+	int start;
+	/* Kill the ':' at the end */
+	yytext[strlen(yytext)-1] = 0;
+	/* Skip the whitespace, if any */
+	start = 0;
+	while ((yytext[start] == ' ') || (yytext[start] == '\t')) start++;
+	return &yytext[start];
+@
+
+
+1.8
+log
+@xorcyst 1.4.0
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.7 2004/12/16 13:22:08 kenth Exp kenth $
+d5 3
+d76 2
+@
+
+
+1.7
+log
+@added DEFINE parsing
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.6 2004/12/14 01:50:33 kenth Exp kenth $
+d5 3
+d153 1
+d219 1
+@
+
+
+1.6
+log
+@xorcyst 1.3.0
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.5 2004/12/11 02:12:32 kenth Exp kenth $
+d5 3
+d143 1
+@
+
+
+1.5
+log
+@xorcyst 1.2.0
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.4 2004/12/10 22:43:53 kenth Exp kenth $
+d5 3
+d41 1
+a41 1
+identifier		[A-Z_][A-Z0-9_]{1,255}
+d121 1
+d159 1
+@
+
+
+1.4
+log
+@removed FILE_PATH recognition: ".db <a, >b" is erronously parsed otherwise
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.3 2004/12/09 11:15:28 kenth Exp kenth $
+d5 3
+d172 2
+@
+
+
+1.3
+log
+@bugfix: close file handle
+added: "WARNING", "ERROR" recognition
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.2 2004/12/06 05:06:29 kenth Exp kenth $
+d5 4
+a27 1
+file_path		<[^\n>]*>
+a168 1
+{file_path}		{ yylval.string = yytext; return(FILE_PATH); }
+@
+
+
+1.2
+log
+@xorcyst 1.1.0
+@
+text
+@d3 1
+a3 1
+ * $Id: scanner.l,v 1.1 2004/06/30 07:56:59 kenth Exp kenth $
+d5 3
+d147 2
+d209 1
+d239 2
+d281 1
+d312 1
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d3 5
+a7 2
+ * $Id$
+ * $Log$
+d9 1
+d29 2
+a30 2
+identifier		[A-Z_][A-Z0-9_]{0,255}
+local_id		[0-9A-Z_]{1,256}
+d109 3
+d122 1
+d124 2
+d134 22
+a155 11
+{pragma_prefix}"DB"	{ yylval.datatype = BYTE_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"BYTE"	{ yylval.datatype = BYTE_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"CHAR"	{ yylval.datatype = CHAR_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"ASC"	{ yylval.datatype = CHAR_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"DW"	{ yylval.datatype = WORD_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"WORD"	{ yylval.datatype = WORD_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"DD"	{ yylval.datatype = DWORD_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"DWORD"	{ yylval.datatype = DWORD_DATATYPE; return(DATATYPE); }
+{pragma_prefix}"DSB"	{ yylval.datatype = BYTE_DATATYPE; return(STORAGE); }
+{pragma_prefix}"DSW"	{ yylval.datatype = WORD_DATATYPE; return(STORAGE); }
+{pragma_prefix}"DSD"	{ yylval.datatype = DWORD_DATATYPE; return(STORAGE); }
+d162 1
+d169 6
+a174 4
+"("			{ return('('); }
+")"			{ return(')'); }
+"["			{ return('['); }
+"]"			{ return(']'); }
+d289 2
+d292 1
+a292 1
+int yybegin(char *filename)
+d295 1
+@

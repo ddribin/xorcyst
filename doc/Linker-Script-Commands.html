@@ -1,0 +1,57 @@
+<html lang="en">
+<head>
+<title>Linker Script Commands - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Assembler-Directives.html#Assembler-Directives" title="Assembler Directives">
+<link rel="next" href="Object-Code-Format.html#Object-Code-Format" title="Object Code Format">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Linker-Script-Commands"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Object-Code-Format.html#Object-Code-Format">Object Code Format</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Assembler-Directives.html#Assembler-Directives">Assembler Directives</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="appendix">Appendix C Linker Script Commands</h2>
+
+<p>The following is an alphabetical listing of the script commands recognized by the linker and the arguments they may take. Note that not all arguments are mandatory and some are mutually exclusive.
+
+     <dl>
+<dt><code>bank { size=</code><var>size</var><code>, origin=</code><var>origin-address</var><code> }</code><dd>Start a new bank of size <var>size</var> bytes and set initial relocation address to <var>origin-address</var>.
+
+     <br><dt><code>copy { file=</code><var>filename</var><code> }</code><dd>Copy contents of <var>filename</var> to output.
+
+     <br><dt><code>link { file=</code><var>filename</var><code>, origin=</code><var>origin-address</var><code> }</code><dd>Relocate code in the unit <var>filename</var> to <var>origin-address</var> and copy the result to output. (If an origin is not specified, the internally managed linker origin is used.)
+
+     <!-- @item options -->
+<br><dt><code>output { file=</code><var>filename</var><code> }</code><dd>Set the linker output file.
+
+     <br><dt><code>pad { origin=</code><var>origin-address</var><code>, offset=</code><var>offset</var><code>, size=</code><var>size</var><code> }</code><dd>Pad to the given origin or bank offset, or pad <var>size</var> bytes (only one of the arguments should be given).
+
+     <br><dt><code>ram { start=</code><var>start-address</var><code>, end=</code><var>end-address</var><code> }</code><dd>Specify that 6502 RAM in the range <var>start-address</var>...<var>end-address</var> (non-inclusive) may be used by the linker to map contents of data segments.
+
+   </dl>
+
+   </body></html>
+

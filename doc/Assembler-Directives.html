@@ -1,0 +1,130 @@
+<html lang="en">
+<head>
+<title>Assembler Directives - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Known-Bugs-and-Limitations.html#Known-Bugs-and-Limitations" title="Known Bugs and Limitations">
+<link rel="next" href="Linker-Script-Commands.html#Linker-Script-Commands" title="Linker Script Commands">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Assembler-Directives"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Linker-Script-Commands.html#Linker-Script-Commands">Linker Script Commands</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Known-Bugs-and-Limitations.html#Known-Bugs-and-Limitations">Known Bugs and Limitations</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="appendix">Appendix B Assembler Directives</h2>
+
+<p>It is considered good practice to prepend a period to a directive when invoking it (to differentiate it from identifiers), but this is not a strict requirement.
+
+   <p>The following is an alphabetical listing of the directives supported by the assembler and the arguments they may take. Arguments enclosed in square brackets [ ] are optional.
+
+     <dl>
+<dt><code>align </code><var>identifier</var> <em>[, </em><var>identifier-2</var><em>, ...]</em> <var>boundary</var><dd>Specifies alignment constraints for a list of data variables.
+
+     <br><dt><code>asc (</code><em>Alias for</em><code> char)</code>
+<br><dt><code>byte (</code><em>Alias for</em><code> db)</code>
+<br><dt><code>char </code><var>expression</var> <em>[, </em><var>expression</var><em>, ...]</em><dd>Define (array of) character transformed by custom character map
+
+     <br><dt><code>charmap "</code><var>filename</var><code>"</code><dd>Set custom character map
+
+     <br><dt><code>codeseg, code</code><dd>Switch to code segment
+
+     <br><dt><code>dataseg, data </code><em>[zeropage]</em><dd>Switch to data segment
+
+     <br><dt><code>db </code><var>expression</var> <em>[, </em><var>expression</var><em>, ...]</em><dd>Define (array of) byte
+
+     <br><dt><code>dd </code><var>expression</var> <em>[, </em><var>expression</var><em>, ...]</em><dd>Define (array of) doubleword
+
+     <br><dt><code>define </code><var>identifier</var> <em>[</em><var>expression</var><em>]</em><dd>See <code>equ</code> directive
+
+     <br><dt><code>dsb </code><var>expression</var><dd>Define storage of bytes
+
+     <br><dt><code>dsd </code><var>expression</var><dd>Define storage of doublewords
+
+     <br><dt><code>dsw </code><var>expression</var><dd>Define storage of words
+
+     <br><dt><code>dw </code><var>expression</var> <em>[, </em><var>expression</var><em>, ...]</em><dd>Define (array of) word
+
+     <br><dt><code>dword (</code><em>Alias for</em><code> dd)</code>
+<br><dt><code>elif</code><dd>Used in conjunction with if
+
+     <br><dt><code>else</code><dd>Used in conjunction with if, ifdef or ifndef
+
+     <br><dt><code>endif</code><dd>Ends a statement block preceded by an if
+
+     <br><dt><code>end</code><dd>Ends the assembly unit
+
+     <br><dt><code>ende</code><dd>Ends an enum definition
+
+     <br><dt><code>endm</code><dd>Ends a macro definition
+
+     <br><dt><code>endp</code><dd>Ends a procedure definition
+
+     <br><dt><code>ends</code><dd>Ends a structure or union definition
+
+     <br><dt><code>enum </code><var>identifier</var><dd>Begins an enum definition
+
+     <br><dt><code>extrn </code><var>identifier</var> <em>[, </em><var>identifier</var><em>, ...]</em><code> : </code><var>type</var><dd>Flag identifier(s) as external (imported) of type <var>type</var>
+
+     <br><dt><var>identifier</var><code> equ </code><var>expression</var><dd>Define equate
+
+     <br><dt><code>if </code><var>expression</var><dd>Assemble the following statement block only if <var>expression</var> evaluates to non-zero
+
+     <br><dt><code>ifdef </code><var>identifier</var><dd>Assemble the following statement block only if <var>identifier</var> is defined
+
+     <br><dt><code>ifndef </code><var>identifier</var><dd>Assemble the following statement block only if <var>identifier</var> is not defined
+
+     <br><dt><code>incbin "</code><var>filename</var><code>"</code><dd>Include contents of <var>filename</var> as binary data
+
+     <br><dt><code>include (</code><em>Alias for</em><code> incsrc)</code>
+<br><dt><code>incsrc "</code><var>filename</var><code>"</code><dd>Include contents of <var>filename</var> as assembler statements
+
+     <br><dt><code>label </code><var>identifier</var> <em>[= </em><var>address</var><em>]</em> <em>[ : </em><var>type</var><em>]</em><dd>Defines a global label
+
+     <br><dt><code>macro </code><var>identifier</var> <em>[</em><var>identifier</var><em>, ...]</em><dd>Begins a macro definition
+
+     <br><dt><code>message </code><var>expression</var><dd>Prints a message to stdout during assembly
+
+     <br><dt><code>pad </code><var>expression</var><code>  (</code><em>Alias for</em><code> dsb)</code>
+<br><dt><code>proc </code><var>identifier</var><dd>Begins a procedure definition
+
+     <br><dt><code>public </code><var>identifier</var> <em>[, </em><var>identifier</var><em>, ...]</em><dd>Flag identifier(s) as public (exported)
+
+     <br><dt><code>record </code><var>identifier</var> <var>identifier</var><code>:</code><var>width</var> <em>[, </em><var>identifier</var><em>:</em><var>width</var><em>, ...]</em><dd>Defines a record consisting of bitfields.
+
+     <br><dt><code>rept </code><var>count</var><dd>Begins an anonymous macro to be repeated <var>count</var> times
+
+     <br><dt><code>struc </code><var>identifier</var><dd>Begins a structure definition
+
+     <br><dt><code>type </code><var>identifier</var> <em>[</em><var>expression</var><em>, ...]</em><dd>Define data of user-defined type <var>identifier</var>
+
+     <br><dt><code>union </code><var>identifier</var><dd>Begins a union definition
+
+     <br><dt><code>while </code><var>expression</var><dd>Begins an anonymous macro to be repeated while <var>expression</var> is true (non-zero)
+
+     <br><dt><code>word (</code><em>Alias for</em><code> dw)</code><dd>
+</dl>
+
+   </body></html>
+

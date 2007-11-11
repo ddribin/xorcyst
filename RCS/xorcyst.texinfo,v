@@ -1,0 +1,2118 @@
+head	1.10;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.10
+date	2005.01.09.11.20.49;	author kenth;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2005.01.05.09.40.48;	author kenth;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2005.01.05.02.29.50;	author kenth;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2004.12.29.21.51.58;	author kenth;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2004.12.25.02.25.51;	author kenth;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2004.12.19.20.56.25;	author kenth;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2004.12.16.13.26.22;	author kenth;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.12.14.01.51.07;	author kenth;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.12.11.02.12.02;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.12.10.20.49.34;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@xorcyst documentation
+version 1.1.0
+@
+
+
+1.10
+log
+@xorcyst 1.4.5
+@
+text
+@% $Id: xorcyst.texinfo,v 1.9 2005/01/05 09:40:48 kenth Exp kenth $
+% $Log: xorcyst.texinfo,v $
+% Revision 1.9  2005/01/05 09:40:48  kenth
+% xorcyst 1.4.4
+%
+% Revision 1.8  2005/01/05 02:29:50  kenth
+% xorcyst 1.4.3
+%
+% Revision 1.7  2004/12/29 21:51:58  kenth
+% xorcyst 1.4.2
+%
+% Revision 1.6  2004/12/25 02:25:51  kenth
+% xorcyst 1.4.1
+%
+% Revision 1.5  2004/12/19 20:56:25  kenth
+% xorcyst 1.4.0
+%
+% Revision 1.4  2004/12/16 13:26:22  kenth
+% xorcyst 1.3.5
+%
+% Revision 1.3  2004/12/14 01:51:07  kenth
+% xorcyst 1.3.0
+%
+% Revision 1.2  2004/12/11 02:12:02  kenth
+% xorcyst 1.2.0
+%
+% Revision 1.1  2004/12/10 20:49:34  kenth
+% Initial revision
+%
+
+\input texinfo @@c -*-texinfo-*-
+@@c %**start of header
+@@setfilename xorcyst.info
+@@settitle The XORcyst Manual
+@@c %**end of header
+
+@@copying
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright @@copyright{} 2004, 2005 Kent Hansen.
+@@end copying
+
+@@titlepage
+@@title The XORcyst Manual
+
+@@c The following two commands start the copyright page.
+@@page
+@@vskip 0pt plus 1filll
+@@insertcopying
+@@end titlepage
+
+@@c Output the table of contents at the beginning.
+@@contents
+
+@@ifnottex
+@@node Top
+@@top The XORcyst Manual
+
+@@insertcopying
+@@end ifnottex
+
+@@menu
+* What's New::       An overview of the latest improvements.
+* Overview::         What is this thing?
+* The Assembler::    Describes the use and operation of the XORcyst assembler.
+* The Linker::       Describes the use and operation of the XORcyst linker.
+* Implementation Details:: Nice-to-know technical details concerning The XORcyst's implementation.
+* Known Bugs and Limitations:: Known bugs and limitations.
+* Assembler Directives:: Assembler directives.
+* Linker Script Commands:: Linker script commands.
+* Object Code Format:: Describes the format of the assembler's output.
+* Custom Character Maps :: Describes the valid contents of custom character maps.
+* Error and Warning Messages :: Alphabetical listing.
+@@end menu
+
+@@node What's New
+@@chapter What's New
+
+@@heading Version 1.4.5
+
+@@strong{Assembler}
+
+@@itemize
+
+@@item Fixed bug that prevented local labels from being used as operand to @@code{DB}, @@code{DW}, @@code{DD} directives.
+
+@@item Fixed bug in processing of array of operands to @@code{DB}, @@code{DW}, @@code{DD} directives (some high-level constructs were only reduced in first item).
+
+@@item Negative immediate operand no longer gives truncation warning as long as it fits in signed byte (@@code{DB}, immediate mode instructions) or word (@@code{DW}).
+
+@@item Added @@code{BLT}, @@code{BGE} as aliases for @@code{BCC}, @@code{BCS} (unsigned comparison).
+
+@@end itemize
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Prints physical addresses of relocated public symbols when @@code{--verbose}.
+
+@@end itemize
+
+@@heading Version 1.4.4
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Fixed bug in RAM allocator.
+
+@@item Prints statistics on RAM management (total, used, left) when @@code{--verbose}.
+
+@@end itemize
+
+@@heading Version 1.4.3
+
+@@strong{Assembler}
+
+@@itemize
+
+@@item Support for anonymous unions.
+
+@@item Fixed bug in result of @@code{sizeof} operator when applied to an initialized structure variable. 
+
+@@item Returns error code so that i.e. Make stops after the first erroneous invocation.
+
+@@end itemize
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Returns error code so that i.e. Make stops after the first erroneous invocation.
+
+@@end itemize
+
+@@heading Version 1.4.2
+
+@@strong{Assembler}
+
+@@itemize
+
+@@item Symbols can be indexed statically, C-style; see section 3.2.16, ``Indexing symbols statically''.
+
+@@item @@code{sizeof} operator now works correctly when applied to an array.
+
+@@item Fixed bug that lead to dysfunctional symbol table when using `=' equates.
+
+@@end itemize
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Fixed bug in RAM allocator.
+
+@@item Fixed line number bug in error messages.
+
+@@item Removed duplicate error message (unresolved symbols).
+
+@@end itemize
+
+@@heading Version 1.4.1
+
+This is a bugfix release.
+
+@@strong{Assembler}
+
+@@itemize
+
+@@item Fixed bug in processing of declaration of array of user-defined type (!).
+
+@@item Fixed bug that lead to no error message when declaring an uninitialized variable of non-existing user-defined type.
+
+@@end itemize
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Fixed imperfection in allocation of alignment-constrained data.
+
+@@item Fixed memory leak in RAM allocator.
+
+@@end itemize
+
+@@heading Version 1.4.0
+
+@@strong{Assembler}
+
+@@itemize
+
+@@item Added @@code{--debug} switch (short form: @@code{-g}). When this switch is given, the assembler will retain file and line information in the object file, which the linker can use to produce more descriptive link-time warning and error messages.
+
+@@item @@code{LABEL} directive can take a specific address as argument, so that ``pointers'' can be made to any part of memory (i.e. you can address memory location @@code{$200} as a structure (or array of structures), without having to explicitly define storage for it).
+
+@@item Constraints can be communicated to the linker on how contents of data segments should be mapped to RAM; see section 3.2.19, ``Controlling data mapping''.
+
+@@item PUBLIC modifier can be specified directly when defining a variable.
+
+@@item Fixed a bug in code generation of exported string constants.
+
+@@end itemize
+ 
+@@strong{Linker}
+
+@@itemize
+
+@@item Uses the information generated from the assembler @@code{--debug} switch to produce descriptive warning and error messages.
+
+@@item Rewrote data segment mapping function to take zeropage and alignment constraints into account.
+
+@@item Improved code relocation; as a result, the current PC ($) can be used freely in any expression, and the @@code{origin} argument for the @@code{pad} command works.
+
+@@item Fixed a linker script parsing bug.
+
+@@end itemize
+
+@@heading Version 1.3.5
+
+@@strong{Assembler}
+
+@@itemize
+ 
+@@item Added ability to declare storage for array of user-defined types, C-style (works for native types too).
+
+@@item Added ability to specify the type of data that a label addresses.
+
+@@item Fixed bug in code generation of storage of user-defined types.
+
+@@item Fixed some error detection and parsing woes.
+
+@@item Added @@code{DEFINE} directive (same semantics as @@code{EQU}, but potentially more compact).
+
+@@end itemize
+
+@@strong{Linker}
+
+@@itemize
+
+@@item Fixed a bad code relocation bug.
+
+@@item Implemented bank operator (@@code{^}).
+
+@@item @@code{--verbose} switch now gives helpful info on what the linker is doing.
+
+@@end itemize
+
+@@heading Version 1.3.0
+
+@@itemize
+
+@@item Added support for user-defined records (@@code{RECORD} directive, @@code{MASK} operator).
+
+@@item Added @@code{WHILE} directive.
+
+@@item Implemented @@code{ELIF} directive.
+
+@@item Improved @@code{--define} switch: A value can now be assigned to the identifier (i.e. @@code{--define a=10}).
+
+@@item @@code{SIZEOF} operator now works on variable identifiers too.
+
+@@item Fixed bug that prevented single-character identifiers from working.
+
+@@item Added @@code{--no-warn} switch to suppress assembler warnings.
+
+@@item Early support for @@code{--verbose} switch.
+
+@@end itemize
+
+@@heading Version 1.2.0
+
+@@itemize
+
+@@item Added support for forward/backward branches (@@code{-}, @@code{--}, @@code{+}, @@code{++}, and so on, up to eight levels (@@code{++++++++})).
+
+@@item Fixed bug that caused the assembler to run out of file handles when including a large number of files.
+
+@@item Fixed bug that caused @@code{.db <a, >b} and other lines with @@code{< >} to be parsed erroneously.
+
+@@end itemize
+
+@@heading Version 1.1.0
+
+@@itemize
+
+@@item Full support for user-defined types: Structures, unions and enums.
+
+@@item Better separation of symbol types. In the previous versions, @@emph{everything} was a label. The assembler now distinguishes properly between labels, procedures, variables, constants and user-defined types.
+
+@@item Support for anonymous macros (@@code{rept} directive).
+
+@@item Crash-bug fixes (@@code{if} directive, @@code{incbin} directive).
+
+@@item Preliminary support for @@code{--define=@@var{IDENT}} assembler switch (can be used in @@code{ifdef} and @@code{ifndef} directives).
+
+@@item Added @@code{message} directive.
+
+@@item Improved literal expression folding. @@var{"hello " + 123} will now be folded to @@var{"hello 123"}.
+
+@@item Added assembler switch @@code{--swap-parens}, which swaps the operators used for indirection from [ ] to ( ).
+
+@@item Syntax of @@code{extrn} directive changed slightly: Must now specify the symbol type.
+
+@@item Relaxed syntax of @@code{db}, @@code{dsb} and similar directives. If no expression is given as argument, a single item is allocated.
+
+@@end itemize
+
+@@node Overview
+@@chapter Overview
+
+The XORcyst is a set of languages and commandline tools for assembling and linking code to be run on a 6502 processor.
+
+@@node The Assembler
+@@chapter The Assembler
+
+The XORcyst assembler takes a @@dfn{plaintext file} containing a sequence of 6502 instructions and assembler
+directives (collectively referred to as assembler statements), and produces from this an @@dfn{object file} (usually referred to as a @@dfn{unit}) that can be fed on to the XORcyst linker.
+
+The reason for not producing a plain 6502 binary is largely due to the aim of producing position-independent code- and data-segments. Specifically, in The XORcyst universe code and data labels are not meant to be assigned addresses until the final process of linking. Relocation on the 6502 isn't as simple as just adding an offset to an instruction operand; the 6502 has a special set of @@dfn{zero-page instructions} which can be used when addresses fall in the range 0..255, and we want to utilize these whenever possible. So until we know whether, say, a data label will fall in the zero-page range or not, we don't know whether instructions which refer to this label will have a 1-byte or 2-byte operand. Using the non-zero-page (absolute) version of an instruction would, in the general case, ensure that the address will fit, but is too wasteful in size and processor cycles. So instead of hardcoded addresses the object code contains symbolic links which are up to the linker to resolve and translate. The object file can be thought of as a more compact, linker-ready version of the original assembler file.
+
+Another goal is to relieve the programmer of the burden of having to make sure that all variables in a large, complex program have unique addresses, by shifting as much of this responsibility onto the linker as possible. By postponing the mapping of symbol names to addresses until the link phase, variables can be added and moved to any part of the program without risking that it will interfere with the storage allocation of another part of the program.
+
+The object file format also enables complex resource sharing between units. An assembler expression can be arbitrarily complex, with references to any number of constants, variables or procedures defined in another unit.
+
+@@section Invoking the assembler (@@command{xasm})
+
+The basic usage is
+
+@@samp{@@command{xasm} @@var{assembler-file}}
+
+where @@var{assembler-file} is the (top-level) file of assembler statements.
+If all goes well, this will produce a similarly named file of extension @@file{.o}.
+
+For example,
+@@example
+xasm driver.asm
+@@end example
+produces the object file @@file{driver.o} if no errors are encountered by the assembler.
+
+@@subsection Switches
+
+@@table @@code
+
+@@item --define IDENT[=VALUE]
+Enters the identifier @@code{IDENT} into the global symbol table, optionally assigning it the value @@code{VALUE}. The default value is integer @@code{0}. To assign a string, escape sequences must be used, i.e. @@code{--define my_string=\"Have a nice day\"}.
+
+@@item --output FILE
+Directs output to the file @@code{FILE} rather than the default file.
+
+@@item --swap-parens
+Changes the operators used to specify indirection from @@code{[ ]} to @@code{( )}. @@code{[ ]} takes over @@code{( )}'s role in arithmetic expressions.
+
+@@item --no-warn
+Suppresses assembler warning messages.
+
+@@item --verbose
+Instructs the assembler to print some messages about what it is doing.
+
+@@item --debug
+Retains file and line information, so that the linker can produce more descriptive warning and error messages.
+
+@@end table
+
+For the full list of switches, run @@code{xasm --help}.
+
+@@section Assembler statements
+(@@strong{Note:} This is not meant to be an introductory guide to 6502 assembly. Only the XORcyst-specific features and quirks will be explained. (For readers new to the 6502 and assemblers, @@uref{http://www.google.com/search?q=6502+tutorial} may be a good starting point.)
+
+Because the assembler aims to enforce completely position-independent code, it does not allow the @@code{.org @@var{address}} or @@code{.base @@var{address}} directives commonly employed by 6502 assemblers. But most other constructs familiar to some people are in place. These and additional features will be explained subsequently. (For a complete list of directives, see @@ref{Assembler Directives}.)
+
+In the code templates given in this section, any arguments enclosed in italic square brackets @@emph{[ ... ]} are optional.
+
+@@subsection A simple assembler example
+
+Here is a short assembler file which demonstrates basic functionality:
+
+@@example
+.dataseg                   ; begin data segment
+
+  my_variable .byte          ; define a byte variable
+
+  my_array .word[16]         ; define an array of 16 words
+
+.codeseg                   ; begin code segment
+
+.include "config.h"        ; include another source file
+
+; conditional definition of constant my_priority
+.ifdef HAVE_CONFIG_H
+  my_priority = 10
+.else
+  my_priority = 0
+.endif
+
+; declare a macro named store_const with parameters value and addr
+.macro store_const value, addr
+  lda #value
+  sta addr
+.endm                      ; end macro
+
+; a subroutine entrypoint is here
+.proc my_subroutine
+  store_const $10, my_array+10           ; macro invocation
+  store_const my_priority, my_variable   ; macro invocation
+
+  lda [$0A], y               ; NOTE: [ ] used for indirection, not ( ), unless --swap-parens switch used
+  beq +
+  jsr some_function          ; call external function
+
+; produce a short delay
++ ldx #60
+  @@@@@@@@delay:
+  dex
+  bne @@@@@@@@delay
+
+; exit with my_priority in accumulator
+  lda #my_priority
+  rts
+.endp                      ; end of procedure definition
+
+.public my_subroutine      ; make my_subroutine visible to other units
+.extrn some_function:proc  ; some_function is located in another unit
+
+.end                       ; end of assembler input
+@@end example
+
+While the example itself doesn't do anything useful, it shows how you can.
+
+@@subsection Literals
+
+The following kinds of integer literal are understood by the assembler (examples given in parentheses):
+
+@@itemize
+
+@@item @@strong{Decimal:} Non-zero decimal digit followed by zero or more decimal digits (@@code{1234})
+
+@@item @@strong{Hexadecimal:} @@code{0x} or @@code{$} followed by one or more hexadecimal digits (@@code{0xFACE, $BEEF}); one or more hexadecimal digits followed by @@code{h} (@@code{95Ah}). In the latter case numbers beginning with A through F must be preceded by a 0 (otherwise, say, @@code{BABEh} would be interpreted as an identifier).
+
+@@item @@strong{Binary:} String of binary digits either preceded by @@code{%} or succeeded by @@code{b} (@@code{%010110, 11001100b}).
+
+@@item @@strong{Octal:} A string of octal digits preceded by a 0 (@@code{0755}).
+
+@@end itemize
+
+String literals must be enclosed inbetween a pair of @@code{"} (as in @@code{"You are a dweeb"}).
+
+Character literals must be of the form @@code{'A'}.
+
+@@subsection Identifiers
+
+Identifiers must conform to the regular expression @@code{[[:alpha:]_][[:alnum:]_]*}. They are case sensitive.
+Examples of valid identifiers are
+@@example
+no_brainer, schools_out, my_2nd_home, catch22, FunkyMama
+@@end example
+Examples of invalid identifiers are
+@@example
+3stooges, i-was-here, f00li$h
+@@end example
+
+@@subsection Expressions
+
+Operands to assembler statements are expressions. An expression can contain any number of operators, identifiers and literals, and parentheses to group terms. The operators are the familiar arithmetic, binary, shift and relational ones (same as in C, pretty much), plus a few more which are useful when writing code for a machine which has a 16-bit address space but only 8-bit registers:
+
+@@itemize
+
+@@item @@code{< @@var{expression}} : Get low 8 bits of @@var{expression}
+
+@@item @@code{> @@var{expression}} : Get high 8 bits of @@var{expression}
+
+@@end itemize
+
+@@code{$} can be used in an expression to refer to the address where the current instruction is assembled.
+
+@@code{^@@var{symbol}} gets the bank number in which @@var{symbol} is located (determined at link time).
+
+@@code{sizeof(@@var{symbol})} gets the size of @@var{symbol} in bytes.
+
+When both operands to an operator are strings, the semantics are as follows: @@var{str1} + @@var{str2} concatenates; the relational operators perform string comparison; and all other operators are invalid. When one operand is a string and the other is an integer, the integer is implicitly converted to a string and concatenated with the string operand to produce a string as result.
+
+@@subsection Global labels
+
+There are two ways to define a global label.
+
+@@itemize
+
+@@item @@code{@@var{identifier}@@strong{:}} at the beginning of a source line defines the label @@var{identifier} and assigns it the address of the current Program Counter. The colon is mandatory.
+
+@@item Using the @@code{.label} directive. It is of the form
+
+@@example
+.label @@var{identifier} @@emph{[= @@var{address}]} @@emph{[ : @@var{type}]}
+@@end example
+
+The absolute address of the label can be specified. If no address is given, the address is the current Program Counter.
+
+The type of data that the label addresses can also be specified. The valid type specifiers are @@code{byte}, @@code{word}, @@code{dword}, or an identifier, which must be the name of a user-defined type.
+
+@@end itemize
+
+@@subsection Local labels
+
+A @@dfn{local label} is only visible in the scope consisting of the statements between two regular labels; or, for macros, only in the body of the macro. Just as a regular label must be unique in the whole program scope, a local label must be unique in the scope in which it is defined. The big advantage here is that the name of the local label can be reused as long as the definitions exist in different local scopes. Local labels are prefixed by @@code{@@@@@@@@}. Unlike regular labels the local name itself can start with a digit, so for instance @@code{@@@@@@@@10} is valid.
+The following example shows how a local label can exist unambigiously in two scopes.
+@@example
+my_first_delay:        ; new local scope begins here
+ldx #100
+@@@@@@@@loop:                ; this label exists in my_first_delay's namespace
+dex
+bne @@@@@@@@loop
+rts
+
+my_second_delay:        ; new local scope begins here
+ldy #200
+@@@@@@@@loop:                 ; this label exists in my_second_delay's namespace
+dey
+bne @@@@@@@@loop
+rts
+@@end example
+
+As mentioned, the same local cannot be redefined within a scope. So having, say, two labels called @@code{@@@@@@@@loop} in the same scope would produce an assembler error. Also, something like the following would produce an error:
+@@example
+adc #10
+bvs @@@@@@@@handle_overflow
+barrier:
+rts
+@@@@@@@@handle_overflow:
+; ...
+@@end example
+since the branch instruction refers to a local label defined in a different scope (because of the strategic placement of the label @@code{barrier}).
+
+@@subsection Forward/backward branches
+
+These are ``anonymous'' labels that can be redefined as many times as you want. A reference to a forward/backward label is resolved to the closest matching definition in the succeeding assembly statements (forward branches) or preceding assembly statements (backward branches).
+
+A forward branch consists of one or more (up to eight) consecutive @@code{+} (plus) symbols. A backward branch consists of one or more (up to eight) consecutive @@code{-} (minus) symbols. The following examples illustrate use of forward and backward branches.
+
+@@example
+   lda $50
+   bmi ++
+   lda $40
+   bne +         ; branches to first forward label
+   ; do something ...
++  dex           ; first forward label
+   beq +         ; branches to second forward label
+   ; do something more ...
++  sta $40       ; second forward label
+++ rts
+
+@@end example
+
+@@example
+   lda $60
+   bmi +
+ - lda $2002      ; first backward label
+   bne -          ; branches to first backward label
+ - lda $2002      ; second backward label
+   bne -          ; branches to second backward label
+ + rts
+@@end example
+
+@@subsection Equates
+
+There are three ways to define equates.
+@@itemize
+
+@@item With the @@code{=} operator. An equate defined this way can be redefined, and it obeys program order.
+
+@@example
+i = 10
+ldx #i
+i = i + 1
+ldy #i
+@@end example
+
+In the example above, the assembler will substitute @@code{10} for the first occurence of @@code{i} and @@code{11} for the last.
+
+@@item With the @@code{.equ} directive. An equate defined this way can only be defined once, and it does not obey program order (that is, it can be defined at a later point from where it is used). An equate of this type can be exported, so that it may be accessed by other units (more on exporting symbols later).
+
+@@example
+lib_version .equ $10
+lib_author .equ "The Godfather"
+@@end example
+
+@@item With the @@code{.define} directive. This directive is semantically equal to @@code{.equ}, but the value is optional, so you can write CPP-like defines, which is more compact. When no value is given, the symbol is defined as integer 0.
+
+@@example
+.ifndef MYHEADER_H
+.define MYHEADER_H
+; ...
+.endif     ; !MYHEADER_H
+@@end example
+
+@@end itemize
+
+@@subsection Conditional assembly
+
+There are two ways to go about doing conditional assembly. One way is to test if a certain identifier has been defined (that is, equated) using the @@code{.ifdef} directive, as shown in the next two templates.
+
+@@example
+.ifdef @@var{identifier}
+@@var{statements}
+.endif
+@@end example
+
+@@example
+.ifdef @@var{identifier}
+@@var{true-statements}
+.else
+@@var{false-statements}
+.endif
+@@end example
+
+The other way is to test a full-fledged expression, as shown in the next template.
+
+@@example
+.if @@var{expression}
+@@var{statements}
+.elif @@var{expression-II}
+@@var{statements-II}
+.else
+@@var{other-statements}
+.endif
+@@end example
+
+@@subsection Macros
+
+Macro definitions are of the form
+
+@@example
+.macro @@var{name} @@emph{[@@var{parameter1}, @@var{parameter2}, ...]}
+@@var{statements}
+.endm
+@@end example
+The parameters must be legal identifiers.
+
+To invoke (expand) the statements (body) of a macro in your program, issue the assembler statement @@code{@@var{name}}, where @@var{name} is the macro name, followed by a comma-separated list of actual arguments, if the macro has any. The arguments will be substituted for the respective parameter names in the resulting statements.
+
+You can use local labels in the body of a macro. These labels will be completely local and unique to each expanded macro instance; any local labels defined outside the expanded body are not ``seen''. For example, if you have the following macro definition
+@@example
+.macro my_macro
+@@@@@@@@loop:
+dey
+bne @@@@@@@@loop
+.endm
+@@end example
+and then use the macro as shown in the following
+@@example
+@@@@@@@@loop:
+my_macro
+my_macro
+dex
+bne @@@@@@@@loop
+@@end example
+each expansion of @@code{my_macro} will have its own local label @@code{@@@@@@@@loop}, neither of which interfere with the local label @@code{@@@@@@@@loop} in the scope where the macro is invoked.
+
+Macros can be nested to arbitrary depth.
+
+@@subsection Anonymous macros
+
+An anonymous REPT (REPeaT) macro is of the form
+
+@@example
+i = 1
+@@strong{.rept 8}
+.db i
+i = i*2
+@@strong{.endm}
+@@end example
+
+The statements between @@code{rept} and @@code{endm} will be repeated as many times as specified by the argument to @@code{rept}. In the preceding example, the resulting expansion is equivalent to
+
+@@example
+.db 1, 2, 4, 8, 16, 32, 64, 128
+@@end example
+
+Similarly, an anonymous WHILE macro is of the form
+
+@@example
+i = 1
+@@strong{.while i <= 128}
+.db i
+i = i*2
+@@strong{.endm}
+@@end example
+
+The statements between @@code{while} and @@code{endm} will be repeated while the expression given as argument to @@code{while} is true (non-zero). The code inside the macro body is responsible for updating the variables involved in the expression, so that it will eventually become false. In the preceding example, the resulting expansion is equivalent to
+
+@@example
+.db 1, 2, 4, 8, 16, 32, 64, 128
+@@end example
+
+@@subsection Including files
+
+There are two directives for including files.
+
+@@itemize
+
+@@item @@code{.incsrc "@@var{src-file}"} (can also be written @@code{.include}) interprets the specified file as textual assembler statements.
+
+@@item @@code{.incbin "@@var{bin-file}"} interprets the specified file as a binary buffer.
+
+@@end itemize
+
+@@subsection Defining native data
+
+There is a class of directives for defining data storage and values.
+
+@@itemize
+
+@@item @@code{.db} @@emph{[@@var{expression}, ...]} : Defines a string of bytes
+@@item @@code{.dw} @@emph{[@@var{expression}, ...]} : Defines a string of words
+@@item @@code{.dd} @@emph{[@@var{expression}, ...]} : Defines a string of doublewords
+@@item @@code{.char} @@emph{[@@var{expression}, ...]} : Defines a string of characters (explained later)
+@@item @@code{.dsb} @@emph{[@@var{expression}]} : Defines a storage of size @@var{expression} bytes
+@@item @@code{.dsw} @@emph{[@@var{expression}]} : Defines a storage of size @@var{expression} words
+@@item @@code{.dsd} @@emph{[@@var{expression}]} : Defines a storage of size @@var{expression} doublewords
+
+@@end itemize
+
+If no argument is given to the directive, a single item of the respective datatype is allocated, i.e.
+@@example
+.db
+@@end example
+is equivalent to
+@@example
+.dsb 1
+@@end example
+
+Alternatively, data arrays can be allocated using square brackets [ ] like in C:
+
+@@example
+.db[100]
+@@end example
+which is equivalent to
+@@example
+.dsb 100
+@@end example
+
+@@code{.byte}, @@code{.word} and @@code{.dword} are more verbose aliases for @@code{.db}, @@code{.dw} and @@code{.dd}, respectively.
+
+Note that data cannot be initialized in a data segment; only storage for the data can be allocated there.
+
+@@heading Defining non-ASCII text data
+
+Use the @@code{.charmap} directive to specify a map file describing the mapping from regular ASCII-coded characters to your custom set. See @@ref{Custom Character Maps} for a description of the format of such a custom character map file. Once the character map has been set, you can define your textual data by using the @@code{.char}-directive. The information in the character map is applied to the given data by the assembler in order to transform it to a regular @@code{.db} directive internally. The @@code{.charmap} directive obeys program order, meaning you can use different character maps at different points in your code. If no character map has been set, @@code{.char} is equivalent to @@code{.db}. A simple example of the use of @@code{.charmap} and @@code{.char} follows.
+
+@@example
+.charmap "my_map.tbl"          ; set the custom character map to the one defined in my_map.tbl
+.char "It is a delight for me to be encoded in non-ASCII form", 0
+@@end example
+
+@@subsection User-defined types
+
+There are currently four kinds of types that can be defined by the user. For further information on the concepts of their use, consult a C manual.
+
+@@itemize
+
+@@item @@strong{Structures}.
+
+@@example
+.struc my_struc
+my_1st_field .db
+my_2nd_field .dw
+my_3rd_field .type my_other_struc
+.ends
+@@end example
+
+Using ``flat'' addressing, structure members are accessed just like in C.
+
+@@example
+lda the_player.inventory.sword
+@@end example
+
+For indirect addressing, the scope operator can be used to get the offset of the field.
+
+@@example
+ldy #(player_struct::inventory + inventory_struct::sword)
+lda [$00],y     ; load ($00).inventory.sword
+@@end example
+
+@@item @@strong{Unions}.
+
+@@example
+.union my_union
+byte_value .db
+word_value .dw
+string_value .char[32]
+.ends
+@@end example
+
+In a union, the fields are ``overlaid''; that is, they share the same storage, and in general only one of the fields is used (at a time) for a particular instance of the union. A typical usage is to define a structure with two members: An enumerated type that selects one of the union fields, and the actual union containing the fields.
+
+Anonymous unions can be defined ``inline'' as part of a structure, as shown in the following example:
+
+@@example
+.struc my_struc
+type	.byte
+@@strong{    .union}
+@@strong{    byte_value .byte[4]}
+@@strong{    word_value .word[2]}
+@@strong{    dword_value .dword}
+@@strong{    .ends}
+.ends
+@@end example
+
+@@code{byte_value}, @@code{word_value} and @@code{dword_value} may then be accessed as top-level members of the structure, but do in fact share storage.
+
+@@item @@strong{Records} (bitfields).
+
+@@example
+.record my_record top_bits:3, middle_bits:2, bottom_bits:3
+@@end example
+
+A record can be maximum 8 bits (1 byte) wide. The bitfields are arranged from high to low; for example, in the record shown above, @@code{top_bits} would occupy bits 7:5, @@code{middle_bits} 4:3 and @@code{bottom_bits} 2:0. Lower bits are padded if necessary to fill the byte.
+
+The scope operator (@@code{::}) returns the number of right shifts necessary to bring the LSb of a bitfield into the LSb of the accumulator. The @@code{MASK} operator returns a bitfield's logical AND mask. For example, using the record definition shown above,
+ 
+@@example
+my_record::middle_bits
+@@end example
+returns @@code{3}, and
+@@example
+MASK my_record::middle_bits
+@@end example
+returns @@code{%00011000}. These are the two basic operations necessary to manipulate bitfields. The following macro shows how a field can be extracted:
+
+@@example
+; IN:  ACC = instance of record `rec'
+;      rec = record type identifier
+;      fld = bitfield identifier
+; OUT: ACC = field `fld' of `rec' in lower bits; upper bits zero
+.macro get_field rec, fld
+    and #(mask rec::fld)       ; ditch other fields
+    .rept rec::fld             ; shift down to bit 0
+    lsr
+    .endm
+.endm
+@@end example
+
+@@item @@strong{Enumerations}.
+
+@@example
+.enum my_enum
+option_1 = 1
+option_2
+option_3
+option_4
+.ende
+@@end example
+
+Note that an enumerated value is encoded as a @@code{byte}.
+
+@@end itemize
+
+@@subsection Defining data of user-defined types
+
+The general syntax is
+
+@@example
+.type @@var{identifier}
+@@end example
+
+or just
+
+@@example
+.@@var{identifier}
+@@end example
+
+Where @@var{identifier} is the name of a user-defined type. This allocates @@code{sizeof(@@var{identifier})} bytes of storage. Optionally, a value initializer can be specified (only in code segments). The form of this initializer depends on the type of data.
+
+@@itemize
+
+@@item @@strong{Structure}. The initializer is of the form
+
+@@example
+@@{ @@var{field1-value}, @@emph{[@@var{field2-value}, ..., ]} @@}
+@@end example
+
+The field initializers must match the order of the fields in the type definition. To leave a field blank, leave its initializer empty. For example
+
+@@example
+my_array .type my_struc @@{ 10, , "hello" @@}, @@{ , , "cool!" @@}, @@{ 45 @@}
+@@end example
+
+defines three instances of type @@code{my_struc}, with various fields explicitly initialized and others implicitly padded by the assembler.
+
+Since structures can contain sub-structures, so can a structure initializer. To initialize a sub-structure, simply start a new pair of @@{ @@} and specify field values, recursively.
+
+@@item @@strong{Union}. The initializer is of the same form as a structure initializer, except only one of the fields in the union can be initialized.
+
+@@item @@strong{Record}. The initializer is of the same form as a structure initializer, but cannot contain sub-structure initializers (each bitfield is a ``simple'' value).
+
+@@item @@strong{Enum}. The initializer is simply an identifier that must be one of the identifiers appearing in the type definition.
+
+@@end itemize
+
+To define an array of (uninitialized) values of a user-defined type, use the C-style method, for example:
+
+@@example
+my_array .my_struc@@strong{[100]}        ; array of 100 values of type my_struc
+@@end example
+
+@@subsection Indexing symbols statically
+
+A symbol can be indexed statically using the C-style syntax
+
+@@example
+@@var{identifier}@@strong{[}@@var{expression}@@strong{]}
+@@end example
+
+For byte arrays, this is simply equivalent to the expression
+
+@@example
+@@var{identifier} + @@var{expression}
+@@end example
+
+In general, it is equivalent to
+
+@@example
+@@var{identifier} + @@var{expression} * sizeof @@var{identifier-type}
+@@end example
+
+where @@var{identifier-type} is the type of @@var{identifier}.
+
+An example:
+
+@@example
+my_array .my_struc[10]        ; array of 10 values of type my_struc
+lda #1
+i = 0
+.while i < 10
+sta my_array[i].my_field               ; initialize my_field to 1
+i = i + 1
+.endm
+
+@@end example
+
+@@subsection Procedures
+
+A procedure is of the form
+
+@@example
+.proc @@var{name}
+@@var{statements}
+.endp
+@@end example
+
+Currently, there is no internal differentiation between a procedure and a label, but @@code{.proc} is more specific than a label, so it improves the semantics.
+
+@@subsection Importing and exporting symbols
+
+To specify that a symbol used in your code is defined in a different unit, use the @@code{.extrn} directive. This way you can call procedures or access constants exported by that unit. When you use the linker to create a final executable you also have to link in the unit(s) where the external symbols you use are defined.
+
+The @@code{extrn} directive takes as arguments a comma-separated list of identifiers, followed by a colon (:), followed by a @@var{symbol type}. The symbol type must be one of @@code{BYTE}, @@code{WORD}, @@code{DWORD}, @@code{LABEL}, @@code{PROC}, or the name of a user-defined type, such as a structure or union.
+
+To export a symbol defined in your own code, thereby making it accessible to other units, use the @@code{.public} directive. The next example shows how both directives may be used.
+
+@@example
+.extrn proc1, proc2, proc3 : proc  ; these are defined somewhere else
+my_proc:
+jsr proc1
+jsr proc2
+jsr proc3
+rts
+.public my_proc                ; make my_proc accessible to the outside world
+
+@@end example
+
+You can also specify the @@code{.public} keyword directly when defining a variable, so you don't need a separate directive to make it public:
+
+@@example
+.public my_public_variable .word
+@@end example
+
+@@subsection Controlling data mapping
+By default, the linker takes the members of data segments and maps them to the best free RAM locations it finds. However, there are times when you want to specify some constraints on the mapping. For example, you want the variable to always be mapped to the 6502's zero page. Or, you have a large array and want it to be aligned to a proper boundary so you don't risk suffering page cross penalties on indexed accesses.
+
+The XORcyst assembler provides the following ways to communicate mapping constraints to the linker.
+
+@@itemize
+
+@@item To specify that a data segment variable should always be mapped to zero page, precede its definition by the @@code{.zeropage} keyword:
+
+@@example
+.zeropage my_zeropage_variable .byte
+@@end example
+
+Alternatively, specify the @@code{.zeropage} keyword as argument to the @@code{.dataseg} directive:
+
+@@example
+.dataseg .zeropage       ; turn on .zeropage constraint
+my_1st_var .byte         ; .zeropage constraint will be set automatically
+my_2nd_var .word         ; ditto
+.dataseg                 ; turn off .zeropage constraint
+@@end example
+
+@@item To specify that one or more data variables should be aligned, use the @@code{.align} directive. It takes a list of identifiers followed by the alignment boundary, for example
+
+@@example
+.dataseg
+my_array .byte[64]
+.align my_array 64       ; my_array should be aligned on a 64-byte boundary
+@@end example
+
+@@end itemize
+
+@@subsection An important note on indirect addressing
+
+If you're familiar with 6502 assembly, you know that parentheses ( ) are normally used to indicate indirect addressing modes. Unfortunately, this clashes with the use of parentheses in operand expressions. I couldn't get Bison (the parser generator) to deal with this context dependency. As I'm used to coding Intel X86 assembly, which uses brackets for indirection, I opted for [ ] as the default indirection operators. This could be a source of bugs, since if you type it the ``old'' way, @@code{LDA ($FA),Y} is equivalent to @@code{LDA $FA,Y} -- which probably isn't what you wanted. However, by specifying the switch
+
+@@example
+--swap-parens
+@@end example
+
+upon invoking the assembler, the behaviour of [ ] and ( ) will be reversed. That is, the ``normal'' way of specifying indirection, i.e. @@code{LDA ($00),Y} is used, while expression operands are grouped with [ ], i.e. @@code{A/[B+C]}.
+
+@@node The Linker
+@@chapter The Linker
+
+The main job of the linker is to take object code files (units) created by the assembler, resolve any dependencies among them and reduce them to pure 6502 binaries.
+
+The XORcyst linker takes as input a linker script. The linker script is a plaintext file containing a sequence of commands which describe the layout and contents of the linker output. (For a complete list and description of script commands, see @@ref{Linker Script Commands}.) The final output of the linker process is a single binary file containing all the 6502 code properly relocated and resolved, plus any other data specified in the linker script.
+
+@@section Invoking the linker (@@command{xlnk})
+
+The basic usage is
+
+@@samp{@@command{xlnk} @@var{script-file}}
+
+where @@var{script-file} is the linker script file containing commands to be processed by the linker.
+
+To have the linker print some information on what it is doing, give the @@code{--verbose} switch.
+
+@@section A simple linker script example
+
+The example below shows what a very simple linker script may look like. It is the simplest case, where you have a single unit @@file{my_unit.o} (created by the assembler, presumably from @@file{my_unit.asm}), and want to create executable 6502 code from it. For small, single-source projects you won't need much more than this.
+
+@@example
+ram@@{start=0x0000,end=0x0800@@}           # define an available range of 6502 RAM
+output@@{file=program.bin@@}               # set the output file
+link@@{file=my_unit.o, origin=0xC000@@}    # relocate my_unit.o to 0xC000 and write it to output
+@@end example
+
+Commands in the script are of the form @@code{@@var{command-name}@@{@@emph{[@@var{arg-name}=@@var{value}, @@var{arg-name}=@@var{value}, ...]}@@}}. The kind and number of valid arguments depends on the particular command. Some arguments are optional while others are mandatory, again depending on the particular command. (Even if the command has no arguments, you have to have a pair of empty braces).
+
+The @@code{ram}-command tells the linker that it has available a chunk of RAM in the 6502's memory starting at address 0x0000 and ending at 0x0800. The linker will map the contents of data segments to physical addresses in this region.
+
+The @@code{output}-command is used to tell the linker which file to direct its output to.
+
+The @@code{link}-command tells the linker to relocate the given unit and output the resulting binary representation.
+
+As you can see, a line comment in the script is initiated with a @@code{#}-character.
+
+@@section Linking multiple units
+
+In principle, linking more than one unit into the same output file is simple: Just add appropriate @@code{link}-commands to the linker script. For example, say you have written a small library of functions you commonly use across all your projects and assembled it to @@file{my_lib.o}. Assume that your main program, say, @@file{my_unit.o} depends on @@file{my_lib.o}; it calls one or more functions exported from the library. You would then add an additional line to the previous example script:
+
+@@example
+ram@@{start=0x0000,end=0x0800@@}
+output@@{file=program.bin@@}
+link@@{file=my_unit.o, origin=0xC000@@}
+link@@{file=my_lib.o@@}                     # my_lib will be relocated to directly after my_unit.o
+@@end example
+
+Note that there is no @@option{origin}-argument to the latter @@code{link}-command. This is because we generally don't know how much space the code from @@file{my_unit.o} will occupy. So we let the linker take care of it; when no origin is specified, the unit will be relocated to the location where the previous entity processed by the linker ended (the linker manages a ``pseudo-Program Counter'' internally to keep track of where it is in 6502 memory). So if the code for @@file{my_unit.o} was @@code{0x0ABC} bytes in size, @@file{my_lib.o} would be relocated to @@code{0xCABC}.
+
+@@section Separating units into banks
+
+You will get an error during linking if the Program Counter exceeds 64K. To write larger programs you normally have to divide the program into banks and manually switch them in and out of 6502 memory as they are needed. How the switching is done is very system-specific, so The XORcyst doesn't corcern itself with that. However, it does allow you to manage banks.
+
+The linker script command @@code{bank} is used to start a new bank. There are two (semi-optional) arguments to @@code{bank}:
+@@itemize
+
+@@item @@option{size}, which specifies the bank size in bytes. If a size is not specified, the size of the previous bank is used; and
+
+@@item @@option{origin}, which specifies the bank's origin in 6502 memory. This is the address where the bank must be located when it resides in memory during program execution. If an origin is not specified, the origin of the previous bank is used.
+
+@@end itemize
+
+For example,
+@@example
+bank@@{size=0x4000, origin=0x8000@@}
+@@end example
+indicates the start of a bank that is to be 16KBytes in size, and its contents should be linked relative to address 0x8000.
+
+So to build on our previous example script, say that you for some reason want to put the library in a separate bank from your main program:
+
+@@example
+ram@@{start=0x0000,end=0x0800@@}
+output@@{file=program.bin@@}
+bank@@{size=0x4000, origin=0x8000@@}
+link@@{file=my_unit.o@@}
+bank@@{size=0x4000, origin=0xC000@@}
+link@@{file=my_lib.o@@}                     # my_lib will be relocated to directly after my_unit.o
+@@end example
+
+This will create an output 32KBytes in size, the first 16KBytes being the bank containing the code from @@file{my_unit.o} and the latter 16KBytes containing @@file{my_lib.o}'s code.
+
+A couple of things worth mentioning:
+@@enumerate
+
+@@item It isn't necessary to specify the origin in any of the @@code{link}-commands anymore, since an origin is specified in the owning bank instead. If you do specify an origin in the @@code{link}-command, it will override the internal linker origin.
+
+@@item When you start a new bank, the previous bank may not have been completely ``filled up'' with code and/or data; in this case the output is automatically padded with zeroes so that the size of the output matches the given bank size. (In addition to the 16-bit Program Counter, the linker also keeps track of the current 0-relative bank offset, and advances it as stuff is added to output.)
+
+@@end enumerate
+
+@@section Partitioning 6502 RAM
+
+Usually you don't want to let the linker have @@emph{all} the 6502 RAM at its disposal for data mapping; some regions of memory have special meaning and should generally be off-limits to the linker. For example, the 6502 has a stack which grows down from address 0x01FF. So it would be good idea to reserve some space there for the stack.
+
+Partitioning the RAM is easy. Just put multiple @@code{ram}-commands in the linker script, leaving out the reserved regions. For example, this is a typical configuration I use for NES game programming:
+@@example
+ram@@{start=0x0000, end=0x0180@@}
+ram@@{start=0x0300, end=0x0800@@}
+ram@@{start=0x6000, end=0x6000@@}    # only if the board has WRAM
+@@end example
+
+Here I have left out the region @@code{0x0180}...@@code{0x0300}. Address @@code{0x0180} up to and including @@code{0x01FF} is where the stack lives, while the page starting at @@code{0x0200} is used to hold game sprite data; this address is hard-coded in the assembly source.
+
+The order of @@code{ram}-commands is significant. The order defines the order in which the linker will attempt to map data segments' symbols to RAM. This is why the region containing the zeropage should preferably come first, since we generally want as much data as possible to be mapped here. Only when the linker runs out of space in the first region will it try the next one, and so on.
+
+@@section Copying files to linker output
+
+Analogous to the assembler directive @@code{.incbin}, the linker script command @@code{copy} allows you to copy a file straight to the linker's output file. For example, you might like to prepend your 6502 executable with a header. So you create a custom header file called, say, @@file{header.bin} and, prior to the @@code{bank}-commands, you issue the command
+
+@@example
+copy@@{file=header.bin@@}
+@@end example
+
+You can also use the @@code{copy}-command inside banks of course, anywhere you like. In this case the internal Program Counter and bank offset will be advanced in the same manner as when a unit is linked and copied to the output with the @@code{link}-command. The only difference is that you can tell in advance how much the offsets will be increased (by looking at the size of the file that is copied).
+
+@@section Padding the output
+
+You can pad the output explicitly with the @@code{pad}-command. This will write an appropriate number of zero-bytes to the output file. The following are the (mutually exclusive) arguments to the command.
+@@itemize
+
+@@item @@code{size} : Pad as many bytes as indicated
+
+@@c @@item @@code{origin} : Pad until Program Counter equals the given origin
+
+@@item @@code{offset} : Pad until bank offset equals the given offset
+
+@@end itemize
+
+@@c @@section Specifying options
+
+@@node Known Bugs and Limitations
+@@chapter Known Bugs and Limitations
+
+Every source file must end with a newline.
+
+@@node Implementation Details
+@@appendix Implementation Details
+
+Some deep discussion will eventually go here; in the meantime, have a look at the sourcecode, which is full of comments.
+
+@@node Assembler Directives
+@@appendix Assembler Directives
+
+It is considered good practice to prepend a period to a directive when invoking it (to differentiate it from identifiers), but this is not a strict requirement.
+
+The following is an alphabetical listing of the directives supported by the assembler and the arguments they may take. Arguments enclosed in square brackets [ ] are optional.
+
+@@table @@code
+
+@@item align @@var{identifier} @@emph{[, @@var{identifier-2}, ...]} @@var{boundary}
+Specifies alignment constraints for a list of data variables.
+
+@@item asc (@@emph{Alias for} char)
+
+@@item byte (@@emph{Alias for} db)
+
+@@item char @@var{expression} @@emph{[, @@var{expression}, ...]}
+Define (array of) character transformed by custom character map
+
+@@item charmap "@@var{filename}"
+Set custom character map
+
+@@item codeseg, code
+Switch to code segment
+
+@@item dataseg, data @@emph{[zeropage]}
+Switch to data segment
+
+@@item db @@var{expression} @@emph{[, @@var{expression}, ...]}
+Define (array of) byte
+
+@@item dd @@var{expression} @@emph{[, @@var{expression}, ...]}
+Define (array of) doubleword
+
+@@item define @@var{identifier} @@emph{[@@var{expression}]}
+See @@code{equ} directive
+
+@@item dsb @@var{expression}
+Define storage of bytes
+
+@@item dsd @@var{expression}
+Define storage of doublewords
+
+@@item dsw @@var{expression}
+Define storage of words
+
+@@item dw @@var{expression} @@emph{[, @@var{expression}, ...]}
+Define (array of) word
+
+@@item dword (@@emph{Alias for} dd)
+
+@@item elif
+Used in conjunction with if
+
+@@item else
+Used in conjunction with if, ifdef or ifndef
+
+@@item endif
+Ends a statement block preceded by an if
+
+@@item end
+Ends the assembly unit
+
+@@item ende
+Ends an enum definition
+
+@@item endm
+Ends a macro definition
+
+@@item endp
+Ends a procedure definition
+
+@@item ends
+Ends a structure or union definition
+
+@@item enum @@var{identifier}
+Begins an enum definition
+
+@@item extrn @@var{identifier} @@emph{[, @@var{identifier}, ...]} : @@var{type}
+Flag identifier(s) as external (imported) of type @@var{type}
+
+@@item @@var{identifier} equ @@var{expression}
+Define equate
+
+@@item if @@var{expression}
+Assemble the following statement block only if @@var{expression} evaluates to non-zero
+
+@@item ifdef @@var{identifier}
+Assemble the following statement block only if @@var{identifier} is defined
+
+@@item ifndef @@var{identifier}
+Assemble the following statement block only if @@var{identifier} is not defined
+
+@@item incbin "@@var{filename}"
+Include contents of @@var{filename} as binary data
+
+@@item include (@@emph{Alias for} incsrc)
+
+@@item incsrc "@@var{filename}"
+Include contents of @@var{filename} as assembler statements
+
+@@item label @@var{identifier} @@emph{[= @@var{address}]} @@emph{[ : @@var{type}]}
+Defines a global label
+
+@@item macro @@var{identifier} @@emph{[@@var{identifier}, ...]}
+Begins a macro definition
+
+@@item message @@var{expression}
+Prints a message to stdout during assembly
+
+@@item pad @@var{expression}  (@@emph{Alias for} dsb)
+
+@@item proc @@var{identifier}
+Begins a procedure definition
+
+@@item public @@var{identifier} @@emph{[, @@var{identifier}, ...]}
+Flag identifier(s) as public (exported)
+
+@@item record @@var{identifier} @@var{identifier}:@@var{width} @@emph{[, @@var{identifier}:@@var{width}, ...]}
+Defines a record consisting of bitfields.
+
+@@item rept @@var{count}
+Begins an anonymous macro to be repeated @@var{count} times
+
+@@item struc @@var{identifier}
+Begins a structure definition
+
+@@item type @@var{identifier} @@emph{[@@var{expression}, ...]}
+Define data of user-defined type @@var{identifier}
+
+@@item union @@var{identifier}
+Begins a union definition
+
+@@item while @@var{expression}
+Begins an anonymous macro to be repeated while @@var{expression} is true (non-zero)
+
+@@item word (@@emph{Alias for} dw)
+
+@@end table
+
+@@node Linker Script Commands
+@@appendix Linker Script Commands
+
+The following is an alphabetical listing of the script commands recognized by the linker and the arguments they may take. Note that not all arguments are mandatory and some are mutually exclusive.
+
+@@table @@code
+
+@@item bank @@{ size=@@var{size}, origin=@@var{origin-address} @@}
+Start a new bank of size @@var{size} bytes and set initial relocation address to @@var{origin-address}.
+
+@@item copy @@{ file=@@var{filename} @@}
+Copy contents of @@var{filename} to output.
+
+@@item link @@{ file=@@var{filename}, origin=@@var{origin-address} @@}
+Relocate code in the unit @@var{filename} to @@var{origin-address} and copy the result to output. (If an origin is not specified, the internally managed linker origin is used.)
+
+@@c @@item options
+
+@@item output @@{ file=@@var{filename} @@}
+Set the linker output file.
+
+@@item pad @@{ origin=@@var{origin-address}, offset=@@var{offset}, size=@@var{size} @@}
+Pad to the given origin or bank offset, or pad @@var{size} bytes (only one of the arguments should be given).
+
+@@item ram @@{ start=@@var{start-address}, end=@@var{end-address} @@}
+Specify that 6502 RAM in the range @@var{start-address}...@@var{end-address} (non-inclusive) may be used by the linker to map contents of data segments.
+
+@@end table
+
+@@node Object Code Format
+@@appendix Object Code Format
+
+An object code file, or unit, produced by the assembler has the following major sections:
+
+@@itemize
+
+@@item Magic number and assembler version
+
+@@item Definitions of exported constants
+
+@@item Descriptors for imported symbols
+
+@@item Data segment bytecodes
+
+@@item Code segment bytecodes
+
+@@item Definitions of expressions referred to by bytecodes
+
+@@end itemize
+
+Each of these will be described in the sequel.
+
+@@section Magic number and assembler version
+
+The magic number is a 16-bit constant (@@code{0xCAFE}, if you must know), used to validate the object file. It is followed by 1 byte which denotes the version of the assembler that was used to build the file; the major version in the upper nibble and minor version in the lower nibble (should be @@code{0x10}).
+
+@@section Definitions of exported constants
+
+This is a series of triplets @@var{(identifier, type, value)}, each describing a constant made publicly available.
+
+@@section Descriptors for imported symbols
+
+This is a list of descriptors for the symbols used by this unit which are not defined in the unit itself; that is, they are external dependencies.
+
+@@section Data segment bytecodes
+
+Statements in the original assembler file are encoded in a compact bytecode form. The bytecodes here define the labels and data storages located in the unit's @@code{dataseg} section(s). The bytecode commands are a subset of the ones described in the next section.
+
+@@section Code segment bytecodes
+
+These bytecodes are a compact representation of the contents of the unit's @@code{codeseg} section(s). The commands and their arguments are as follows:
+
+@@table @@code
+
+@@item CMD_END
+Indicates the end of the segment.
+
+@@item CMD_BIN8 @@var{count} @@var{byte1, byte2, ...}
+The next @@var{count} bytes are binary data which needn't be processed in any special way. @@var{count} is an 8-bit quantity.
+
+@@item CMD_BIN16 @@var{count} @@var{byte1, byte2, ...}
+The next @@var{count} bytes are binary data which needn't be processed in any special way. @@var{count} is a 16-bit quantity.
+
+@@item CMD_LABEL @@var{flag} @@var{identifier}
+Define a label. If bit 0 of the byte @@var{flag} is set, this is a public variable and its identifier follows.
+
+@@item CMD_INSTR @@var{opcode} @@var{expression-id}
+An instruction whose operand must ultimately be resolved. @@var{opcode} is the 6502 operation code. @@var{expression-id} is a 16-bit quantity which refers to the expression which is the (symbolic) operand of the instruction (see the next section).
+
+@@item CMD_DB @@var{expression-id}
+Define a byte symbolically. @@var{expression-id} refers to the expression which is the operand.
+
+@@item CMD_DW @@var{expression-id}
+Define a word symbolically. @@var{expression-id} refers to the expression which is the operand.
+
+@@item CMD_DD @@var{expression-id}
+Define a doubleword symbolically. @@var{expression-id} refers to the expression which is the operand.
+
+@@item CMD_DSI8 @@var{size}
+Define data storage of @@var{size} bytes. @@var{size} is an 8-bit quantity.
+
+@@item CMD_DSI16
+Define data storage of @@var{size} bytes. @@var{size} is a 16-bit quantity.
+
+@@item CMD_DSB @@var{expression-id}
+Define data storage of bytes, the size of which is determined by the expression referred to by @@var{expression-id}.
+
+@@end table
+
+@@section Expressions
+
+As you may have noticed in the preceding section, many bytecodes have an expression identifier as argument. This is just an index into the list of expressions defined in the final part of the object file. The main advantages of separating the @@emph{use} of an expression (through its identifier) from its @@emph{definition} is ease of parsing and processing (each bytecoded instruction will always occupy 4 bytes), and the ability to share the same expression among several instructions without having to redefine it every time. In most cases, the expression will just be a stand-alone reference to a symbol (local or external). But any expression that the assembler understands can be encoded here.
+
+@@node Custom Character Maps
+@@appendix Custom Character Maps
+
+@@c Using custom character maps is a convenient way of mapping ASCII characters to a different encoding.
+A custom character map is a plaintext file containing statements of the form
+@@example
+@@var{key} = @@var{value}
+@@end example
+
+where @@var{key} is a character or escape sequence and @@var{value} is the integer literal instances of this character should be mapped to when occuring as argument to the @@code{.char} assembler directive.
+
+There is a also a shorthand form for mapping a range of characters at once:
+@@example
+@@var{low_key}-@@var{high_key} = @@var{value}
+@@end example
+
+This is most useful when mapping the decimal digits and the alphabet. Instead of typing monotonic statements like
+@@example
+0=0x10
+1=0x11
+...
+9=0x19
+@@end example
+you can achieve the same result from the statement
+@@example
+0-9=0x10
+@@end example
+
+@@node Error and Warning Messages
+@@appendix Error and Warning Messages
+
+@@section Assembler Error Messages
+
+@@table @@samp
+
+@@item cannot expand `@@var{identifier}'; not a macro
+Make sure @@var{identifier} is a macro and not a label, constant or other type of symbol.
+
+@@item conditional expression does not evaluate to literal
+Conditional assembly with the @@code{.if}-directive requires that the expression tested can be evaluated immediately, so it can't contain references to labels and such (since these aren't computed by the assembler, that's the linker's job).
+
+@@item could not open `@@var{filename}' for reading
+Check that the file exists and that you have read privileges.
+
+@@item duplicate symbol `@@var{identifier}'
+You tried to define the same symbol more than once. Global labels must be unique across the entire program. Local labels must be unique within the relevant local scope.
+
+@@item field declaration expected
+A structure or union field must be of the form @@code{@@var{identifier} @@var{datatype} @@var{[count]}}; for example, @@code{my_field .db}, @@code{my_2nd_field .dsw 10}, @@code{my_3rd_field .type other_struc}.
+
+@@item data initialization not allowed here
+A structure or union declaration cannot contain initialization of its fields.
+
+@@item initializer does not evaluate to integer literal
+A member of an enumerated datatype must be assigned a constant value.
+
+@@item initializer for field `@@var{identifier}' exceeds field size
+When defining the value of a structure or union field, the value must not exceed the number of bytes of storage allocated for that field. For example, if the field definition is @@code{a_string .dsb 4}, then the value @@code{"too long"} won't fit since it is 8 bytes long.
+
+@@item instructions not allowed in data segment
+Instructions can only be contained in a code segment (after a @@code{codeseg} directive).
+
+@@item invalid addressing mode
+The combination of mnemonic and addressing mode for the 6502 instruction is invalid. For example, @@code{LDX $00,X} is invalid since the @@code{LDX} instruction does not have a ZeroPage,X-mode version. Consult a 6502 manual to see what modes are valid for each instruction.
+
+@@item invalid dataseg statement
+A data segment only supports a subset of the statements allowed in code segments. You can't put instructions or initialized data in a data segment.
+
+@@item invalid operand
+You supplied an invalid operand to a statement, for example a string as operand to the @@code{LDA} instruction.
+
+@@item macro `@@var{identifier}' does not take @@var{count} argument(s)
+You supplied the wrong amount of arguments to the macro. Check the macro definition if you're unsure how many arguments it takes, and try again.
+
+@@item member `@@var{sub-struct-identifier}' of `@@var{struct-identifier}' is not a structure
+The expression @@code{@@var{struct-identifier}.@@var{sub-struct-identifier}.@@var{some-member}} did not resolve because @@var{sub-struct-identifier} is not a structure.
+
+@@item member '@@var{field-identifier}' of '@@var{struct-identifier}' is of unknown type (`@@var{type-identifier}')
+@@var{type-identifier} is an undefined type.
+
+@@item only one field of union can be initialized
+When defining an instance of a union, only one of the possible fields can be given a value between the pair of enclosing braces @@{ @@}.
+
+@@item operand out of range
+A 6502 instruction has either an 8-bit or 16-bit operand, so its value has to fit in that many bits. However, the value you supplied was too large to fit.
+
+@@item procedures not allowed in data segment
+A procedure contains code. Code cannot be contained in a data segment.
+
+@@item repeat count does not evaluate to literal
+Anonymous macros are expanded as soon as they are encountered. Thus, the argument of a @@code{rept} directive must be an immediate expression.
+
+@@item size of `@@var{identifier}' is unknown
+The operand to the @@code{sizeof} operator must be one of @@code{BYTE}, @@code{WORD}, @@code{DWORD}, or the name of a structure definition.
+
+@@item string or integer argument expected
+The @@code{message} directive takes a string or integer as its argument.
+
+@@item structure initializer expected
+When defining data that is an instance of a structure or union, the field value(s) must be enclosed in a pair of braces @@{ @@}.
+
+@@item too many field initializers
+There are too many values given compared to the actual number of fields in the structure or union.
+
+@@item union member must be of constant size
+The size of a union member must be known at assembly time. This restriction does not apply to structs.
+
+@@item unknown macro or directive `@@var{identifier}'
+You attempted to invoke a macro or directive that the assembler doesn't recognize. Check your spelling (remember that identifiers are case sensitive) and/or your macro definitions.
+
+@@item unknown namespace `@@var{identifier}'
+The expression @@code{@@var{identifier}::@@var{symbol}} did not resolve because @@var{identifier} is not a namespace.
+
+@@item unknown symbol `@@var{identifier}'
+Your code refers to a symbol which hasn't been defined locally nor has it been declared to be external.
+
+@@item value not allowed in data segment
+Data cannot be initialized in a data segment; the data segment can only specify how many bytes of storage will be needed at runtime.
+
+@@item `@@var{identifier}' declared as extrn but is defined locally
+Defining a label in your own code and then declaring it as an external symbol doesn't make much sense.
+
+@@item `@@var{identifier}' already declared extrn
+An identifier already specified in a @@code{public} directive cannot at the same time be external.
+
+@@item `@@var{identifier}' is of non-exportable type
+Macros and other volatile symbols cannot be exported.
+
+@@item `@@var{field-identifier}' is not a member of `@@var{struct-identifier}'
+The expression @@code{@@var{struct-identifier}.@@var{field-identifier}} did not resolve.
+
+@@end table
+
+@@section Assembler Warning Messages
+
+@@table @@samp
+
+@@item `@@var{identifier}' declared as public but is not defined
+You cannot export a symbol that isn't defined in your code.
+
+@@item `@@var{identifier}' defined but not used
+Usually there is a reason for defining a symbol, so the assembler will warn you if there are no references to it in the code.
+
+@@item operand out of range; truncated
+Operand exceeds 8 or 16 bits, so the upper bits are chopped off.
+
+@@item redefinition of `@@var{identifier}' is not identical; ignored
+When using the @@var{.equ}-directive you can only define each identifier once. (Use the = operator instead if appropriate.)
+
+@@end table
+
+@@section Linker Error Messages
+
+@@table @@samp
+
+@@item branch out of range
+A relative branch instruction went too far. Trim your code or do an inverse-branch-followed-by-jump combo instead.
+
+@@item duplicate symbol `@@var{identifier}'
+A symbol with the same name is exported from two or more of the units being linked. When linking, exported names must be unique across all units.
+
+@@item incompatible operand(s) to `@@var{operator}' in expression
+
+@@item instruction operand doesn't fit in 1 byte
+A rather fatal error. A zeropage instruction's operand address won't fit.
+
+@@item instruction operand doesn't fit in 2 bytes
+A rather fatal error which shouldn't even occur.
+
+@@item invalid instruction operand (string)
+6502 instructions only take integer operands.
+
+@@item negative count
+A storage directive must have a positive integer operand.
+
+@@item out of 6502 RAM while allocating unit `@@var{unit}'
+The linker couldn't map the data segments to 6502 RAM because there was too little of it available. Check your @@code{ram}-commands in the script or reduce your program's memory requirements.
+
+@@item PC went beyond 64K when linking `@@var{unit}'
+
+@@item unexpected string operand (`@@var{string}') to storage directive
+Storage directives only take integer operands.
+
+@@item unknown symbol `@@var{identifier}' referenced from @@var{unit}
+The external symbol couldn't be resolved. You need to link the unit containing the symbol.
+
+@@end table
+
+@@subsection Linker Script Error Messages
+
+@@table @@samp
+
+@@item bank size (@@var{size}) exceeded by @@var{count} bytes
+The bank output exceeded the size of the current bank. The bank size is wrong, your code is too large or the files you are copying to the bank are.
+
+@@item cannot pad backwards
+If you start a bank and copy a, say, 2K file to it, then attempt to pad to offset 1K you will get this error. Padding can only be done from a smaller offset to a larger or equal offset. Your pad offset is wrong or the data preceding it is too large.
+
+@@item could not open `@@var{filename}' for reading
+I'm sure you know what this means by now.
+
+@@item could not open `@@var{filename}' for writing
+The specified output file could not be created.
+
+@@item `end' is smaller than `start'
+The end address should be larger or equal to the start address, not the other way around.
+
+@@item failed to load `@@var{unit}'
+The object file could not be loaded from storage. The file is missing, you don't have access to it or it is corrupted.
+
+@@item invalid size
+The size must be a positive (larger than zero) quantity.
+
+@@item missing argument `@@var{name}'
+The script command requires an argument which you did not supply.
+
+@@item no bank size set
+At a minimum, the first @@code{bank}-command in the script must supply a bank size.
+
+@@item no output open
+When executing a script command which writes to the linker's output, an output file must have been specified first. Make sure that all @@code{link}-, @@code{copy}-, @@code{pad}-commands etc. are preceded by the proper @@code{output}-command.
+
+@@item value of argument `@@var{name}' is out of range
+The script command argument's value is outside the expected range. For example, an argument which specifies a 6502 address should be between 0 and 64K.
+
+@@end table
+
+@@section Linker Warning Messages
+
+@@table @@samp
+
+@@item `.D(B|W)' operand @@var{integer} out of range; truncated
+Operand exceeds 8 or 16 bits, so the upper bits are chopped off.
+
+@@end table
+
+@@bye
+@
+
+
+1.9
+log
+@xorcyst 1.4.4
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.8 2005/01/05 02:29:50 kenth Exp kenth $
+d3 3
+d38 1
+a38 1
+This is the manual for The XORcyst version 1.4.4.
+d79 24
+@
+
+
+1.8
+log
+@xorcyst 1.4.3
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.7 2004/12/29 21:51:58 kenth Exp kenth $
+d3 3
+d35 1
+a35 1
+This is the manual for The XORcyst version 1.4.3.
+d76 12
+@
+
+
+1.7
+log
+@xorcyst 1.4.2
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.6 2004/12/25 02:25:51 kenth Exp kenth $
+d3 3
+d32 1
+a32 1
+This is the manual for The XORcyst version 1.4.2.
+d34 1
+a34 1
+Copyright @@copyright{} 2004 Kent Hansen.
+d73 22
+d747 1
+a747 1
+string_value .char 32
+d753 15
+@
+
+
+1.6
+log
+@xorcyst 1.4.1
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.5 2004/12/19 20:56:25 kenth Exp kenth $
+d3 3
+d29 1
+a29 1
+This is the manual for The XORcyst version 1.4.1.
+d70 26
+d130 1
+a130 1
+@@item Constraints can be communicated to the linker on how contents of data segments should be mapped to RAM; see section 3.2.18, ``Controlling data mapping''.
+d823 35
+@
+
+
+1.5
+log
+@xorcyst 1.4.0
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.4 2004/12/16 13:26:22 kenth Exp kenth $
+d3 3
+d26 1
+a26 1
+This is the manual for The XORcyst version 1.4.0.
+d67 24
+@
+
+
+1.4
+log
+@xorcyst 1.3.5
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.3 2004/12/14 01:51:07 kenth Exp kenth $
+d3 3
+d23 1
+a23 1
+This is the manual for The XORcyst version 1.3.5.
+a58 1
+* Index::            Complete index.
+d64 32
+a188 2
+@@cindex chapter, first
+
+a193 2
+@@cindex chapter, second
+
+d199 2
+d237 3
+d365 1
+a365 1
+@@item @@code{@@var{identifier}:} at the beginning of a source line defines the label @@var{identifier}. The colon is mandatory.
+d370 1
+a370 1
+.label @@var{identifier}@@emph{ [ : @@var{type}]}
+d373 3
+a375 1
+The type of data that the label addresses can be specified. The valid type specifiers are @@code{byte}, @@code{word}, @@code{dword}, or an identifier, which must be the name of a user-defined type.
+d798 38
+a848 2
+@@cindex chapter, third
+
+d861 2
+a979 6
+If @@code{$} (current PC) is used in a @@code{ds(b|w|d)} statement, the result will be wrong.
+
+The assembler doesn't produce detailed debugging information, so the linker is unable to pinpoint exact source location if a link-time error is produced.
+
+Linker command @@code{pad@@{origin=@@var{XXX}@@}} is broken. Use argument @@code{offset} instead.
+
+d996 3
+a998 1
+@@c align
+d1012 1
+a1012 1
+@@item dataseg, data
+d1088 1
+a1088 1
+@@item label @@var{identifier} @@emph{[ : @@var{type}}
+d1222 1
+a1222 1
+@@item CMD_DD
+d1234 1
+a1234 5
+@@item CMD_DSW @@var{expression-id}
+Define data storage of words, the size of which is determined by the expression referred to by @@var{expression-id}.
+
+@@item CMD_DSD @@var{expression-id}
+Define data storage of doublewords, the size of which is determined by the expression referred to by @@var{expression-id}.
+a1239 2
+@@end table
+
+d1276 1
+a1276 1
+-
+d1396 1
+a1396 1
+An relative branch instruction went too far. Trim your code or do an inverse-branch-followed-by-jump combo instead.
+d1401 14
+d1418 4
+a1421 1
+@@item PC went beyond 64K when relocating `@@var{unit}' to @@var{address}
+d1469 4
+a1472 2
+@@node Index
+@@unnumbered Index
+d1474 1
+a1474 1
+@@printindex cp
+@
+
+
+1.3
+log
+@xorcyst 1.3.0
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.2 2004/12/11 02:12:02 kenth Exp kenth $
+d3 3
+d20 1
+a20 1
+This is the manual for The XORcyst version 1.3.0.
+d62 30
+d96 1
+a96 1
+@@item Added support for user-defined records (RECORD directive, MASK operator).
+d98 1
+a98 1
+@@item Added WHILE directive.
+d100 1
+a100 1
+@@item Implemented ELIF directive.
+d104 1
+a104 1
+@@item SIZEOF operator now works on variable identifiers too.
+d169 2
+d214 2
+d221 1
+a221 1
+ .dataseg                   ; begin data segment
+d223 1
+a223 1
+ my_variable .db            ; define a byte variable
+d225 1
+a225 1
+ my_array .dsw 16           ; define an array of 16 words
+d227 1
+a227 1
+ .codeseg                   ; begin code segment
+d229 1
+a229 1
+ .incsrc "config.h"         ; include another source file
+d232 5
+a236 5
+ .ifdef HAVE_CONFIG_H
+ my_priority = 10
+ .else
+ my_priority = 0
+ .endif
+d239 4
+a242 4
+ .macro store_const value, addr
+ lda #value
+ sta addr
+ .endm                      ; end macro
+d245 7
+a251 6
+ .proc my_subroutine
+ store_const $10, my_array+10           ; macro invocation
+ store_const my_priority, my_variable   ; macro invocation
+
+ lda [$0A], y               ; NOTE: [ ] used for indirection, not ( ), unless --swap-parens switch used
+ jsr some_function          ; call external function
+d254 4
+a257 4
+ ldx #60
+ @@@@@@@@delay:
+ dex
+ bne @@@@@@@@delay
+d260 3
+a262 3
+ lda #my_priority
+ rts
+ .endp                      ; end of procedure definition
+d264 2
+a265 2
+ .public my_subroutine      ; make my_subroutine visible to other units
+ .extrn some_function:proc  ; some_function is located in another unit
+d267 1
+a267 1
+ .end                       ; end of assembler input
+d306 1
+a306 1
+Operands to assembler statements are expressions. An expression can contain any number of operators, identifiers and literals, and parentheses to group terms. The operators are the familiar arithmetic, binary, shift and relational ones, plus a few more which are useful when writing code for a machine which has a 16-bit address space but only 8-bit registers:
+d318 15
+a332 1
+@@code{sizeof(symbol_type)} can be used to get the size of a symbol type.
+d334 7
+a340 1
+When both operands to an operator are strings, the semantics are as follows: @@var{str1} + @@var{str2} concatenates; the relational operators perform string comparison; and all other operators are invalid.
+d405 1
+a405 1
+There are two ways to define equates.
+d426 9
+d571 13
+a583 1
+The directives @@code{.db}, @@code{.dw}, @@code{.dd} and @@code{.char} cannot be used in a data segment.
+d703 1
+a703 1
+@@{ @@var{field1-value}, [@@var{field2-value}, ..., ] @@}
+d724 6
+d740 2
+d923 1
+a923 1
+The following is an alphabetical listing of the directives supported by the assembler and the arguments they may take.
+d950 2
+a951 4
+@@item dw @@var{expression} @@emph{[, @@var{expression}, ...]}
+Define (array of) word
+
+@@item dword (@@emph{Alias for} dd)
+d962 5
+d1017 1
+a1017 1
+@@item label @@var{identifier}
+d1028 3
+d1210 3
+@
+
+
+1.2
+log
+@xorcyst 1.2.0
+@
+text
+@d1 1
+a1 1
+% $Id: xorcyst.texinfo,v 1.1 2004/12/10 20:49:34 kenth Exp kenth $
+d3 3
+d17 1
+a17 1
+This is the manual for The XORcyst version 1.2.0.
+d59 22
+d151 23
+d209 2
+a210 2
+ .store_const $10, my_array+10           ; macro invocation
+ .store_const my_priority, my_variable   ; macro invocation
+d361 1
+a361 1
+@@item With the @@code{.equ} directive. An equate defined this way can only be defined once, and it does not obey program order (that is, it can be defined at a later point from where it are used). An equate of this type can be exported, so that it may be accessed by other units (more on exporting symbols later).
+d393 4
+d435 17
+a451 1
+An anonymous macro is of the form
+d455 1
+a455 1
+.rept 8
+d458 1
+a458 1
+.endm
+d461 1
+a461 1
+The statements between @@code{rept} and @@code{endm} will be repeated as many times as specified by the argument to @@code{rept}. In this case, the resulting expansion is equivalent to
+d517 1
+a517 1
+There are three kinds of types that can be defined by the user. For further information on the concepts of their use, consult a C manual.
+d521 1
+a521 1
+@@item Structures.
+d531 14
+a544 1
+@@item Unions.
+d554 35
+a588 1
+@@item Enumerations.
+d599 2
+d603 1
+a603 1
+Using ``flat'' addressing, structure members are accessed just like in C.
+d605 1
+a605 5
+@@example
+lda the_player.inventory.sword
+@@end example
+
+For indirect addressing, the scope operator can be used to get the offset of the field.
+d608 1
+a608 2
+ldy #(player_struct::inventory + inventory_struct::sword)
+lda [$00],y     ; load ($00).inventory.sword
+d611 1
+a611 3
+@@subsection Defining data of user-defined types
+
+The general syntax is
+d614 1
+a614 1
+.type @@var{identifier}
+d621 1
+a621 1
+@@item Structure. The initializer is of the form
+d637 1
+a637 1
+@@item Union. The initializer is of the same form as a structure initializer, except only one of the fields in the union can be initialized.
+d639 3
+a641 1
+@@item Enum. The initializer is simply an identifier that must be one of the identifiers appearing in the type definition.
+d824 2
+d941 3
+d950 3
+d956 3
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 5
+a5 2
+% $Id$
+% $Log$
+d14 1
+a14 1
+This is the manual for The XORcyst version 1.1.0.
+d56 12
+d267 30
+@

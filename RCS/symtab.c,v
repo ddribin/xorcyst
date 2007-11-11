@@ -1,0 +1,1195 @@
+head	1.7;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.7
+date	2007.11.11.22.35.22;	author khansen;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2007.08.09.20.33.57;	author khansen;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2007.08.08.22.40.43;	author khansen;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2007.07.22.13.33.26;	author khansen;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.12.14.01.50.05;	author kenth;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.12.06.04.52.53;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.06.30.07.55.57;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.7
+log
+@compile on mac
+@
+text
+@/*
+ * $Id: symtab.c,v 1.6 2007/08/09 20:33:57 khansen Exp khansen $
+ * $Log: symtab.c,v $
+ * Revision 1.6  2007/08/09 20:33:57  khansen
+ * progress
+ *
+ * Revision 1.5  2007/08/08 22:40:43  khansen
+ * recursive symbol table lookup
+ *
+ * Revision 1.4  2007/07/22 13:33:26  khansen
+ * convert tabs to whitespaces
+ *
+ * Revision 1.3  2004/12/14 01:50:05  kenth
+ * xorcyst 1.3.0
+ *
+ * Revision 1.2  2004/12/06 04:52:53  kenth
+ * xorcyst 1.1.0
+ *
+ * Revision 1.1  2004/06/30 07:55:57  kenth
+ * Initial revision
+ *
+ */
+
+/**
+ *    (C) 2004 Kent Hansen
+ *
+ *    The XORcyst is free software; you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation; either version 2 of the License, or
+ *    (at your option) any later version.
+ *
+ *    The XORcyst is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with The XORcyst; if not, write to the Free Software
+ *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+/**
+ * This file contains functions for symbol table management.
+ */
+
+#include "symtab.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#define SAFE_FREE(a) if (a) { free(a); a = NULL; }
+
+/* Stack of symbol tables */
+static symtab *symtab_stack[32] = { NULL };
+static int stack_index = 0;
+
+static void symtab_entry_finalize(symtab_entry *);
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Gets the entry in the tree with minimum key.
+ */
+static symtab_entry *binary_min(symtab_entry *p)
+{
+    if (p == NULL) { return NULL; }
+    while (p->left != NULL) {
+        p = p->left;
+    }
+    return p;
+}
+
+#if 0
+/**
+ * Gets the entry in the tree with maximum key.
+ */
+static symtab_entry *binary_max(symtab_entry *p)
+{
+    if (p == NULL) { return NULL; }
+    while (p->right != NULL) {
+        p = p->right;
+    }
+    return p;
+}
+#endif
+
+/**
+ * Gets the successor of an entry.
+ */
+static symtab_entry *binary_succ(symtab_entry *p)
+{
+    symtab_entry *e;
+    if (p == NULL) { return NULL; }
+    if (p->right != NULL) { return binary_min(p->right); }
+    e = p->parent;
+    while ((e != NULL) && (p == e->right)) {
+        p = e;
+        e = e->parent;
+    }
+    return e;
+}
+
+#if 0
+/**
+ * Gets the predecessor of an entry.
+ */
+static symtab_entry *binary_pred(symtab_entry *p)
+{
+    symtab_entry *e;
+    if (p == NULL) { return NULL; }
+    if (p->left != NULL) { return binary_max(p->left); }
+    e = p->parent;
+    while ((e != NULL) && (p == e->left)) {
+        p = e;
+        e = e->parent;
+    }
+    return e;
+}
+#endif
+
+/**
+ * Inserts a new entry in a binary tree.
+ * It's implemented recursively although that's a bad thing.
+ * @@param p The root of the tree
+ * @@param e A new entry to be inserted
+ */
+static void binary_insert(symtab_entry *p, symtab_entry *e)
+{
+    int r = strcmp(p->id, e->id);
+    if (r < 0) {
+        /* Follow left branch */
+        if (p->left == NULL) {
+            p->left = e;    /* Entry inserted successfully */
+            e->parent = p;
+        }
+        else {
+            binary_insert(p->left, e);   /* Call recursively */
+        }
+    }
+    else if (r > 0) {
+        /* Follow right branch */
+        if (p->right == NULL) {
+            p->right = e;   /* Entry inserted successfully */
+            e->parent = p;
+        }
+        else {
+            binary_insert(p->right, e);  /* Call recursively */
+        }
+    }
+    else {
+        /* Symbol already present */
+    }
+}
+
+/**
+ * Deletes an entry from a binary tree.
+ * @@param p Root node
+ * @@param z Entry to delete
+ */
+static void binary_delete(symtab *st, symtab_entry *z)
+{
+    symtab_entry *y;
+    symtab_entry *x;
+    symtab_entry *p;
+    if ((st == NULL) || (z == NULL)) { return; }
+
+    if ((z->left == NULL) || (z->right == NULL)) {
+        y = z;
+    }
+    else {
+        y = binary_succ(z);
+    }
+
+    if (y->left != NULL) {
+        x = y->left;
+    }
+    else {
+        x = y->right;
+    }
+
+    p = y->parent;
+    if (x != NULL) {
+        x->parent = p;
+    }
+
+    if (p == NULL) {
+        st->root = x;
+    }
+    else if (y == p->left) {
+        p->left = x;
+    }
+    else {
+        p->right = x;
+    }
+
+    if (y != z) {
+        symtab_finalize(z->symtab);
+        SAFE_FREE(z->id);
+        z->id = (char *)malloc(strlen(y->id)+1);
+        if (z->id != NULL) {
+            strcpy(z->id, y->id);
+        }
+        z->type = y->type;
+        z->flags = y->flags;
+        z->ref_count = y->ref_count;
+        z->def = y->def;
+        z->symtab = y->symtab;
+        z->tag = y->tag;
+    }
+
+    if (y != NULL) {
+        symtab_entry_finalize(y);
+    }
+}
+
+/**
+ * Searches for an entry in a binary tree.
+ * @@param p Root node
+ * @@param id Identifier (search key)
+ */
+static symtab_entry *binary_search(symtab_entry *p, const char *id)
+{
+    int r;
+    while ((p != NULL) && ((r = strcmp(p->id, id)) != 0)) {
+        p = (r < 0) ? p->left : p->right;
+    }
+    return p;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static symtab_entry *lookup(symtab *st, const char *id, int recurse)
+{
+    symtab_entry *e;
+    do {
+        e = binary_search(st->root, id);
+        if (e != NULL) { return e; }
+        st = st->parent;
+    } while (recurse && st);
+    return NULL;
+}
+
+/**
+ * Looks up the specified id in the current symbol table.
+ */
+symtab_entry *symtab_lookup(const char *id)
+{
+    return lookup(symtab_tos(), id, 0);
+}
+
+/**
+ * Looks up the specified id in the current symbol table.
+ */
+symtab_entry *symtab_lookup_recursive(const char *id)
+{
+    return lookup(symtab_tos(), id, 1);
+}
+
+/**
+ * Looks up the specified id in the global symbol table.
+ */
+symtab_entry *symtab_global_lookup(const char *id)
+{
+    return lookup(symtab_stack[0], id, 0);
+}
+
+/**
+ * Enters something into a symbol table.
+ * @@param id Identifier
+ * @@param type Type of symbol (*_SYMBOL)
+ * @@param def External definition (may be <code>NULL</code>)
+ * @@param flags Initial flags
+ */
+symtab_entry *symtab_enter(const char *id, symbol_type type, astnode *def, int flags)
+{
+    symtab *st = symtab_tos();
+    /* See if this id already exists */
+    symtab_entry *e = symtab_lookup(id);
+    if (e != NULL) {
+        /* Duplicate symbol. */
+//      printf("error: symtab_enter(): `%s' already exists\n", id);
+        return NULL;
+    }
+//  printf("symtab_enter(): '%s' @@ %.8X\n", id, st);
+    /* Allocate new entry */
+    e = (symtab_entry *)malloc(sizeof(symtab_entry));
+    if (e != NULL) {
+        /* Set its fields */
+        e->id = (char *)malloc(strlen(id)+1);
+        if (e->id != NULL) {
+            strcpy(e->id, id);
+        }
+        e->type = type;
+        e->flags = flags;
+        e->ref_count = 0;
+        e->def = def;
+        /* Zap! */
+        e->struc.size = NULL;
+        e->struc.fields = NULL;
+        e->field.offset = NULL;
+        e->field.size = NULL;
+        e->left = NULL;
+        e->right = NULL;
+        e->parent = NULL;
+        e->symtab = NULL;
+        /* Put it into symbol table */
+        if (st->root == NULL) {
+            st->root = e;   /* This is the root element */
+        }
+        else {
+        /* Insert entry in binary tree */
+            binary_insert(st->root, e);
+        }
+    }
+    /* Return the newly created symbol table entry */
+    return e;
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Finalizes a single symbol table entry.
+ */
+static void symtab_entry_finalize(symtab_entry *e)
+{
+    ordered_field_list *list;
+    ordered_field_list *next;
+//  printf("symtab_finalize(): `%s'\n", e->id);
+    /* Special finalizing */
+    switch (e->type) {
+        case LABEL_SYMBOL:
+        break;
+
+        case CONSTANT_SYMBOL:
+        astnode_finalize(e->def);
+        break;
+
+        case MACRO_SYMBOL:
+        astnode_finalize(e->def);
+        break;
+
+        case STRUC_SYMBOL:
+        case UNION_SYMBOL:
+        case RECORD_SYMBOL:
+        /* Free list of in-order field identifiers */
+        for (list = e->struc.fields; list != NULL; list = next) {
+            next = list->next;
+            free(list);
+        }
+        symtab_finalize(e->symtab);
+        astnode_finalize(e->struc.size);
+        break;
+
+        case ENUM_SYMBOL:
+        symtab_finalize(e->symtab);
+        break;
+
+        case VAR_SYMBOL:
+        astnode_finalize(e->def);
+        astnode_finalize(e->field.offset);
+        astnode_finalize(e->field.size);
+        break;
+
+        case PROC_SYMBOL:
+        break;
+
+        default:
+        /* Nada */
+        break;
+    }
+    /* Common finalizing */
+    SAFE_FREE(e->id);
+    SAFE_FREE(e);
+}
+
+/**
+ * Finalizes a symbol table entry recursively,
+ * by first finalizing its children before finalizing itself.
+ */
+static void symtab_entry_finalize_recursive(symtab_entry *e)
+{
+    if (e == NULL) return;
+    symtab_entry_finalize_recursive(e->left);
+    symtab_entry_finalize_recursive(e->right);
+    symtab_entry_finalize(e);
+}
+
+/**
+ * Finalizes a symbol table.
+ * @@param st The symbol table to finalize
+ */
+void symtab_finalize(symtab *st)
+{
+    if (st == NULL) return;
+    symtab_entry_finalize_recursive(st->root);
+    SAFE_FREE(st);
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Gets top of symbol table stack.
+ */
+symtab *symtab_tos()
+{
+    if (stack_index == 0) { return NULL; }
+    return symtab_stack[stack_index-1];
+}
+
+/**
+ * Creates a symbol table and pushes it on the symbol table stack.
+ */
+symtab *symtab_create()
+{
+    symtab *st = (symtab *)malloc(sizeof(symtab));
+    if (st != NULL) {
+        st->root = NULL;
+        st->parent = symtab_tos();
+        symtab_push(st);
+    }
+    return st;
+}
+
+/**
+ * Pushes a symbol table onto the stack.
+ */
+void symtab_push(symtab *st)
+{
+    symtab_stack[stack_index++] = st;
+}
+
+/**
+ * Pops a symbol table from the stack.
+ */
+symtab *symtab_pop()
+{
+    return symtab_stack[--stack_index];
+}
+
+/**
+ * Removes an entry from the symbol table.
+ * The memory associated with the entry is freed.
+ * @@param id Identifier of the entry to remove
+ */
+void symtab_remove(const char *id)
+{
+    symtab *st = symtab_tos();
+    symtab_entry * e = symtab_lookup(id);
+    if (e == NULL) { return; }  /* Nothing to remove */
+    binary_delete(st, e);
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Gets the number of entries of the given type.
+ */
+int symtab_type_count(symbol_type type)
+{
+    symtab *st = symtab_tos();
+    int count = 0;
+    symtab_entry *e = binary_min(st->root);
+    while (e != NULL) {
+        if ((type == ANY_SYMBOL) || (e->type == type)) {
+            count++;
+        }
+        e = binary_succ(e);
+    }
+    return count;
+}
+
+/**
+ * Removes all entries of a given type from the symbol table.
+ * The memory associated with the entries is freed.
+ * @@param type Type of symbols to remove
+ */
+void symtab_remove_by_type(symbol_type type)
+{
+    int i;
+    /* Declare array to hold identifiers */
+    symbol_ident_list list;
+    /* List the entry identifiers */
+    int count = symtab_list_type(type, &list);
+    /* Remove the entries one by one */
+    for (i=0; i<count; i++) {
+        symtab_remove(list.idents[i]);
+    }
+    /* Finalize the array of identifiers */
+    symtab_list_finalize(&list);
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+static void indent(int n)
+{
+    int i;
+    for (i=0; i<n; i++) {
+        printf(" ");
+    }
+}
+*/
+/**
+ *
+ */
+static void symtab_entry_print_recursive(symtab_entry *e, int level)
+{
+    if (e == NULL) { return; }
+    //indent(level*2);
+    symtab_entry_print_recursive(e->left, level+1);
+    printf("%s\n", e->id);
+    symtab_entry_print_recursive(e->right, level+1);
+}
+
+/**
+ *
+ */
+void symtab_print()
+{
+    symtab *st = symtab_tos();
+    symtab_entry_print_recursive(st->root, 0);
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Gets the number of entries in the symbol table.
+ */
+int symtab_size()
+{
+    return symtab_type_count(ANY_SYMBOL);
+}
+
+/**
+ * Lists the entries in a symbol table that are of a certain type.
+ * @@param type The symbol type (*_SYMBOL)
+ * @@param list List which will receive the array of identifiers
+ */
+int symtab_list_type(symbol_type type, symbol_ident_list *list)
+{
+    symtab *st = symtab_tos();
+    int i = 0;
+    list->size = symtab_type_count(type);
+    list->idents = (char **)malloc(list->size * sizeof(char *) );
+    if (list->idents != NULL) {
+        symtab_entry *e = binary_min(st->root);
+        while (e != NULL) {
+            if ((type == ANY_SYMBOL) || (e->type == type)) {
+                /* Add to list */
+                list->idents[i] = (char *)malloc(strlen(e->id)+1);
+                if (list->idents[i] != NULL) {
+                    strcpy(list->idents[i], e->id);
+                    i++;
+                }
+            }
+            e = binary_succ(e);
+        }
+    }
+    /* Return the number of entries listed */
+    return i;
+}
+
+/**
+ * Lists all identifiers in the symbol table.
+ */
+int symtab_list(symbol_ident_list *list)
+{
+    return symtab_list_type(ANY_SYMBOL, list);
+}
+
+/**
+ * Lists all identifiers in the symbol table which has ONE OR MORE of the
+ * given flags set.
+ * If flag is zero it is ignored.
+ */
+int symtab_list_flag(int flag, symbol_ident_list *list)
+{
+    // TODO
+    return 0;
+}
+
+/**
+ * Lists all identifiers in the symbol table of a given type which has
+ * ONE OR MORE of the given flags set.
+ * If flag is zero it is ignored.
+ */
+int symtab_list_type_flag(symbol_type type, int flag, symbol_ident_list *list)
+{
+    // TODO
+    return 0;
+}
+
+/**
+ * Finalizes a list of identifiers.
+ */
+void symtab_list_finalize(symbol_ident_list *list)
+{
+    int i;
+    for (i=0; i<list->size; i++) {
+        SAFE_FREE(list->idents[i]);
+    }
+    SAFE_FREE(list->idents);
+}
+@
+
+
+1.6
+log
+@progress
+@
+text
+@d2 1
+a2 1
+ * $Id: symtab.c,v 1.5 2007/08/08 22:40:43 khansen Exp khansen $
+d4 3
+d73 1
+d85 1
+d103 1
+d119 1
+@
+
+
+1.5
+log
+@recursive symbol table lookup
+@
+text
+@d2 1
+a2 1
+ * $Id: symtab.c,v 1.4 2007/07/22 13:33:26 khansen Exp khansen $
+d4 3
+d225 1
+a225 1
+static symtab_entry *lookup(symtab *st, const char *id)
+d228 1
+a228 1
+    while (st != NULL) {
+d232 1
+a232 1
+    }
+d241 9
+a249 1
+    return lookup(symtab_tos(), id);
+d257 1
+a257 1
+    return lookup(symtab_stack[0], id);
+@
+
+
+1.4
+log
+@convert tabs to whitespaces
+@
+text
+@d2 1
+a2 1
+ * $Id: symtab.c,v 1.3 2004/12/14 01:50:05 kenth Exp $
+d4 3
+d225 1
+a225 1
+//  while (st != NULL) {
+d228 2
+a229 2
+//      st = st->parent;
+//  }
+d315 1
+a315 1
+        
+d348 1
+a348 1
+        
+d400 2
+a401 2
+        st->parent = NULL; // symtab_tos();
+        symtab_push(st);    /* NB! */
+@
+
+
+1.3
+log
+@xorcyst 1.3.0
+@
+text
+@d2 1
+a2 1
+ * $Id: symtab.c,v 1.2 2004/12/06 04:52:53 kenth Exp kenth $
+d4 3
+d57 5
+a61 5
+	if (p == NULL) { return NULL; }
+	while (p->left != NULL) {
+		p = p->left;
+	}
+	return p;
+d69 5
+a73 5
+	if (p == NULL) { return NULL; }
+	while (p->right != NULL) {
+		p = p->right;
+	}
+	return p;
+d81 9
+a89 9
+	symtab_entry *e;
+	if (p == NULL) { return NULL; }
+	if (p->right != NULL) { return binary_min(p->right); }
+	e = p->parent;
+	while ((e != NULL) && (p == e->right)) {
+		p = e;
+		e = e->parent;
+	}
+	return e;
+d97 9
+a105 9
+	symtab_entry *e;
+	if (p == NULL) { return NULL; }
+	if (p->left != NULL) { return binary_max(p->left); }
+	e = p->parent;
+	while ((e != NULL) && (p == e->left)) {
+		p = e;
+		e = e->parent;
+	}
+	return e;
+d116 24
+a139 24
+	int r = strcmp(p->id, e->id);
+	if (r < 0) {
+		/* Follow left branch */
+		if (p->left == NULL) {
+			p->left = e;    /* Entry inserted successfully */
+			e->parent = p;
+		}
+		else {
+			binary_insert(p->left, e);   /* Call recursively */
+		}
+	}
+	else if (r > 0) {
+		/* Follow right branch */
+		if (p->right == NULL) {
+			p->right = e;   /* Entry inserted successfully */
+			e->parent = p;
+		}
+		else {
+			binary_insert(p->right, e);  /* Call recursively */
+		}
+	}
+	else {
+		/* Symbol already present */
+	}
+d149 52
+a200 52
+	symtab_entry *y;
+	symtab_entry *x;
+	symtab_entry *p;
+	if ((st == NULL) || (z == NULL)) { return; }
+
+	if ((z->left == NULL) || (z->right == NULL)) {
+		y = z;
+	}
+	else {
+		y = binary_succ(z);
+	}
+
+	if (y->left != NULL) {
+		x = y->left;
+	}
+	else {
+		x = y->right;
+	}
+
+	p = y->parent;
+	if (x != NULL) {
+		x->parent = p;
+	}
+
+	if (p == NULL) {
+		st->root = x;
+	}
+	else if (y == p->left) {
+		p->left = x;
+	}
+	else {
+		p->right = x;
+	}
+
+	if (y != z) {
+		symtab_finalize(z->symtab);
+		SAFE_FREE(z->id);
+		z->id = (char *)malloc(strlen(y->id)+1);
+		if (z->id != NULL) {
+			strcpy(z->id, y->id);
+		}
+		z->type = y->type;
+		z->flags = y->flags;
+		z->ref_count = y->ref_count;
+		z->def = y->def;
+		z->symtab = y->symtab;
+		z->tag = y->tag;
+	}
+
+	if (y != NULL) {
+		symtab_entry_finalize(y);
+	}
+d210 5
+a214 5
+	int r;
+	while ((p != NULL) && ((r = strcmp(p->id, id)) != 0)) {
+		p = (r < 0) ? p->left : p->right;
+	}
+	return p;
+d221 7
+a227 7
+	symtab_entry *e;
+//	while (st != NULL) {
+		e = binary_search(st->root, id);
+		if (e != NULL) { return e; }
+//		st = st->parent;
+//	}
+	return NULL;
+d235 1
+a235 1
+	return lookup(symtab_tos(), id);
+d243 1
+a243 1
+	return lookup(symtab_stack[0], id);
+d255 41
+a295 41
+	symtab *st = symtab_tos();
+	/* See if this id already exists */
+	symtab_entry *e = symtab_lookup(id);
+	if (e != NULL) {
+		/* Duplicate symbol. */
+//		printf("error: symtab_enter(): `%s' already exists\n", id);
+		return NULL;
+	}
+//	printf("symtab_enter(): '%s' @@ %.8X\n", id, st);
+	/* Allocate new entry */
+	e = (symtab_entry *)malloc(sizeof(symtab_entry));
+	if (e != NULL) {
+		/* Set its fields */
+		e->id = (char *)malloc(strlen(id)+1);
+		if (e->id != NULL) {
+			strcpy(e->id, id);
+		}
+		e->type = type;
+		e->flags = flags;
+		e->ref_count = 0;
+		e->def = def;
+		/* Zap! */
+		e->struc.size = NULL;
+		e->struc.fields = NULL;
+		e->field.offset = NULL;
+		e->field.size = NULL;
+		e->left = NULL;
+		e->right = NULL;
+		e->parent = NULL;
+		e->symtab = NULL;
+		/* Put it into symbol table */
+		if (st->root == NULL) {
+			st->root = e;   /* This is the root element */
+		}
+		else {
+		/* Insert entry in binary tree */
+			binary_insert(st->root, e);
+		}
+	}
+	/* Return the newly created symbol table entry */
+	return e;
+d305 48
+a352 48
+	ordered_field_list *list;
+	ordered_field_list *next;
+//	printf("symtab_finalize(): `%s'\n", e->id);
+	/* Special finalizing */
+	switch (e->type) {
+		case LABEL_SYMBOL:
+		break;
+		
+		case CONSTANT_SYMBOL:
+		astnode_finalize(e->def);
+		break;
+
+		case MACRO_SYMBOL:
+		astnode_finalize(e->def);
+		break;
+
+		case STRUC_SYMBOL:
+		case UNION_SYMBOL:
+		case RECORD_SYMBOL:
+		/* Free list of in-order field identifiers */
+		for (list = e->struc.fields; list != NULL; list = next) {
+			next = list->next;
+			free(list);
+		}
+		symtab_finalize(e->symtab);
+		astnode_finalize(e->struc.size);
+		break;
+
+		case ENUM_SYMBOL:
+		symtab_finalize(e->symtab);
+		break;
+
+		case VAR_SYMBOL:
+		astnode_finalize(e->def);
+		astnode_finalize(e->field.offset);
+		astnode_finalize(e->field.size);
+		break;
+
+		case PROC_SYMBOL:
+		break;
+		
+		default:
+		/* Nada */
+		break;
+	}
+	/* Common finalizing */
+	SAFE_FREE(e->id);
+	SAFE_FREE(e);
+d361 4
+a364 4
+	if (e == NULL) return;
+	symtab_entry_finalize_recursive(e->left);
+	symtab_entry_finalize_recursive(e->right);
+	symtab_entry_finalize(e);
+d373 3
+a375 3
+	if (st == NULL) return;
+	symtab_entry_finalize_recursive(st->root);
+	SAFE_FREE(st);
+d385 2
+a386 2
+	if (stack_index == 0) { return NULL; }
+	return symtab_stack[stack_index-1];
+d394 7
+a400 7
+	symtab *st = (symtab *)malloc(sizeof(symtab));
+	if (st != NULL) {
+		st->root = NULL;
+		st->parent = NULL; // symtab_tos();
+		symtab_push(st);	/* NB! */
+	}
+	return st;
+d408 1
+a408 1
+	symtab_stack[stack_index++] = st;
+d416 1
+a416 1
+	return symtab_stack[--stack_index];
+d426 4
+a429 4
+	symtab *st = symtab_tos();
+	symtab_entry * e = symtab_lookup(id);
+	if (e == NULL) { return; }	/* Nothing to remove */
+	binary_delete(st, e);
+d439 10
+a448 10
+	symtab *st = symtab_tos();
+	int count = 0;
+	symtab_entry *e = binary_min(st->root);
+	while (e != NULL) {
+		if ((type == ANY_SYMBOL) || (e->type == type)) {
+			count++;
+		}
+		e = binary_succ(e);
+	}
+	return count;
+d458 11
+a468 11
+	int i;
+	/* Declare array to hold identifiers */
+	symbol_ident_list list;
+	/* List the entry identifiers */
+	int count = symtab_list_type(type, &list);
+	/* Remove the entries one by one */
+	for (i=0; i<count; i++) {
+		symtab_remove(list.idents[i]);
+	}
+	/* Finalize the array of identifiers */
+	symtab_list_finalize(&list);
+d475 4
+a478 4
+	int i;
+	for (i=0; i<n; i++) {
+		printf(" ");
+	}
+d486 5
+a490 5
+	if (e == NULL) { return; }
+	//indent(level*2);
+	symtab_entry_print_recursive(e->left, level+1);
+	printf("%s\n", e->id);
+	symtab_entry_print_recursive(e->right, level+1);
+d498 2
+a499 2
+	symtab *st = symtab_tos();
+	symtab_entry_print_recursive(st->root, 0);
+d509 1
+a509 1
+	return symtab_type_count(ANY_SYMBOL);
+d519 20
+a538 20
+	symtab *st = symtab_tos();
+	int i = 0;
+	list->size = symtab_type_count(type);
+	list->idents = (char **)malloc(list->size * sizeof(char *) );
+	if (list->idents != NULL) {
+		symtab_entry *e = binary_min(st->root);
+		while (e != NULL) {
+			if ((type == ANY_SYMBOL) || (e->type == type)) {
+				/* Add to list */
+				list->idents[i] = (char *)malloc(strlen(e->id)+1);
+				if (list->idents[i] != NULL) {
+					strcpy(list->idents[i], e->id);
+					i++;
+				}
+			}
+			e = binary_succ(e);
+		}
+	}
+	/* Return the number of entries listed */
+	return i;
+d546 1
+a546 1
+	return symtab_list_type(ANY_SYMBOL, list);
+d556 2
+a557 2
+	// TODO
+	return 0;
+d567 2
+a568 2
+	// TODO
+	return 0;
+d576 5
+a580 5
+	int i;
+	for (i=0; i<list->size; i++) {
+		SAFE_FREE(list->idents[i]);
+	}
+	SAFE_FREE(list->idents);
+@
+
+
+1.2
+log
+@xorcyst 1.1.0
+@
+text
+@d2 1
+a2 1
+ * $Id: symtab.c,v 1.1 2004/06/30 07:55:57 kenth Exp $
+d4 3
+d307 3
+d320 1
+a329 2
+		// TODO: other types: finalize(e->def)
+
+d340 3
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 5
+a6 2
+ * $Id$
+ * $Log$
+d39 4
+a42 1
+static symtab *symtab_stack[1];
+d108 2
+a109 1
+static void binary_insert(symtab_entry *p, symtab_entry *e) {
+d178 1
+d188 2
+a191 1
+	/* Should call symtab_entry_finalize(y) here */
+d193 1
+a193 2
+		SAFE_FREE(y->id);
+		SAFE_FREE(y);
+d202 2
+a203 1
+static symtab_entry *binary_search(symtab_entry *p, const char *id) {
+d213 2
+a214 4
+/**
+ * Looks up the specified id.
+ */
+symtab_entry *symtab_lookup(const char *id) {
+d216 1
+a216 3
+	/* Start looking in the closest namespace */
+	symtab *st = symtab_tos();
+	while (st != NULL) {
+d219 2
+a220 2
+		st = st->parent;
+	}
+d225 16
+d247 1
+a247 1
+symtab_entry *symtab_enter(const char *id, symbol_type type, void *def, int flags)
+d253 3
+a255 3
+		printf("'%s' already defined; using previous definition.\n", e->id);
+		/* Return the previous definition of id */
+		return e;
+d257 1
+a257 1
+	//    printf("Entering '%s' @@ %d\n", id, st);
+d270 5
+d278 1
+d299 41
+d374 2
+a375 1
+	return symtab_stack[0];
+d379 1
+a379 1
+ * Creates a symbol table.
+d387 1
+a387 1
+		symtab_push(st);
+d397 1
+a397 1
+	symtab_stack[0] = st;
+d405 1
+a405 1
+	return symtab_stack[0];
+d461 1
+a461 1
+
+d469 1
+a469 1
+
+d476 1
+a476 1
+	indent(level*2);
+d502 1
+a502 1
+ * Lists the entries in a symbol table.
+@

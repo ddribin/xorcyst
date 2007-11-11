@@ -1,0 +1,24 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2007.11.11.22.34.17;	author khansen;	state Exp;
+branches;
+next	;
+
+
+desc
+@progress
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@@

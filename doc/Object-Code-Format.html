@@ -1,0 +1,107 @@
+<html lang="en">
+<head>
+<title>Object Code Format - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Linker-Script-Commands.html#Linker-Script-Commands" title="Linker Script Commands">
+<link rel="next" href="Custom-Character-Maps.html#Custom-Character-Maps" title="Custom Character Maps">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Object-Code-Format"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Custom-Character-Maps.html#Custom-Character-Maps">Custom Character Maps</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Linker-Script-Commands.html#Linker-Script-Commands">Linker Script Commands</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="appendix">Appendix D Object Code Format</h2>
+
+<p>An object code file, or unit, produced by the assembler has the following major sections:
+
+     <ul>
+<li>Magic number and assembler version
+
+     <li>Definitions of exported constants
+
+     <li>Descriptors for imported symbols
+
+     <li>Data segment bytecodes
+
+     <li>Code segment bytecodes
+
+     <li>Definitions of expressions referred to by bytecodes
+
+   </ul>
+
+   <p>Each of these will be described in the sequel.
+
+<h3 class="section">D.1 Magic number and assembler version</h3>
+
+<p>The magic number is a 16-bit constant (<code>0xCAFE</code>, if you must know), used to validate the object file. It is followed by 1 byte which denotes the version of the assembler that was used to build the file; the major version in the upper nibble and minor version in the lower nibble (should be <code>0x10</code>).
+
+<h3 class="section">D.2 Definitions of exported constants</h3>
+
+<p>This is a series of triplets <var>(identifier, type, value)</var>, each describing a constant made publicly available.
+
+<h3 class="section">D.3 Descriptors for imported symbols</h3>
+
+<p>This is a list of descriptors for the symbols used by this unit which are not defined in the unit itself; that is, they are external dependencies.
+
+<h3 class="section">D.4 Data segment bytecodes</h3>
+
+<p>Statements in the original assembler file are encoded in a compact bytecode form. The bytecodes here define the labels and data storages located in the unit's <code>dataseg</code> section(s). The bytecode commands are a subset of the ones described in the next section.
+
+<h3 class="section">D.5 Code segment bytecodes</h3>
+
+<p>These bytecodes are a compact representation of the contents of the unit's <code>codeseg</code> section(s). The commands and their arguments are as follows:
+
+     <dl>
+<dt><code>CMD_END</code><dd>Indicates the end of the segment.
+
+     <br><dt><code>CMD_BIN8 </code><var>count</var> <var>byte1, byte2, ...</var><dd>The next <var>count</var> bytes are binary data which needn't be processed in any special way. <var>count</var> is an 8-bit quantity.
+
+     <br><dt><code>CMD_BIN16 </code><var>count</var> <var>byte1, byte2, ...</var><dd>The next <var>count</var> bytes are binary data which needn't be processed in any special way. <var>count</var> is a 16-bit quantity.
+
+     <br><dt><code>CMD_LABEL </code><var>flag</var> <var>identifier</var><dd>Define a label. If bit 0 of the byte <var>flag</var> is set, this is a public variable and its identifier follows.
+
+     <br><dt><code>CMD_INSTR </code><var>opcode</var> <var>expression-id</var><dd>An instruction whose operand must ultimately be resolved. <var>opcode</var> is the 6502 operation code. <var>expression-id</var> is a 16-bit quantity which refers to the expression which is the (symbolic) operand of the instruction (see the next section).
+
+     <br><dt><code>CMD_DB </code><var>expression-id</var><dd>Define a byte symbolically. <var>expression-id</var> refers to the expression which is the operand.
+
+     <br><dt><code>CMD_DW </code><var>expression-id</var><dd>Define a word symbolically. <var>expression-id</var> refers to the expression which is the operand.
+
+     <br><dt><code>CMD_DD </code><var>expression-id</var><dd>Define a doubleword symbolically. <var>expression-id</var> refers to the expression which is the operand.
+
+     <br><dt><code>CMD_DSI8 </code><var>size</var><dd>Define data storage of <var>size</var> bytes. <var>size</var> is an 8-bit quantity.
+
+     <br><dt><code>CMD_DSI16</code><dd>Define data storage of <var>size</var> bytes. <var>size</var> is a 16-bit quantity.
+
+     <br><dt><code>CMD_DSB </code><var>expression-id</var><dd>Define data storage of bytes, the size of which is determined by the expression referred to by <var>expression-id</var>.
+
+   </dl>
+
+<h3 class="section">D.6 Expressions</h3>
+
+<p>As you may have noticed in the preceding section, many bytecodes have an expression identifier as argument. This is just an index into the list of expressions defined in the final part of the object file. The main advantages of separating the <em>use</em> of an expression (through its identifier) from its <em>definition</em> is ease of parsing and processing (each bytecoded instruction will always occupy 4 bytes), and the ability to share the same expression among several instructions without having to redefine it every time. In most cases, the expression will just be a stand-alone reference to a symbol (local or external). But any expression that the assembler understands can be encoded here.
+
+   </body></html>
+

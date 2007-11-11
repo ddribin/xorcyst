@@ -1,0 +1,631 @@
+<html lang="en">
+<head>
+<title>The Assembler - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Overview.html#Overview" title="Overview">
+<link rel="next" href="The-Linker.html#The-Linker" title="The Linker">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="The-Assembler"></a>Next:&nbsp;<a rel="next" accesskey="n" href="The-Linker.html#The-Linker">The Linker</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Overview.html#Overview">Overview</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="chapter">3 The Assembler</h2>
+
+<p>The XORcyst assembler takes a <dfn>plaintext file</dfn> containing a sequence of 6502 instructions and assembler
+directives (collectively referred to as assembler statements), and produces from this an <dfn>object file</dfn> (usually referred to as a <dfn>unit</dfn>) that can be fed on to the XORcyst linker.
+
+   <p>The reason for not producing a plain 6502 binary is largely due to the aim of producing position-independent code- and data-segments. Specifically, in The XORcyst universe code and data labels are not meant to be assigned addresses until the final process of linking. Relocation on the 6502 isn't as simple as just adding an offset to an instruction operand; the 6502 has a special set of <dfn>zero-page instructions</dfn> which can be used when addresses fall in the range 0..255, and we want to utilize these whenever possible. So until we know whether, say, a data label will fall in the zero-page range or not, we don't know whether instructions which refer to this label will have a 1-byte or 2-byte operand. Using the non-zero-page (absolute) version of an instruction would, in the general case, ensure that the address will fit, but is too wasteful in size and processor cycles. So instead of hardcoded addresses the object code contains symbolic links which are up to the linker to resolve and translate. The object file can be thought of as a more compact, linker-ready version of the original assembler file.
+
+   <p>Another goal is to relieve the programmer of the burden of having to make sure that all variables in a large, complex program have unique addresses, by shifting as much of this responsibility onto the linker as possible. By postponing the mapping of symbol names to addresses until the link phase, variables can be added and moved to any part of the program without risking that it will interfere with the storage allocation of another part of the program.
+
+   <p>The object file format also enables complex resource sharing between units. An assembler expression can be arbitrarily complex, with references to any number of constants, variables or procedures defined in another unit.
+
+<h3 class="section">3.1 Invoking the assembler (<span class="command">xasm</span>)</h3>
+
+<p>The basic usage is
+
+   <p><span class="samp">xasm </span><var>assembler-file</var>
+
+   <p>where <var>assembler-file</var> is the (top-level) file of assembler statements. 
+If all goes well, this will produce a similarly named file of extension <span class="file">.o</span>.
+
+   <p>For example,
+<pre class="example">     xasm driver.asm
+</pre>
+   <p>produces the object file <span class="file">driver.o</span> if no errors are encountered by the assembler.
+
+<h4 class="subsection">3.1.1 Switches</h4>
+
+     <dl>
+<dt><code>--define IDENT[=VALUE]</code><dd>Enters the identifier <code>IDENT</code> into the global symbol table, optionally assigning it the value <code>VALUE</code>. The default value is integer <code>0</code>. To assign a string, escape sequences must be used, i.e. <code>--define my_string=\"Have a nice day\"</code>.
+
+     <br><dt><code>--output FILE</code><dd>Directs output to the file <code>FILE</code> rather than the default file.
+
+     <br><dt><code>--swap-parens</code><dd>Changes the operators used to specify indirection from <code>[ ]</code> to <code>( )</code>. <code>[ ]</code> takes over <code>( )</code>'s role in arithmetic expressions.
+
+     <br><dt><code>--no-warn</code><dd>Suppresses assembler warning messages.
+
+     <br><dt><code>--verbose</code><dd>Instructs the assembler to print some messages about what it is doing.
+
+     <br><dt><code>--debug</code><dd>Retains file and line information, so that the linker can produce more descriptive warning and error messages.
+
+</dl>
+
+   <p>For the full list of switches, run <code>xasm --help</code>.
+
+<h3 class="section">3.2 Assembler statements</h3>
+
+<p>(<strong>Note:</strong> This is not meant to be an introductory guide to 6502 assembly. Only the XORcyst-specific features and quirks will be explained. (For readers new to the 6502 and assemblers, <a href="http://www.google.com/search?q=6502+tutorial">http://www.google.com/search?q=6502+tutorial</a> may be a good starting point.)
+
+   <p>Because the assembler aims to enforce completely position-independent code, it does not allow the <code>.org </code><var>address</var> or <code>.base </code><var>address</var> directives commonly employed by 6502 assemblers. But most other constructs familiar to some people are in place. These and additional features will be explained subsequently. (For a complete list of directives, see <a href="Assembler-Directives.html#Assembler-Directives">Assembler Directives</a>.)
+
+   <p>In the code templates given in this section, any arguments enclosed in italic square brackets <em>[ ... ]</em> are optional.
+
+<h4 class="subsection">3.2.1 A simple assembler example</h4>
+
+<p>Here is a short assembler file which demonstrates basic functionality:
+
+<pre class="example">     .dataseg                   ; begin data segment
+     
+       my_variable .byte          ; define a byte variable
+     
+       my_array .word[16]         ; define an array of 16 words
+     
+     .codeseg                   ; begin code segment
+     
+     .include "config.h"        ; include another source file
+     
+     ; conditional definition of constant my_priority
+     .ifdef HAVE_CONFIG_H
+       my_priority = 10
+     .else
+       my_priority = 0
+     .endif
+     
+     ; declare a macro named store_const with parameters value and addr
+     .macro store_const value, addr
+       lda #value
+       sta addr
+     .endm                      ; end macro
+     
+     ; a subroutine entrypoint is here
+     .proc my_subroutine
+       store_const $10, my_array+10           ; macro invocation
+       store_const my_priority, my_variable   ; macro invocation
+     
+       lda [$0A], y               ; NOTE: [ ] used for indirection, not ( ), unless --swap-parens switch used
+       beq +
+       jsr some_function          ; call external function
+     
+     ; produce a short delay
+     + ldx #60
+       @@delay:
+       dex
+       bne @@delay
+     
+     ; exit with my_priority in accumulator
+       lda #my_priority
+       rts
+     .endp                      ; end of procedure definition
+     
+     .public my_subroutine      ; make my_subroutine visible to other units
+     .extrn some_function:proc  ; some_function is located in another unit
+     
+     .end                       ; end of assembler input
+</pre>
+   <p>While the example itself doesn't do anything useful, it shows how you can.
+
+<h4 class="subsection">3.2.2 Literals</h4>
+
+<p>The following kinds of integer literal are understood by the assembler (examples given in parentheses):
+
+     <ul>
+<li><strong>Decimal:</strong> Non-zero decimal digit followed by zero or more decimal digits (<code>1234</code>)
+
+     <li><strong>Hexadecimal:</strong> <code>0x</code> or <code>$</code> followed by one or more hexadecimal digits (<code>0xFACE, $BEEF</code>); one or more hexadecimal digits followed by <code>h</code> (<code>95Ah</code>). In the latter case numbers beginning with A through F must be preceded by a 0 (otherwise, say, <code>BABEh</code> would be interpreted as an identifier).
+
+     <li><strong>Binary:</strong> String of binary digits either preceded by <code>%</code> or succeeded by <code>b</code> (<code>%010110, 11001100b</code>).
+
+     <li><strong>Octal:</strong> A string of octal digits preceded by a 0 (<code>0755</code>).
+
+   </ul>
+
+   <p>String literals must be enclosed inbetween a pair of <code>"</code> (as in <code>"You are a dweeb"</code>).
+
+   <p>Character literals must be of the form <code>'A'</code>.
+
+<h4 class="subsection">3.2.3 Identifiers</h4>
+
+<p>Identifiers must conform to the regular expression <code>[[:alpha:]_][[:alnum:]_]*</code>. They are case sensitive. 
+Examples of valid identifiers are
+<pre class="example">     no_brainer, schools_out, my_2nd_home, catch22, FunkyMama
+</pre>
+   <p>Examples of invalid identifiers are
+<pre class="example">     3stooges, i-was-here, f00li$h
+</pre>
+   <h4 class="subsection">3.2.4 Expressions</h4>
+
+<p>Operands to assembler statements are expressions. An expression can contain any number of operators, identifiers and literals, and parentheses to group terms. The operators are the familiar arithmetic, binary, shift and relational ones (same as in C, pretty much), plus a few more which are useful when writing code for a machine which has a 16-bit address space but only 8-bit registers:
+
+     <ul>
+<li><code>&lt; </code><var>expression</var> : Get low 8 bits of <var>expression</var>
+
+     <li><code>&gt; </code><var>expression</var> : Get high 8 bits of <var>expression</var>
+
+   </ul>
+
+   <p><code>$</code> can be used in an expression to refer to the address where the current instruction is assembled.
+
+   <p><code>^</code><var>symbol</var> gets the bank number in which <var>symbol</var> is located (determined at link time).
+
+   <p><code>sizeof(</code><var>symbol</var><code>)</code> gets the size of <var>symbol</var> in bytes.
+
+   <p>When both operands to an operator are strings, the semantics are as follows: <var>str1</var> + <var>str2</var> concatenates; the relational operators perform string comparison; and all other operators are invalid. When one operand is a string and the other is an integer, the integer is implicitly converted to a string and concatenated with the string operand to produce a string as result.
+
+<h4 class="subsection">3.2.5 Global labels</h4>
+
+<p>There are two ways to define a global label.
+
+     <ul>
+<li><var>identifier</var><strong>:</strong> at the beginning of a source line defines the label <var>identifier</var> and assigns it the address of the current Program Counter. The colon is mandatory.
+
+     <li>Using the <code>.label</code> directive. It is of the form
+
+     <pre class="example">          .label <var>identifier</var> <em>[= </em><var>address</var><em>]</em> <em>[ : </em><var>type</var><em>]</em>
+     </pre>
+     <p>The absolute address of the label can be specified. If no address is given, the address is the current Program Counter.
+
+     <p>The type of data that the label addresses can also be specified. The valid type specifiers are <code>byte</code>, <code>word</code>, <code>dword</code>, or an identifier, which must be the name of a user-defined type.
+
+   </ul>
+
+<h4 class="subsection">3.2.6 Local labels</h4>
+
+<p>A <dfn>local label</dfn> is only visible in the scope consisting of the statements between two regular labels; or, for macros, only in the body of the macro. Just as a regular label must be unique in the whole program scope, a local label must be unique in the scope in which it is defined. The big advantage here is that the name of the local label can be reused as long as the definitions exist in different local scopes. Local labels are prefixed by <code>@@</code>. Unlike regular labels the local name itself can start with a digit, so for instance <code>@@10</code> is valid. 
+The following example shows how a local label can exist unambigiously in two scopes.
+<pre class="example">     my_first_delay:        ; new local scope begins here
+     ldx #100
+     @@loop:                ; this label exists in my_first_delay's namespace
+     dex
+     bne @@loop
+     rts
+     
+     my_second_delay:        ; new local scope begins here
+     ldy #200
+     @@loop:                 ; this label exists in my_second_delay's namespace
+     dey
+     bne @@loop
+     rts
+</pre>
+   <p>As mentioned, the same local cannot be redefined within a scope. So having, say, two labels called <code>@@loop</code> in the same scope would produce an assembler error. Also, something like the following would produce an error:
+<pre class="example">     adc #10
+     bvs @@handle_overflow
+     barrier:
+     rts
+     @@handle_overflow:
+     ; ...
+</pre>
+   <p>since the branch instruction refers to a local label defined in a different scope (because of the strategic placement of the label <code>barrier</code>).
+
+<h4 class="subsection">3.2.7 Forward/backward branches</h4>
+
+<p>These are &ldquo;anonymous&rdquo; labels that can be redefined as many times as you want. A reference to a forward/backward label is resolved to the closest matching definition in the succeeding assembly statements (forward branches) or preceding assembly statements (backward branches).
+
+   <p>A forward branch consists of one or more (up to eight) consecutive <code>+</code> (plus) symbols. A backward branch consists of one or more (up to eight) consecutive <code>-</code> (minus) symbols. The following examples illustrate use of forward and backward branches.
+
+<pre class="example">        lda $50
+        bmi ++
+        lda $40
+        bne +         ; branches to first forward label
+        ; do something ...
+     +  dex           ; first forward label
+        beq +         ; branches to second forward label
+        ; do something more ...
+     +  sta $40       ; second forward label
+     ++ rts
+     
+</pre>
+   <pre class="example">        lda $60
+        bmi +
+      - lda $2002      ; first backward label
+        bne -          ; branches to first backward label
+      - lda $2002      ; second backward label
+        bne -          ; branches to second backward label
+      + rts
+</pre>
+   <h4 class="subsection">3.2.8 Equates</h4>
+
+<p>There are three ways to define equates.
+     <ul>
+<li>With the <code>=</code> operator. An equate defined this way can be redefined, and it obeys program order.
+
+     <pre class="example">          i = 10
+          ldx #i
+          i = i + 1
+          ldy #i
+     </pre>
+     <p>In the example above, the assembler will substitute <code>10</code> for the first occurence of <code>i</code> and <code>11</code> for the last.
+
+     <li>With the <code>.equ</code> directive. An equate defined this way can only be defined once, and it does not obey program order (that is, it can be defined at a later point from where it is used). An equate of this type can be exported, so that it may be accessed by other units (more on exporting symbols later).
+
+     <pre class="example">          lib_version .equ $10
+          lib_author .equ "The Godfather"
+     </pre>
+     <li>With the <code>.define</code> directive. This directive is semantically equal to <code>.equ</code>, but the value is optional, so you can write CPP-like defines, which is more compact. When no value is given, the symbol is defined as integer 0.
+
+     <pre class="example">          .ifndef MYHEADER_H
+          .define MYHEADER_H
+          ; ...
+          .endif     ; !MYHEADER_H
+     </pre>
+     </ul>
+
+<h4 class="subsection">3.2.9 Conditional assembly</h4>
+
+<p>There are two ways to go about doing conditional assembly. One way is to test if a certain identifier has been defined (that is, equated) using the <code>.ifdef</code> directive, as shown in the next two templates.
+
+<pre class="example">     .ifdef <var>identifier</var>
+     <var>statements</var>
+     .endif
+</pre>
+   <pre class="example">     .ifdef <var>identifier</var>
+     <var>true-statements</var>
+     .else
+     <var>false-statements</var>
+     .endif
+</pre>
+   <p>The other way is to test a full-fledged expression, as shown in the next template.
+
+<pre class="example">     .if <var>expression</var>
+     <var>statements</var>
+     .elif <var>expression-II</var>
+     <var>statements-II</var>
+     .else
+     <var>other-statements</var>
+     .endif
+</pre>
+   <h4 class="subsection">3.2.10 Macros</h4>
+
+<p>Macro definitions are of the form
+
+<pre class="example">     .macro <var>name</var> <em>[</em><var>parameter1</var><em>, </em><var>parameter2</var><em>, ...]</em>
+     <var>statements</var>
+     .endm
+</pre>
+   <p>The parameters must be legal identifiers.
+
+   <p>To invoke (expand) the statements (body) of a macro in your program, issue the assembler statement <var>name</var>, where <var>name</var> is the macro name, followed by a comma-separated list of actual arguments, if the macro has any. The arguments will be substituted for the respective parameter names in the resulting statements.
+
+   <p>You can use local labels in the body of a macro. These labels will be completely local and unique to each expanded macro instance; any local labels defined outside the expanded body are not &ldquo;seen&rdquo;. For example, if you have the following macro definition
+<pre class="example">     .macro my_macro
+     @@loop:
+     dey
+     bne @@loop
+     .endm
+</pre>
+   <p>and then use the macro as shown in the following
+<pre class="example">     @@loop:
+     my_macro
+     my_macro
+     dex
+     bne @@loop
+</pre>
+   <p>each expansion of <code>my_macro</code> will have its own local label <code>@@loop</code>, neither of which interfere with the local label <code>@@loop</code> in the scope where the macro is invoked.
+
+   <p>Macros can be nested to arbitrary depth.
+
+<h4 class="subsection">3.2.11 Anonymous macros</h4>
+
+<p>An anonymous REPT (REPeaT) macro is of the form
+
+<pre class="example">     i = 1
+     <strong>.rept 8</strong>
+     .db i
+     i = i*2
+     <strong>.endm</strong>
+</pre>
+   <p>The statements between <code>rept</code> and <code>endm</code> will be repeated as many times as specified by the argument to <code>rept</code>. In the preceding example, the resulting expansion is equivalent to
+
+<pre class="example">     .db 1, 2, 4, 8, 16, 32, 64, 128
+</pre>
+   <p>Similarly, an anonymous WHILE macro is of the form
+
+<pre class="example">     i = 1
+     <strong>.while i &lt;= 128</strong>
+     .db i
+     i = i*2
+     <strong>.endm</strong>
+</pre>
+   <p>The statements between <code>while</code> and <code>endm</code> will be repeated while the expression given as argument to <code>while</code> is true (non-zero). The code inside the macro body is responsible for updating the variables involved in the expression, so that it will eventually become false. In the preceding example, the resulting expansion is equivalent to
+
+<pre class="example">     .db 1, 2, 4, 8, 16, 32, 64, 128
+</pre>
+   <h4 class="subsection">3.2.12 Including files</h4>
+
+<p>There are two directives for including files.
+
+     <ul>
+<li><code>.incsrc "</code><var>src-file</var><code>"</code> (can also be written <code>.include</code>) interprets the specified file as textual assembler statements.
+
+     <li><code>.incbin "</code><var>bin-file</var><code>"</code> interprets the specified file as a binary buffer.
+
+   </ul>
+
+<h4 class="subsection">3.2.13 Defining native data</h4>
+
+<p>There is a class of directives for defining data storage and values.
+
+     <ul>
+<li><code>.db</code> <em>[</em><var>expression</var><em>, ...]</em> : Defines a string of bytes
+<li><code>.dw</code> <em>[</em><var>expression</var><em>, ...]</em> : Defines a string of words
+<li><code>.dd</code> <em>[</em><var>expression</var><em>, ...]</em> : Defines a string of doublewords
+<li><code>.char</code> <em>[</em><var>expression</var><em>, ...]</em> : Defines a string of characters (explained later)
+<li><code>.dsb</code> <em>[</em><var>expression</var><em>]</em> : Defines a storage of size <var>expression</var> bytes
+<li><code>.dsw</code> <em>[</em><var>expression</var><em>]</em> : Defines a storage of size <var>expression</var> words
+<li><code>.dsd</code> <em>[</em><var>expression</var><em>]</em> : Defines a storage of size <var>expression</var> doublewords
+
+   </ul>
+
+   <p>If no argument is given to the directive, a single item of the respective datatype is allocated, i.e.
+<pre class="example">     .db
+</pre>
+   <p>is equivalent to
+<pre class="example">     .dsb 1
+</pre>
+   <p>Alternatively, data arrays can be allocated using square brackets [ ] like in C:
+
+<pre class="example">     .db[100]
+</pre>
+   <p>which is equivalent to
+<pre class="example">     .dsb 100
+</pre>
+   <p><code>.byte</code>, <code>.word</code> and <code>.dword</code> are more verbose aliases for <code>.db</code>, <code>.dw</code> and <code>.dd</code>, respectively.
+
+   <p>Note that data cannot be initialized in a data segment; only storage for the data can be allocated there.
+
+<h3 class="heading">Defining non-ASCII text data</h3>
+
+<p>Use the <code>.charmap</code> directive to specify a map file describing the mapping from regular ASCII-coded characters to your custom set. See <a href="Custom-Character-Maps.html#Custom-Character-Maps">Custom Character Maps</a> for a description of the format of such a custom character map file. Once the character map has been set, you can define your textual data by using the <code>.char</code>-directive. The information in the character map is applied to the given data by the assembler in order to transform it to a regular <code>.db</code> directive internally. The <code>.charmap</code> directive obeys program order, meaning you can use different character maps at different points in your code. If no character map has been set, <code>.char</code> is equivalent to <code>.db</code>. A simple example of the use of <code>.charmap</code> and <code>.char</code> follows.
+
+<pre class="example">     .charmap "my_map.tbl"          ; set the custom character map to the one defined in my_map.tbl
+     .char "It is a delight for me to be encoded in non-ASCII form", 0
+</pre>
+   <h4 class="subsection">3.2.14 User-defined types</h4>
+
+<p>There are currently four kinds of types that can be defined by the user. For further information on the concepts of their use, consult a C manual.
+
+     <ul>
+<li><strong>Structures</strong>.
+
+     <pre class="example">          .struc my_struc
+          my_1st_field .db
+          my_2nd_field .dw
+          my_3rd_field .type my_other_struc
+          .ends
+     </pre>
+     <p>Using &ldquo;flat&rdquo; addressing, structure members are accessed just like in C.
+
+     <pre class="example">          lda the_player.inventory.sword
+     </pre>
+     <p>For indirect addressing, the scope operator can be used to get the offset of the field.
+
+     <pre class="example">          ldy #(player_struct::inventory + inventory_struct::sword)
+          lda [$00],y     ; load ($00).inventory.sword
+     </pre>
+     <li><strong>Unions</strong>.
+
+     <pre class="example">          .union my_union
+          byte_value .db
+          word_value .dw
+          string_value .char[32]
+          .ends
+     </pre>
+     <p>In a union, the fields are &ldquo;overlaid&rdquo;; that is, they share the same storage, and in general only one of the fields is used (at a time) for a particular instance of the union. A typical usage is to define a structure with two members: An enumerated type that selects one of the union fields, and the actual union containing the fields.
+
+     <p>Anonymous unions can be defined &ldquo;inline&rdquo; as part of a structure, as shown in the following example:
+
+     <pre class="example">          .struc my_struc
+          type	.byte
+          <strong>    .union</strong>
+          <strong>    byte_value .byte[4]</strong>
+          <strong>    word_value .word[2]</strong>
+          <strong>    dword_value .dword</strong>
+          <strong>    .ends</strong>
+          .ends
+     </pre>
+     <p><code>byte_value</code>, <code>word_value</code> and <code>dword_value</code> may then be accessed as top-level members of the structure, but do in fact share storage.
+
+     <li><strong>Records</strong> (bitfields).
+
+     <pre class="example">          .record my_record top_bits:3, middle_bits:2, bottom_bits:3
+     </pre>
+     <p>A record can be maximum 8 bits (1 byte) wide. The bitfields are arranged from high to low; for example, in the record shown above, <code>top_bits</code> would occupy bits 7:5, <code>middle_bits</code> 4:3 and <code>bottom_bits</code> 2:0. Lower bits are padded if necessary to fill the byte.
+
+     <p>The scope operator (<code>::</code>) returns the number of right shifts necessary to bring the LSb of a bitfield into the LSb of the accumulator. The <code>MASK</code> operator returns a bitfield's logical AND mask. For example, using the record definition shown above,
+
+     <pre class="example">          my_record::middle_bits
+     </pre>
+     <p>returns <code>3</code>, and
+     <pre class="example">          MASK my_record::middle_bits
+     </pre>
+     <p>returns <code>%00011000</code>. These are the two basic operations necessary to manipulate bitfields. The following macro shows how a field can be extracted:
+
+     <pre class="example">          ; IN:  ACC = instance of record `rec'
+          ;      rec = record type identifier
+          ;      fld = bitfield identifier
+          ; OUT: ACC = field `fld' of `rec' in lower bits; upper bits zero
+          .macro get_field rec, fld
+              and #(mask rec::fld)       ; ditch other fields
+              .rept rec::fld             ; shift down to bit 0
+              lsr
+              .endm
+          .endm
+     </pre>
+     <li><strong>Enumerations</strong>.
+
+     <pre class="example">          .enum my_enum
+          option_1 = 1
+          option_2
+          option_3
+          option_4
+          .ende
+     </pre>
+     <p>Note that an enumerated value is encoded as a <code>byte</code>.
+
+   </ul>
+
+<h4 class="subsection">3.2.15 Defining data of user-defined types</h4>
+
+<p>The general syntax is
+
+<pre class="example">     .type <var>identifier</var>
+</pre>
+   <p>or just
+
+<pre class="example">     .<var>identifier</var>
+</pre>
+   <p>Where <var>identifier</var> is the name of a user-defined type. This allocates <code>sizeof(</code><var>identifier</var><code>)</code> bytes of storage. Optionally, a value initializer can be specified (only in code segments). The form of this initializer depends on the type of data.
+
+     <ul>
+<li><strong>Structure</strong>. The initializer is of the form
+
+     <pre class="example">          { <var>field1-value</var>, <em>[</em><var>field2-value</var><em>, ..., ]</em> }
+     </pre>
+     <p>The field initializers must match the order of the fields in the type definition. To leave a field blank, leave its initializer empty. For example
+
+     <pre class="example">          my_array .type my_struc { 10, , "hello" }, { , , "cool!" }, { 45 }
+     </pre>
+     <p>defines three instances of type <code>my_struc</code>, with various fields explicitly initialized and others implicitly padded by the assembler.
+
+     <p>Since structures can contain sub-structures, so can a structure initializer. To initialize a sub-structure, simply start a new pair of { } and specify field values, recursively.
+
+     <li><strong>Union</strong>. The initializer is of the same form as a structure initializer, except only one of the fields in the union can be initialized.
+
+     <li><strong>Record</strong>. The initializer is of the same form as a structure initializer, but cannot contain sub-structure initializers (each bitfield is a &ldquo;simple&rdquo; value).
+
+     <li><strong>Enum</strong>. The initializer is simply an identifier that must be one of the identifiers appearing in the type definition.
+
+   </ul>
+
+   <p>To define an array of (uninitialized) values of a user-defined type, use the C-style method, for example:
+
+<pre class="example">     my_array .my_struc<strong>[100]</strong>        ; array of 100 values of type my_struc
+</pre>
+   <h4 class="subsection">3.2.16 Indexing symbols statically</h4>
+
+<p>A symbol can be indexed statically using the C-style syntax
+
+<pre class="example">     <var>identifier</var><strong>[</strong><var>expression</var><strong>]</strong>
+</pre>
+   <p>For byte arrays, this is simply equivalent to the expression
+
+<pre class="example">     <var>identifier</var> + <var>expression</var>
+</pre>
+   <p>In general, it is equivalent to
+
+<pre class="example">     <var>identifier</var> + <var>expression</var> * sizeof <var>identifier-type</var>
+</pre>
+   <p>where <var>identifier-type</var> is the type of <var>identifier</var>.
+
+   <p>An example:
+
+<pre class="example">     my_array .my_struc[10]        ; array of 10 values of type my_struc
+     lda #1
+     i = 0
+     .while i &lt; 10
+     sta my_array[i].my_field               ; initialize my_field to 1
+     i = i + 1
+     .endm
+     
+</pre>
+   <h4 class="subsection">3.2.17 Procedures</h4>
+
+<p>A procedure is of the form
+
+<pre class="example">     .proc <var>name</var>
+     <var>statements</var>
+     .endp
+</pre>
+   <p>Currently, there is no internal differentiation between a procedure and a label, but <code>.proc</code> is more specific than a label, so it improves the semantics.
+
+<h4 class="subsection">3.2.18 Importing and exporting symbols</h4>
+
+<p>To specify that a symbol used in your code is defined in a different unit, use the <code>.extrn</code> directive. This way you can call procedures or access constants exported by that unit. When you use the linker to create a final executable you also have to link in the unit(s) where the external symbols you use are defined.
+
+   <p>The <code>extrn</code> directive takes as arguments a comma-separated list of identifiers, followed by a colon (:), followed by a <var>symbol type</var>. The symbol type must be one of <code>BYTE</code>, <code>WORD</code>, <code>DWORD</code>, <code>LABEL</code>, <code>PROC</code>, or the name of a user-defined type, such as a structure or union.
+
+   <p>To export a symbol defined in your own code, thereby making it accessible to other units, use the <code>.public</code> directive. The next example shows how both directives may be used.
+
+<pre class="example">     .extrn proc1, proc2, proc3 : proc  ; these are defined somewhere else
+     my_proc:
+     jsr proc1
+     jsr proc2
+     jsr proc3
+     rts
+     .public my_proc                ; make my_proc accessible to the outside world
+     
+</pre>
+   <p>You can also specify the <code>.public</code> keyword directly when defining a variable, so you don't need a separate directive to make it public:
+
+<pre class="example">     .public my_public_variable .word
+</pre>
+   <h4 class="subsection">3.2.19 Controlling data mapping</h4>
+
+<p>By default, the linker takes the members of data segments and maps them to the best free RAM locations it finds. However, there are times when you want to specify some constraints on the mapping. For example, you want the variable to always be mapped to the 6502's zero page. Or, you have a large array and want it to be aligned to a proper boundary so you don't risk suffering page cross penalties on indexed accesses.
+
+   <p>The XORcyst assembler provides the following ways to communicate mapping constraints to the linker.
+
+     <ul>
+<li>To specify that a data segment variable should always be mapped to zero page, precede its definition by the <code>.zeropage</code> keyword:
+
+     <pre class="example">          .zeropage my_zeropage_variable .byte
+     </pre>
+     <p>Alternatively, specify the <code>.zeropage</code> keyword as argument to the <code>.dataseg</code> directive:
+
+     <pre class="example">          .dataseg .zeropage       ; turn on .zeropage constraint
+          my_1st_var .byte         ; .zeropage constraint will be set automatically
+          my_2nd_var .word         ; ditto
+          .dataseg                 ; turn off .zeropage constraint
+     </pre>
+     <li>To specify that one or more data variables should be aligned, use the <code>.align</code> directive. It takes a list of identifiers followed by the alignment boundary, for example
+
+     <pre class="example">          .dataseg
+          my_array .byte[64]
+          .align my_array 64       ; my_array should be aligned on a 64-byte boundary
+     </pre>
+     </ul>
+
+<h4 class="subsection">3.2.20 An important note on indirect addressing</h4>
+
+<p>If you're familiar with 6502 assembly, you know that parentheses ( ) are normally used to indicate indirect addressing modes. Unfortunately, this clashes with the use of parentheses in operand expressions. I couldn't get Bison (the parser generator) to deal with this context dependency. As I'm used to coding Intel X86 assembly, which uses brackets for indirection, I opted for [ ] as the default indirection operators. This could be a source of bugs, since if you type it the &ldquo;old&rdquo; way, <code>LDA ($FA),Y</code> is equivalent to <code>LDA $FA,Y</code> &ndash; which probably isn't what you wanted. However, by specifying the switch
+
+<pre class="example">     --swap-parens
+</pre>
+   <p>upon invoking the assembler, the behaviour of [ ] and ( ) will be reversed. That is, the &ldquo;normal&rdquo; way of specifying indirection, i.e. <code>LDA ($00),Y</code> is used, while expression operands are grouped with [ ], i.e. <code>A/[B+C]</code>.
+
+   </body></html>
+

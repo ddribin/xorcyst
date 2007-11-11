@@ -1,0 +1,1612 @@
+head	1.22;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.22
+date	2007.11.11.22.35.22;	author khansen;	state Exp;
+branches;
+next	1.21;
+
+1.21
+date	2007.08.19.11.18.56;	author khansen;	state Exp;
+branches;
+next	1.20;
+
+1.20
+date	2007.08.12.18.58.12;	author khansen;	state Exp;
+branches;
+next	1.19;
+
+1.19
+date	2007.08.11.01.24.36;	author khansen;	state Exp;
+branches;
+next	1.18;
+
+1.18
+date	2007.08.10.20.21.02;	author khansen;	state Exp;
+branches;
+next	1.17;
+
+1.17
+date	2007.08.07.22.42.53;	author khansen;	state Exp;
+branches;
+next	1.16;
+
+1.16
+date	2007.07.22.14.49.40;	author khansen;	state Exp;
+branches;
+next	1.15;
+
+1.15
+date	2007.07.22.13.33.26;	author khansen;	state Exp;
+branches;
+next	1.14;
+
+1.14
+date	2005.01.09.11.19.23;	author kenth;	state Exp;
+branches;
+next	1.13;
+
+1.13
+date	2005.01.05.09.37.32;	author kenth;	state Exp;
+branches;
+next	1.12;
+
+1.12
+date	2005.01.05.01.52.13;	author kenth;	state Exp;
+branches;
+next	1.11;
+
+1.11
+date	2005.01.04.21.35.10;	author kenth;	state Exp;
+branches;
+next	1.10;
+
+1.10
+date	2004.12.29.21.43.50;	author kenth;	state Exp;
+branches;
+next	1.9;
+
+1.9
+date	2004.12.25.02.23.19;	author kenth;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	2004.12.19.19.58.46;	author kenth;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2004.12.18.17.01.21;	author kenth;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	2004.12.16.13.20.35;	author kenth;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	2004.12.14.01.50.12;	author kenth;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2004.12.11.02.06.27;	author kenth;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2004.12.06.04.53.02;	author kenth;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2004.06.30.23.37.54;	author kenth;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2004.06.30.07.56.02;	author kenth;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.22
+log
+@compile on mac
+@
+text
+@/*
+ * $Id: xasm.c,v 1.21 2007/08/19 11:18:56 khansen Exp khansen $
+ * $Log: xasm.c,v $
+ * Revision 1.21  2007/08/19 11:18:56  khansen
+ * --case-insensitive option
+ *
+ * Revision 1.20  2007/08/12 18:58:12  khansen
+ * ability to generate pure 6502 binary (--pure-binary switch)
+ *
+ * Revision 1.19  2007/08/11 01:24:36  khansen
+ * includepaths support (-I option)
+ *
+ * Revision 1.18  2007/08/10 20:21:02  khansen
+ * *** empty log message ***
+ *
+ * Revision 1.17  2007/08/07 22:42:53  khansen
+ * version
+ *
+ * Revision 1.16  2007/07/22 14:49:40  khansen
+ * don't crash in change_extension()
+ *
+ * Revision 1.15  2007/07/22 13:33:26  khansen
+ * convert tabs to whitespaces
+ *
+ * Revision 1.14  2005/01/09 11:19:23  kenth
+ * xorcyst 1.4.5
+ *
+ * Revision 1.13  2005/01/05 09:37:32  kenth
+ * xorcyst 1.4.4
+ *
+ * Revision 1.12  2005/01/05 01:52:13  kenth
+ * xorcyst 1.4.3
+ *
+ * Revision 1.11  2005/01/04 21:35:10  kenth
+ * return error code from main() when error count > 0
+ *
+ * Revision 1.10  2004/12/29 21:43:50  kenth
+ * xorcyst 1.4.2
+ *
+ * Revision 1.9  2004/12/25 02:23:19  kenth
+ * xorcyst 1.4.1
+ *
+ * Revision 1.8  2004/12/19 19:58:46  kenth
+ * xorcyst 1.4.0
+ *
+ * Revision 1.7  2004/12/18 17:01:21  kenth
+ * --debug switch, multiple verbose levels
+ *
+ * Revision 1.6  2004/12/16 13:20:35  kenth
+ * xorcyst 1.3.5
+ *
+ * Revision 1.5  2004/12/14 01:50:12  kenth
+ * xorcyst 1.3.0
+ *
+ * Revision 1.4  2004/12/11 02:06:27  kenth
+ * xorcyst 1.2.0
+ *
+ * Revision 1.3  2004/12/06 04:53:02  kenth
+ * xorcyst 1.1.0
+ *
+ * Revision 1.2  2004/06/30 23:37:54  kenth
+ * replaced argp with something else
+ *
+ * Revision 1.1  2004/06/30 07:56:02  kenth
+ * Initial revision
+ *
+ */
+
+/**
+ *    (C) 2004 Kent Hansen
+ *
+ *    The XORcyst is free software; you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation; either version 2 of the License, or
+ *    (at your option) any later version.
+ *
+ *    The XORcyst is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with The XORcyst; if not, write to the Free Software
+ *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+/**
+ * The main program.
+ */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "getopt.h"
+#include "astnode.h"
+#include "astproc.h"
+#include "symtab.h"
+#include "codegen.h"
+#include "xasm.h"
+
+/*---------------------------------------------------------------------------*/
+
+/* Parser stuff we need. */
+int yyparse(void);
+extern int yydebug;
+extern int yynerrs;
+
+/* Scanner stuff we need. */
+int yybegin(const char *, int, int);
+
+/* Other. */
+astnode *root_node;
+static symtab *symbol_table;
+
+/*---------------------------------------------------------------------------*/
+/* Argument parsing stuff. */
+
+static char program_version[] = "xasm 1.5.0";
+
+/* Argument variables set by arg parser. */
+xasm_arguments xasm_args;
+
+/* Long options for getopt_long(). */
+static struct option long_options[] = {
+  { "define",   required_argument, 0, 'D' },
+  { "include-path", required_argument, 0, 'I' },
+  { "output",   required_argument, 0, 'o' },
+  { "quiet",    no_argument, 0, 'q' },
+  { "silent",   no_argument, 0, 's' },
+  { "verbose",  no_argument, 0, 'v' },
+  { "debug",    no_argument, 0, 'g' },
+  { "help", no_argument, 0, 0 },
+  { "usage",    no_argument, 0, 0 },
+  { "version",  no_argument, 0, 'V' },
+  { "swap-parens", no_argument, 0, 0 },
+  { "pure-binary", no_argument, 0, 0 },
+  { "case-insensitive", no_argument, 0, 0 },
+  { "no-warn",  no_argument, 0, 0 },
+  { 0 }
+};
+
+/* Prints usage message and exits. */
+static void usage()
+{
+    printf("\
+Usage: xasm [-gqsvV] [-D IDENT[=VALUE]] [--define=IDENT]\n\
+            [-o FILE] [--output=FILE] [--pure-binary]\n\
+            [--include-path=DIR] [-I DIR] [--swap-parens]\n\
+            [--case-insensitive]\n\
+            [--no-warn] [--verbose] [--quiet] [--silent] \n\
+            [--debug] [--help] [--usage] [--version]\n\
+            FILE\n\
+");
+    exit(0);
+}
+
+/* Prints help message and exits. */
+static void help()
+{
+    printf("\
+Usage: xasm [OPTION...] FILE\n\
+The XORcyst Assembler -- it kicks the 6502's ass\n\
+\n\
+-D, --define=IDENT[=VALUE] Define IDENT\n\
+-I, --include-path=DIR     Specify a search path for include files\n\
+-o, --output=FILE          Output to FILE instead of standard output\n\
+    --pure-binary          Output pure 6502 binary\n\
+    --swap-parens          Use ( ) instead of [ ] for indirection\n\
+    --case-insensitive     Case-insensitive identifiers\n\
+    --no-warn              Suppress warnings\n\
+-q, -s, --quiet, --silent  Don't produce any output\n\
+-v, --verbose              Produce verbose output\n\
+-g, --debug                Retain file locations\n\
+    --help                 Give this help list\n\
+    --usage                Give a short usage message\n\
+-V, --version              Print program version\n\
+\n\
+Mandatory or optional arguments to long options are also mandatory or optional\n\
+for any corresponding short options.\n\
+\n\
+Report bugs to <dev@@null>.\n\
+");
+    exit(0);
+}
+
+/* Prints version and exits. */
+static void version()
+{
+    printf("%s\n", program_version);
+    exit(0);
+}
+
+/**
+ * Checks if a character is alpha (a-z, A-Z).
+ */
+static int __isalpha(char c)
+{
+    return ( ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) );
+}
+
+/**
+ * Checks if a character is alpha (a-z, A-Z) or numeric (0-9).
+ */
+static int __isalnum(char c)
+{
+    return ( __isalpha(c) || ((c >= '0') && (c <= '9')) );
+}
+
+/**
+ * Checks that an identifier matches the regexp [a-zA-Z_][a-zA-Z0-9_]*
+ * @@param id Identifier to validate
+ * @@return 1 if OK, 0 otherwise
+ */
+static int validate_ident(char *id)
+{
+    int i;
+    char c;
+    c = id[0];
+    if ( !__isalpha(c) && (c != '_') ) {
+        return 0;
+    }
+    for (i=1; i<strlen(id); i++) {
+        c = id[i];
+        if ( !__isalnum(c) && (c != '_') ) {
+            return 0;
+        }
+    }
+    return 1;   /* OK */
+}
+
+/* Parses program arguments. */
+static void
+parse_arguments (int argc, char **argv)
+{
+    int key;
+    char *id;
+    char *str;
+    astnode *val;
+    symtab_entry *e;
+    /* Dummy location for --define */
+    static location loc = { 0, 0, 0, 0, NULL };
+    /* getopt_long stores the option index here. */
+    int index = 0;
+
+    /* Set default values. */
+    xasm_args.debug = 0;
+    xasm_args.silent = 0;
+    xasm_args.verbose = 0;
+    xasm_args.swap_parens = 0;
+    xasm_args.pure_binary = 0;
+    xasm_args.case_insensitive = 0;
+    xasm_args.input_file = NULL;
+    xasm_args.output_file = NULL;
+    xasm_args.include_paths = NULL;
+    xasm_args.include_path_count = 0;
+
+    /* Parse options. */
+    while ((key = getopt_long(argc, argv, "D:I:o:qsvV", long_options, &index)) != -1) {
+        switch (key) {
+            case 'g':
+            xasm_args.debug = 1;
+            break;
+
+            case 'q': case 's':
+            xasm_args.silent = 1;
+            break;
+
+            case 'v':
+            xasm_args.verbose++;
+            break;
+
+            case 'o':
+            xasm_args.output_file = optarg;
+            break;
+
+            case 'D':
+            if (strchr(optarg, '=') != NULL) {
+                /* IDENT=VALUE */
+                id = strtok(optarg, "=");
+                str = strtok(NULL, "\0");
+                /* Parse the value */
+                if (str[0] == '\"') {
+                    /* Assume string */
+                    str = strtok(&str[1], "\"");
+                    val = astnode_create_string(str, loc);
+                } else {
+                    /* Assume integer */
+                    val = astnode_create_integer(strtol(str, NULL, 0), loc);
+                }
+            } else {
+                id = optarg;
+                val = astnode_create_integer(0, loc);
+            }
+            if (validate_ident(id)) {
+                e = symtab_lookup(id);
+                if (e == NULL) {
+                    symtab_enter(id, CONSTANT_SYMBOL, val, 0);
+                } else {
+                    /* Error, redefinition */
+                    fprintf(stderr, "--ident: `%s' already defined\n", id);
+                }
+            } else {
+                /* Error, bad identifier */
+                fprintf(stderr, "--ident: `%s' is not a valid identifier\n", id);
+            }
+            break;
+
+            case 'I': {
+                char *p;
+                int count = xasm_args.include_path_count + 1;
+                xasm_args.include_paths = (char **)realloc(
+                    xasm_args.include_paths, sizeof(const char *) * count);
+                p = (char *)malloc(strlen(optarg) + 1);
+                strcpy(p, optarg);
+                xasm_args.include_paths[count-1] = p;
+                xasm_args.include_path_count = count;
+            }
+            break;
+
+            case 0:
+            /* Use index to differentiate between options */
+            if (strcmp(long_options[index].name, "usage") == 0) {
+                usage();
+            } else if (strcmp(long_options[index].name, "help") == 0) {
+                help();
+            } else if (strcmp(long_options[index].name, "swap-parens") == 0) {
+                xasm_args.swap_parens = 1;
+            } else if (strcmp(long_options[index].name, "pure-binary") == 0) {
+                xasm_args.pure_binary = 1;
+            } else if (strcmp(long_options[index].name, "case-insensitive") == 0) {
+                xasm_args.case_insensitive = 1;
+            } else if (strcmp(long_options[index].name, "no-warn") == 0) {
+                xasm_args.no_warn = 1;
+            }
+            break;
+
+            case 'V':
+            version();
+            break;
+
+            case '?':
+            /* Error message has been printed by getopt_long */
+            exit(1);
+            break;
+
+            default:
+            /* Forgot to handle a short option, most likely */
+            exit(1);
+            break;
+        }
+    }
+
+    /* Must be one additional argument, which is the input file. */
+    if (argc-1 != optind) {
+        printf("Usage: xasm [OPTION...] FILE\nTry `xasm --help' or `xasm --usage' for more information.\n");
+        exit(1);
+    }
+    else {
+        xasm_args.input_file = argv[optind];
+    }
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Changes the extension of a filename.
+ * @@param infile Filename whose extension to change
+ * @@param ext New extension
+ * @@param outfile Destination filename
+ */
+static void change_extension(const char *infile, const char *ext, char *outfile)
+{
+    char *p;
+    /* Find the last dot. */
+    p = strrchr(infile, '.');
+    if (p == NULL) {
+        /* There is no dot, simply concatenate extension. */
+        sprintf(outfile, "%s.%s", infile, ext);
+    }
+    else {
+        /* Copy the name up to and including the last dot */
+        strncpy(outfile, infile, p - infile + 1);
+        outfile[p - infile + 1] = '\0';
+        /* Then concatenate the extension. */
+        strcat(outfile, ext);
+    }
+}
+
+/*---------------------------------------------------------------------------*/
+
+/**
+ * Prints message only if --verbose option was given to assembler.
+ */
+static void verbose(const char *s)
+{
+    if (xasm_args.verbose) {
+        printf("%s\n", s);
+    }
+}
+
+/**
+ * Gets total number of errors (parsing + semantics).
+ */
+static int total_errors()
+{
+    return yynerrs + astproc_err_count();
+}
+
+/**
+ * Program entrypoint.
+ */
+int main(int argc, char *argv[]) {
+    char *default_outfile = 0;
+
+    /* Create global symbol table (auto-pushed on stack) */
+    symbol_table = symtab_create();
+
+    /* Parse our arguments. */
+    parse_arguments (argc, argv);
+
+    /* Open input for scanning */
+    if (!yybegin(xasm_args.input_file,
+                 xasm_args.swap_parens,
+                 xasm_args.case_insensitive)) {
+        printf("error: could not open `%s' for reading\n", xasm_args.input_file);
+        symtab_finalize(symbol_table);
+        return(1);
+    }
+
+ /* Parse it into a syntax tree */
+    //yydebug = -1;
+    verbose("Parsing input...");
+    yyparse();
+
+    if (root_node == NULL) {
+        symtab_finalize(symbol_table);
+        return(0);
+    }
+
+    /* First pass does a lot of stuff. */
+    verbose("First pass...");
+    astproc_first_pass(root_node);
+
+    /* Second pass does more stuff. */
+    verbose("Second pass...");
+    astproc_second_pass(root_node);
+
+    /* Third pass is fun. */
+    verbose("Third pass...");
+    astproc_third_pass(root_node);
+
+    if (xasm_args.pure_binary) {
+        /* Do another pass to prepare for writing pure 6502 */
+        verbose("Fourth pass...");
+        astproc_fourth_pass(root_node);
+    }
+
+    /* Print the final AST (debugging) */
+//    astnode_print(root_node, 0);
+
+    /* If no errors, proceed with code generation. */
+    if (total_errors() == 0) {
+        if (xasm_args.output_file == NULL) {
+            /* Create default name of output */
+            const char *default_ext = "o";
+            int default_outfile_len = strlen(xasm_args.input_file)
+                                    + /*dot*/1 + strlen(default_ext) + 1;
+            default_outfile = (char *)malloc(default_outfile_len);
+            change_extension(xasm_args.input_file, default_ext, default_outfile);
+            xasm_args.output_file = default_outfile;
+        }
+        /* Write it! */
+        verbose("Generating final output...");
+        if (xasm_args.pure_binary) {
+            astproc_fifth_pass(root_node);
+        } else {
+            codegen_write(root_node, xasm_args.output_file);
+        }
+    }
+
+    /* Cleanup */
+    verbose("cleaning up...");
+    symtab_pop();
+    symtab_finalize(symbol_table);
+    astnode_finalize(root_node);
+
+    if (default_outfile)
+        free(default_outfile);
+
+    if (xasm_args.include_path_count > 0) {
+        int i;
+        for (i = 0; i < xasm_args.include_path_count; ++i)
+            free(xasm_args.include_paths[i]);
+        free(xasm_args.include_paths);
+    }
+
+    return (total_errors() == 0) ? 0 : 1;
+}
+@
+
+
+1.21
+log
+@--case-insensitive option
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.20 2007/08/12 18:58:12 khansen Exp khansen $
+d4 3
+d196 1
+a196 1
+static int isalpha(char c)
+d204 1
+a204 1
+static int isalnum(char c)
+d206 1
+a206 1
+    return ( isalpha(c) || ((c >= '0') && (c <= '9')) );
+d219 1
+a219 1
+    if ( !isalpha(c) && (c != '_') ) {
+d224 1
+a224 1
+        if ( !isalnum(c) && (c != '_') ) {
+@
+
+
+1.20
+log
+@ability to generate pure 6502 binary (--pure-binary switch)
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.19 2007/08/11 01:24:36 khansen Exp khansen $
+d4 3
+d106 1
+a106 1
+int yybegin(const char *, int);
+d134 1
+d146 1
+d162 1
+a162 1
+-I DIR                     Specify a search path for include files\n\
+d166 1
+d248 1
+d327 2
+d419 3
+a421 1
+    if (!yybegin(xasm_args.input_file, xasm_args.swap_parens) ) {
+@
+
+
+1.19
+log
+@includepaths support (-I option)
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.18 2007/08/10 20:21:02 khansen Exp khansen $
+d4 3
+d112 1
+a112 1
+static char program_version[] = "xasm 1.4.6";
+d130 1
+d139 2
+a140 2
+Usage: xasm [-gqsvV] [-D IDENT] [--define=IDENT]\n\
+            [-o FILE] [--output=FILE]\n\
+d159 1
+d241 1
+d276 1
+a276 2
+                }
+                else {
+d280 1
+a280 2
+            }
+            else {
+d288 1
+a288 2
+                }
+                else {
+d292 1
+a292 2
+            }
+            else {
+d314 1
+a314 2
+            }
+            else if (strcmp(long_options[index].name, "help") == 0) {
+d316 1
+a316 2
+            }
+            else if (strcmp(long_options[index].name, "swap-parens") == 0) {
+d318 3
+a320 2
+            }
+            else if (strcmp(long_options[index].name, "no-warn") == 0) {
+d438 6
+d445 1
+a445 1
+//  astnode_print(root_node, 0);
+d460 5
+a464 1
+        codegen_write(root_node, xasm_args.output_file);
+@
+
+
+1.18
+log
+@*** empty log message ***
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.17 2007/08/07 22:42:53 khansen Exp khansen $
+d4 3
+d238 2
+d296 10
+a305 1
+            case 'I':
+d461 1
+d465 7
+@
+
+
+1.17
+log
+@version
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.16 2007/07/22 14:49:40 khansen Exp khansen $
+d4 3
+d97 1
+a97 1
+int yybegin(char *, int);
+d114 1
+d132 4
+a135 2
+Usage: xasm [-gqsvV] [-D IDENT] [-o FILE] [--define=IDENT] [--output=FILE]\n\
+            [--swap-parens] [--no-warn] [--verbose] [--quiet] [--silent] \n\
+d150 1
+d237 1
+a237 1
+    while ((key = getopt_long(argc, argv, "D:o:qsvV", long_options, &index)) != -1) {
+d291 3
+@
+
+
+1.16
+log
+@don't crash in change_extension()
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.15 2007/07/22 13:33:26 khansen Exp khansen $
+d4 3
+d103 1
+a103 1
+static char program_version[] = "xasm 1.4.5";
+@
+
+
+1.15
+log
+@convert tabs to whitespaces
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.14 2005/01/09 11:19:23 kenth Exp $
+d4 3
+d232 1
+a232 1
+            
+d326 1
+a326 1
+ * Changes the extension of a file.
+d331 1
+a331 1
+static void change_extension(char *infile, char *ext, char *outfile)
+d338 1
+a338 1
+        sprintf("%s.%s", infile, ext);
+d373 1
+a373 1
+    char default_outfile[256];
+d417 5
+a421 1
+            change_extension(xasm_args.input_file, "o", default_outfile);
+d434 3
+a436 1
+    
+@
+
+
+1.14
+log
+@xorcyst 1.4.5
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.13 2005/01/05 09:37:32 kenth Exp kenth $
+d4 3
+d104 9
+a112 9
+  { "define",	required_argument, 0, 'D' },
+  { "output",	required_argument, 0, 'o' },
+  { "quiet", 	no_argument, 0, 'q' },
+  { "silent",	no_argument, 0, 's' },
+  { "verbose", 	no_argument, 0, 'v' },
+  { "debug",	no_argument, 0, 'g' },
+  { "help",	no_argument, 0, 0 },
+  { "usage",	no_argument, 0, 0 },
+  { "version",	no_argument, 0, 'V' },
+d114 1
+a114 1
+  { "no-warn",	no_argument, 0, 0 },
+d121 1
+a121 1
+	printf("\
+d127 1
+a127 1
+	exit(0);
+d133 1
+a133 1
+	printf("\
+d153 1
+a153 1
+	exit(0);
+d159 2
+a160 2
+	printf("%s\n", program_version);
+	exit(0);
+d168 1
+a168 1
+	return ( ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) );
+d176 1
+a176 1
+	return ( isalpha(c) || ((c >= '0') && (c <= '9')) );
+d186 13
+a198 13
+	int i;
+	char c;
+	c = id[0];
+	if ( !isalpha(c) && (c != '_') ) {
+		return 0;
+	}
+	for (i=1; i<strlen(id); i++) {
+		c = id[i];
+		if ( !isalnum(c) && (c != '_') ) {
+			return 0;
+		}
+	}
+	return 1;	/* OK */
+d205 113
+a317 113
+	int key;
+	char *id;
+	char *str;
+	astnode *val;
+	symtab_entry *e;
+	/* Dummy location for --define */
+	static location loc = { 0, 0, 0, 0, NULL };
+	/* getopt_long stores the option index here. */
+	int index = 0;
+
+	/* Set default values. */
+	xasm_args.debug = 0;
+	xasm_args.silent = 0;
+	xasm_args.verbose = 0;
+	xasm_args.swap_parens = 0;
+	xasm_args.input_file = NULL;
+	xasm_args.output_file = NULL;
+
+	/* Parse options. */
+	while ((key = getopt_long(argc, argv, "D:o:qsvV", long_options, &index)) != -1) {
+		switch (key) {
+			case 'g':
+			xasm_args.debug = 1;
+			break;
+			
+			case 'q': case 's':
+			xasm_args.silent = 1;
+			break;
+
+			case 'v':
+			xasm_args.verbose++;
+			break;
+
+			case 'o':
+			xasm_args.output_file = optarg;
+			break;
+
+			case 'D':
+			if (strchr(optarg, '=') != NULL) {
+				/* IDENT=VALUE */
+				id = strtok(optarg, "=");
+				str = strtok(NULL, "\0");
+				/* Parse the value */
+				if (str[0] == '\"') {
+					/* Assume string */
+					str = strtok(&str[1], "\"");
+					val = astnode_create_string(str, loc);
+				}
+				else {
+					/* Assume integer */
+					val = astnode_create_integer(strtol(str, NULL, 0), loc);
+				}
+			}
+			else {
+				id = optarg;
+				val = astnode_create_integer(0, loc);
+			}
+			if (validate_ident(id)) {
+				e = symtab_lookup(id);
+				if (e == NULL) {
+					symtab_enter(id, CONSTANT_SYMBOL, val, 0);
+				}
+				else {
+					/* Error, redefinition */
+					fprintf(stderr, "--ident: `%s' already defined\n", id);
+				}
+			}
+			else {
+				/* Error, bad identifier */
+				fprintf(stderr, "--ident: `%s' is not a valid identifier\n", id);
+			}
+			break;
+
+			case 0:
+			/* Use index to differentiate between options */
+			if (strcmp(long_options[index].name, "usage") == 0) {
+				usage();
+			}
+			else if (strcmp(long_options[index].name, "help") == 0) {
+				help();
+			}
+			else if (strcmp(long_options[index].name, "swap-parens") == 0) {
+				xasm_args.swap_parens = 1;
+			}
+			else if (strcmp(long_options[index].name, "no-warn") == 0) {
+				xasm_args.no_warn = 1;
+			}
+			break;
+
+			case 'V':
+			version();
+			break;
+
+			case '?':
+			/* Error message has been printed by getopt_long */
+			exit(1);
+			break;
+
+			default:
+			/* Forgot to handle a short option, most likely */
+			exit(1);
+			break;
+		}
+	}
+
+	/* Must be one additional argument, which is the input file. */
+	if (argc-1 != optind) {
+		printf("Usage: xasm [OPTION...] FILE\nTry `xasm --help' or `xasm --usage' for more information.\n");
+		exit(1);
+	}
+	else {
+		xasm_args.input_file = argv[optind];
+	}
+d330 14
+a343 14
+	char *p;
+	/* Find the last dot. */
+	p = strrchr(infile, '.');
+	if (p == NULL) {
+		/* There is no dot, simply concatenate extension. */
+		sprintf("%s.%s", infile, ext);
+	}
+	else {
+		/* Copy the name up to and including the last dot */
+		strncpy(outfile, infile, p - infile + 1);
+		outfile[p - infile + 1] = '\0';
+		/* Then concatenate the extension. */
+		strcat(outfile, ext);
+	}
+d353 3
+a355 3
+	if (xasm_args.verbose) {
+		printf("%s\n", s);
+	}
+d363 1
+a363 1
+	return yynerrs + astproc_err_count();
+d370 1
+a370 1
+	char default_outfile[256];
+d372 2
+a373 2
+	/* Create global symbol table (auto-pushed on stack) */
+	symbol_table = symtab_create();
+d375 2
+a376 2
+	/* Parse our arguments. */
+	parse_arguments (argc, argv);
+d378 6
+a383 6
+	/* Open input for scanning */
+	if (!yybegin(xasm_args.input_file, xasm_args.swap_parens) ) {
+		printf("error: could not open `%s' for reading\n", xasm_args.input_file);
+		symtab_finalize(symbol_table);
+		return(1);
+	}
+d386 43
+a428 43
+	//yydebug = -1;
+	verbose("Parsing input...");
+	yyparse();
+
+	if (root_node == NULL) {
+		symtab_finalize(symbol_table);
+		return(0);
+	}
+
+	/* First pass does a lot of stuff. */
+	verbose("First pass...");
+	astproc_first_pass(root_node);
+
+	/* Second pass does more stuff. */
+	verbose("Second pass...");
+	astproc_second_pass(root_node);
+
+	/* Third pass is fun. */
+	verbose("Third pass...");
+	astproc_third_pass(root_node);
+
+	/* Print the final AST (debugging) */
+//	astnode_print(root_node, 0);
+
+	/* If no errors, proceed with code generation. */
+	if (total_errors() == 0) {
+		if (xasm_args.output_file == NULL) {
+			/* Create default name of output */
+			change_extension(xasm_args.input_file, "o", default_outfile);
+			xasm_args.output_file = default_outfile;
+		}
+		/* Write it! */
+		verbose("Generating final output...");
+		codegen_write(root_node, xasm_args.output_file);
+	}
+
+	/* Cleanup */
+	verbose("cleaning up...");
+	symtab_pop();
+	symtab_finalize(symbol_table);
+	astnode_finalize(root_node);
+	
+	return (total_errors() == 0) ? 0 : 1;
+@
+
+
+1.13
+log
+@xorcyst 1.4.4
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.12 2005/01/05 01:52:13 kenth Exp kenth $
+d4 3
+d94 1
+a94 1
+static char program_version[] = "xasm 1.4.4";
+@
+
+
+1.12
+log
+@xorcyst 1.4.3
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.11 2005/01/04 21:35:10 kenth Exp kenth $
+d4 3
+d91 1
+a91 1
+static char program_version[] = "xasm 1.4.3";
+@
+
+
+1.11
+log
+@return error code from main() when error count > 0
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.10 2004/12/29 21:43:50 kenth Exp kenth $
+d4 3
+d88 1
+a88 1
+static char program_version[] = "xasm 1.4.2";
+d373 1
+a373 1
+		return(-1);
+d419 1
+a419 1
+	return (total_errors() == 0) ? 0 : -1;
+@
+
+
+1.10
+log
+@xorcyst 1.4.2
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.9 2004/12/25 02:23:19 kenth Exp kenth $
+d4 3
+d347 8
+d370 1
+a370 1
+		return 1;
+d380 1
+a380 1
+		return 0;
+d399 1
+a399 1
+	if ((yynerrs == 0) && (astproc_err_count() == 0)) {
+d415 2
+a416 1
+	return 0;
+@
+
+
+1.9
+log
+@xorcyst 1.4.1
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.8 2004/12/19 19:58:46 kenth Exp kenth $
+d4 3
+d82 1
+a82 1
+static char program_version[] = "xasm 1.4.1";
+@
+
+
+1.8
+log
+@xorcyst 1.4.0
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.7 2004/12/18 17:01:21 kenth Exp kenth $
+d4 3
+d79 1
+a79 1
+static char program_version[] = "xasm 1.4.0";
+@
+
+
+1.7
+log
+@--debug switch, multiple verbose levels
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.6 2004/12/16 13:20:35 kenth Exp kenth $
+d4 3
+d76 1
+a76 1
+static char program_version[] = "xasm 1.3.5";
+@
+
+
+1.6
+log
+@xorcyst 1.3.5
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.5 2004/12/14 01:50:12 kenth Exp kenth $
+d4 3
+d85 1
+d98 1
+a98 1
+Usage: xasm [-qsvV] [-D IDENT] [-o FILE] [--define=IDENT] [--output=FILE]\n\
+d100 1
+a100 1
+            [--help] [--usage] [--version]\n\
+d119 1
+d192 1
+d202 4
+d211 1
+a211 1
+			xasm_args.verbose = 1;
+@
+
+
+1.5
+log
+@xorcyst 1.3.0
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.4 2004/12/11 02:06:27 kenth Exp kenth $
+d4 3
+d70 1
+a70 1
+static char program_version[] = "xasm 1.3.0";
+d345 1
+d381 1
+@
+
+
+1.4
+log
+@xorcyst 1.2.0
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.3 2004/12/06 04:53:02 kenth Exp kenth $
+d4 3
+d48 1
+d62 1
+a62 1
+symtab *symbol_table;
+d67 1
+a67 11
+static char program_version[] = "xasm 1.2.0";
+
+struct tag_arguments {
+	char *input_file;
+	int silent;
+	int verbose;
+	int swap_parens;
+	char *output_file;
+};
+
+typedef struct tag_arguments arguments;
+d70 1
+a70 1
+static arguments program_args;
+d83 1
+d92 1
+a92 1
+            [--swap-parens] [--quiet] [--silent] [--verbose]\n\
+d106 1
+a106 1
+-D, --define=IDENT         Define IDENT\n\
+d109 1
+d131 38
+d174 6
+d184 5
+a188 5
+	program_args.silent = 0;
+	program_args.verbose = 0;
+	program_args.swap_parens = 0;
+	program_args.input_file = NULL;
+	program_args.output_file = NULL;
+d194 1
+a194 1
+			program_args.silent = 1;
+d198 1
+a198 1
+			program_args.verbose = 1;
+d202 1
+a202 1
+			program_args.output_file = optarg;
+d206 33
+a238 2
+			/* TODO: check valid identifier, etc... */
+			symtab_enter(optarg, CONSTANT_SYMBOL, NULL, 0);
+d250 4
+a253 1
+				program_args.swap_parens = 1;
+d279 1
+a279 1
+		program_args.input_file = argv[optind];
+d312 10
+d334 2
+a335 2
+	if (!yybegin(program_args.input_file, program_args.swap_parens) ) {
+		printf("error: could not open `%s' for reading\n", program_args.input_file);
+d350 1
+d354 1
+d358 1
+d362 1
+a362 1
+	//astnode_print(root_node, 0);
+d366 1
+a366 1
+		if (program_args.output_file == NULL) {
+d368 2
+a369 2
+			change_extension(program_args.input_file, "o", default_outfile);
+			program_args.output_file = default_outfile;
+d372 2
+a373 1
+		codegen_write(root_node, program_args.output_file);
+d380 1
+a380 1
+ return 0;
+@
+
+
+1.3
+log
+@xorcyst 1.1.0
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.2 2004/06/30 23:37:54 kenth Exp $
+d4 3
+d63 1
+a63 1
+static char program_version[] = "xasm 1.1.0";
+@
+
+
+1.2
+log
+@replaced argp with something else
+@
+text
+@d2 1
+a2 1
+ * $Id: xasm.c,v 1.1 2004/06/30 07:56:02 kenth Exp kenth $
+d4 3
+d51 1
+a51 1
+int yybegin(char *);
+d60 1
+a60 1
+static char program_version[] = "xasm 1.0.2";
+d66 1
+d85 1
+d94 2
+a95 1
+            [--quiet] [--silent] [--verbose] [--help] [--usage] [--version]\n\
+d110 1
+d143 1
+d163 2
+a164 2
+			printf("TODO: define `%s'\n", optarg);
+			/* symtab_enter(arg, CONSTANT_SYMBOL, NULL, DEFINED_FLAG); */
+d175 3
+d240 3
+d247 1
+a247 1
+	if (!yybegin(program_args.input_file) ) {
+d249 1
+d253 2
+a254 2
+	/* Parse it into a syntax tree */
+//	yydebug = -1;
+d258 1
+d262 2
+a263 42
+	/* Create global symbol table */
+	symbol_table = symtab_create();
+
+	/* Enter all macros into the symbol table */
+	astproc_enter_macros(root_node);
+
+	/* Expand macros */
+	astproc_expand_macros(root_node);
+
+	/* Remove macro declarations, they are of no use now */
+	astproc_remove_macro_decls(root_node);
+
+	/* Remove conditionals */
+	astproc_remove_conditionals(root_node);
+
+	/* Do another pass to make sure all global constants (EQUs)
+	have been replaced */
+	astproc_substitute_defines(root_node);
+
+	/* Make sure that data segments contain only valid statements */
+	astproc_validate_data_segments(root_node);
+
+	/* Globalize locals */
+	astproc_globalize_locals(root_node);
+
+	/* Enter all labels into the symbol table */
+	astproc_enter_labels(root_node);
+
+	/* Tag extrn and public symbols */
+	astproc_tag_extrn_and_public_symbols(root_node);
+
+	/* Make sure that all symbol references are OK */
+	astproc_validate_symbol_references(root_node);
+
+	/* Count label references */
+	astproc_count_symbol_references(root_node);
+
+	/* Remove labels which aren't referenced */
+	astproc_remove_unused_labels(root_node);
+
+	/* Merge data nodes wherever applicable */
+	astproc_merge_data_nodes(root_node);
+d265 2
+a266 1
+	// astproc_expand_incbins(root_node);	!!!
+d268 2
+a269 2
+	/* Translate instructions */
+	astproc_translate_instructions(root_node);
+d272 1
+a272 1
+//	astnode_print(root_node, 0);
+d286 1
+d289 1
+a289 1
+	return 0;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 5
+a6 2
+ * $Id$
+ * $Log$
+a30 1
+#include <argp.h>
+d34 1
+d55 15
+d71 10
+a80 19
+const char *argp_program_version =
+  "xasm 1.0.1";
+const char *argp_program_bug_address =
+  "<dev@@null>";
+
+/* Program documentation. */
+static char doc[] =
+  "The XORcyst Assembler -- it kicks the 6502's ass";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "FILE";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+  {"verbose",  'v', 0,      0,  "Produce verbose output" },
+  {"quiet",    'q', 0,      0,  "Don't produce any output" },
+  {"silent",   's', 0,      OPTION_ALIAS },
+  {"output",   'o', "FILE", 0,  "Output to FILE instead of standard output" },
+  {"define",   'D', "IDENT",0,  "Define IDENT" },
+d84 2
+a85 2
+/* Used by main to communicate with parse_opt. */
+struct arguments
+d87 7
+a93 4
+  char *input_file;
+  int silent, verbose;
+  char *output_file;
+};
+d95 2
+a96 3
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+d98 18
+a115 39
+  /* Get the input argument from argp_parse, which we
+     know is a pointer to our arguments structure. */
+  struct arguments *arguments = (struct arguments *)state->input;
+
+  switch (key)
+    {
+    case 'q': case 's':
+      arguments->silent = 1;
+      break;
+    case 'v':
+      arguments->verbose = 1;
+      break;
+    case 'o':
+      arguments->output_file = arg;
+      break;
+    case 'D':
+      printf("TODO: define `%s'\n", arg);
+      /* symtab_enter(arg, CONSTANT_SYMBOL, NULL, DEFINED_FLAG); */
+      break;
+
+    case ARGP_KEY_ARG:
+      if (state->arg_num >= 1)
+        /* Too many arguments. */
+        argp_usage (state);
+
+      arguments->input_file = arg;
+
+      break;
+
+    case ARGP_KEY_END:
+      if (state->arg_num < 1)
+        /* Not enough arguments. */
+        argp_usage (state);
+      break;
+
+    default:
+      return ARGP_ERR_UNKNOWN;
+    }
+  return 0;
+d118 6
+a123 2
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
+d125 59
+a183 1
+/*---------------------------------------------------------------------------*/
+d185 8
+a192 14
+/* Get number of ticks since CPU bootup.
+ * This is a 64-bit counter value, otherwise it would
+ * wrap around every few seconds.
+ */
+static unsigned long long rdtsctime()
+{
+	unsigned int eax, edx;
+	unsigned long long val;
+	__asm__ __volatile__("cpuid": : : "ax", "bx", "cx", "dx");
+	__asm__ __volatile__("rdtsc":"=a"(eax), "=d"(edx));
+	val = edx;
+	val = val << 32;
+	val += eax;
+	return val;
+d195 2
+a227 2
+	unsigned long long start, end, ticks;
+	struct arguments arguments;
+d229 2
+a230 8
+	/* Default values. */
+	arguments.silent = 0;
+	arguments.verbose = 0;
+	arguments.output_file = NULL;
+
+	/* Parse our arguments; every option seen by parse_opt will
+	be reflected in arguments. */
+	argp_parse (&argp, argc, argv, 0, 0, &arguments);
+d233 2
+a234 2
+	if (!yybegin(arguments.input_file) ) {
+		printf("error: could not open `%s' for reading\n", arguments.input_file);
+a237 2
+	start = rdtsctime();
+
+a241 3
+	end = rdtsctime();
+	ticks = end - start;
+
+d299 1
+a299 1
+		if (arguments.output_file == NULL) {
+d301 2
+a302 2
+			change_extension(arguments.input_file, "o", default_outfile);
+			arguments.output_file = default_outfile;
+d305 1
+a305 1
+		codegen_write(root_node, arguments.output_file);
+@

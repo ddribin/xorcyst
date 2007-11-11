@@ -1,0 +1,130 @@
+<html lang="en">
+<head>
+<title>The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="#Top">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<h1 class="settitle">The XORcyst Manual</h1>
+   <div class="contents">
+<h2>Table of Contents</h2>
+<ul>
+<li><a name="toc_Top" href="index.html#Top">The XORcyst Manual</a>
+<li><a name="toc_What_0027s-New" href="What_0027s-New.html#What_0027s-New">1 What's New</a>
+<li><a name="toc_Overview" href="Overview.html#Overview">2 Overview</a>
+<li><a name="toc_The-Assembler" href="The-Assembler.html#The-Assembler">3 The Assembler</a>
+<ul>
+<li><a href="The-Assembler.html#The-Assembler">3.1 Invoking the assembler (<span class="command">xasm</span>)</a>
+<ul>
+<li><a href="The-Assembler.html#The-Assembler">3.1.1 Switches</a>
+</li></ul>
+<li><a href="The-Assembler.html#The-Assembler">3.2 Assembler statements</a>
+<ul>
+<li><a href="The-Assembler.html#The-Assembler">3.2.1 A simple assembler example</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.2 Literals</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.3 Identifiers</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.4 Expressions</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.5 Global labels</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.6 Local labels</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.7 Forward/backward branches</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.8 Equates</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.9 Conditional assembly</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.10 Macros</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.11 Anonymous macros</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.12 Including files</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.13 Defining native data</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.14 User-defined types</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.15 Defining data of user-defined types</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.16 Indexing symbols statically</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.17 Procedures</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.18 Importing and exporting symbols</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.19 Controlling data mapping</a>
+<li><a href="The-Assembler.html#The-Assembler">3.2.20 An important note on indirect addressing</a>
+</li></ul>
+</li></ul>
+<li><a name="toc_The-Linker" href="The-Linker.html#The-Linker">4 The Linker</a>
+<ul>
+<li><a href="The-Linker.html#The-Linker">4.1 Invoking the linker (<span class="command">xlnk</span>)</a>
+<li><a href="The-Linker.html#The-Linker">4.2 A simple linker script example</a>
+<li><a href="The-Linker.html#The-Linker">4.3 Linking multiple units</a>
+<li><a href="The-Linker.html#The-Linker">4.4 Separating units into banks</a>
+<li><a href="The-Linker.html#The-Linker">4.5 Partitioning 6502 RAM</a>
+<li><a href="The-Linker.html#The-Linker">4.6 Copying files to linker output</a>
+<li><a href="The-Linker.html#The-Linker">4.7 Padding the output</a>
+</li></ul>
+<li><a name="toc_Known-Bugs-and-Limitations" href="Known-Bugs-and-Limitations.html#Known-Bugs-and-Limitations">5 Known Bugs and Limitations</a>
+<li><a name="toc_Implementation-Details" href="Implementation-Details.html#Implementation-Details">Appendix A Implementation Details</a>
+<li><a name="toc_Assembler-Directives" href="Assembler-Directives.html#Assembler-Directives">Appendix B Assembler Directives</a>
+<li><a name="toc_Linker-Script-Commands" href="Linker-Script-Commands.html#Linker-Script-Commands">Appendix C Linker Script Commands</a>
+<li><a name="toc_Object-Code-Format" href="Object-Code-Format.html#Object-Code-Format">Appendix D Object Code Format</a>
+<ul>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.1 Magic number and assembler version</a>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.2 Definitions of exported constants</a>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.3 Descriptors for imported symbols</a>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.4 Data segment bytecodes</a>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.5 Code segment bytecodes</a>
+<li><a href="Object-Code-Format.html#Object-Code-Format">D.6 Expressions</a>
+</li></ul>
+<li><a name="toc_Custom-Character-Maps" href="Custom-Character-Maps.html#Custom-Character-Maps">Appendix E Custom Character Maps</a>
+<li><a name="toc_Error-and-Warning-Messages" href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">Appendix F Error and Warning Messages</a>
+<ul>
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">F.1 Assembler Error Messages</a>
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">F.2 Assembler Warning Messages</a>
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">F.3 Linker Error Messages</a>
+<ul>
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">F.3.1 Linker Script Error Messages</a>
+</li></ul>
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">F.4 Linker Warning Messages</a>
+</li></ul>
+</li></ul>
+</div>
+
+
+
+<div class="node">
+<p>
+<a name="Top"></a>Next:&nbsp;<a rel="next" accesskey="n" href="What_0027s-New.html#What_0027s-New">What's New</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="../index.html#dir">(dir)</a>
+<hr><br>
+</div>
+
+<h2 class="unnumbered">The XORcyst Manual</h2>
+
+<p>This is the manual for The XORcyst version 1.4.5.
+
+   <p>Copyright &copy; 2004, 2005 Kent Hansen.
+
+<ul class="menu">
+<li><a accesskey="1" href="What_0027s-New.html#What_0027s-New">What's New</a>:        An overview of the latest improvements. 
+<li><a accesskey="2" href="Overview.html#Overview">Overview</a>:          What is this thing? 
+<li><a accesskey="3" href="The-Assembler.html#The-Assembler">The Assembler</a>:     Describes the use and operation of the XORcyst assembler. 
+<li><a accesskey="4" href="The-Linker.html#The-Linker">The Linker</a>:        Describes the use and operation of the XORcyst linker. 
+<li><a accesskey="5" href="Implementation-Details.html#Implementation-Details">Implementation Details</a>:  Nice-to-know technical details concerning The XORcyst's implementation. 
+<li><a accesskey="6" href="Known-Bugs-and-Limitations.html#Known-Bugs-and-Limitations">Known Bugs and Limitations</a>:  Known bugs and limitations. 
+<li><a accesskey="7" href="Assembler-Directives.html#Assembler-Directives">Assembler Directives</a>:  Assembler directives. 
+<li><a accesskey="8" href="Linker-Script-Commands.html#Linker-Script-Commands">Linker Script Commands</a>:  Linker script commands. 
+<li><a accesskey="9" href="Object-Code-Format.html#Object-Code-Format">Object Code Format</a>:  Describes the format of the assembler's output. 
+<li><a href="Custom-Character-Maps.html#Custom-Character-Maps">Custom Character Maps </a>:  Describes the valid contents of custom character maps. 
+<li><a href="Error-and-Warning-Messages.html#Error-and-Warning-Messages">Error and Warning Messages </a>:  Alphabetical listing. 
+</ul>
+
+   </body></html>
+

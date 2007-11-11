@@ -1,0 +1,80 @@
+Version 1.5.0:
+- Added some stuff, fixed some bugs
+Version 1.4.5:
+- xasm: fixed bug that prevented local labels from being used as operand to DB, DW, DD directives
+- xasm: fixed bug in processing of array of operands to DB, DW, DD directives
+- xasm: negative immediate operand no longer gives truncated warning as long as it fits in signed byte (DB) or word (DW) 
+- xasm: added BLT, BGE as aliases for BCC, BCS
+- xlnk: prints physical addresses of relocated public symbols when --verbose
+Version 1.4.4:
+- xlnk: fixed bug in RAM allocator
+- xlnk: prints statistics on RAM management (total, used, left) when --verbose
+Version 1.4.3:
+- xasm: support for anonymous unions
+- xasm: fixed bug in result of sizeof operator when applied to an initialized structure variable
+- xasm, xlnk: returns error code so that i.e. Make stops after the first erroneous invocation
+Version 1.4.2:
+- xasm: symbols can be indexed statically
+- xasm: sizeof operator now works correctly when applied to an array
+- xasm: fixed bug that lead to dysfunctional symbol table when using `=' equates
+- xlnk: fixed bug in RAM allocator
+- xlnk: fixed line number bug in error messages
+- xlnk: removed duplicate error message (unresolved symbols)
+Version 1.4.1:
+- xasm: Fixed bug in processing of declaration of array of user-defined type
+- xasm: Fixed bug that lead to no error message when declaring an uninitialized variable of non-existing user-defined type
+- xlnk: Fixed imperfection in allocation of alignment-constrained data
+- xlnk: Fixed memory leak in RAM allocator
+Version 1.4.0:
+- xasm: added --debug switch, which retains file locations in the object file
+- xasm: LABEL directive can take specific address as argument
+- xasm: constraints can be communicated to linker on how contents of data segments should be mapped to RAM
+- xasm: PUBLIC modifier can be specified directly when defining a variable
+- xasm: fixed bug in code generation of exported string constants
+- xlnk: prints the filename and location of the source of a link-time error (if unit assembled with --debug switch)
+- xlnk: rewrote data segment mapping function to take zeropage and alignment constraints into account
+- xlnk: improved code relocation
+- xlnk: fixed linker script parsing bug
+Version 1.3.5:
+- xasm: added ability to declare storage for array of user-defined types, C-style (works for native types too)
+- xasm: added ability to specify the type of data that a label addresses
+- xasm: fixed bug in code generation of storage of user-defined types
+- xasm: fixed some error detection and parsing woes
+- xasm: added DEFINE directive (same semantics as EQU, but potentially more compact)
+- xlnk: fixed code relocation bug
+- xlnk: implemented bank operator (^)
+- xlnk: --verbose switch now gives helpful info on what the linker is doing
+Version 1.3.0:
+- xasm: added support for user-defined records (RECORD directive, MASK operator)
+- xasm: added WHILE directive
+- xasm: implemented ELIF directive
+- xasm: improved --define switch: value can now be given (i.e. --define a=10)
+- xasm: SIZEOF operator now works on variable identifiers too
+- xasm: fixed bug that prevented single-character identifiers from working
+- xasm: added --no-warn switch to suppress warnings
+- xasm: early support for --verbose switch
+Version 1.2.0:
+- xasm: support for forward/backward branches
+- xasm: fixed bug that caused INCSRC to run out of file handles
+- xasm: fixed erroneous parsing of lines with < > operators
+Version 1.1.0:
+- xasm: support for structs, unions and enums
+- xasm: support for anonymous macros (REPT)
+- xasm: new directives: PROC, LABEL, PAD, MESSAGE
+- xasm: syntactic improvements
+- xasm: important bug fixes for IF/ELSE and INCBIN
+- xasm: added switch: --swap-parens
+- xasm: improved literal expression folding
+- xasm: preliminary support for --define=IDENT switch
+Version 1.0.2:
+- xasm, xlnk: not using argp for argument parsing anymore; increased portability
+- xasm: removed X86-dependent timing code
+Version 1.0.1:
+- xlnk: fixed bug in code relocation
+- xlnk: fixed bug in 'pad' script command execution
+- xasm: fixed bug that made xasm crash when expanding a macro with no arguments
+- xasm: fixed bug in error location output (sometimes filename would be "(null)")
+- updated documentation
+
+Version 1.0:
+initial version

@@ -1,0 +1,20 @@
+- .undef
+- a way to define temporary variables for a proc (on the stack)?
+- types must be defined before they are used
+- .module or .namespace
+- .obj, .objend
+- .radix
+- .do .until
+- .type, .symtype
+- .pushstate, .popstate
+- .exitm
+- .local
+  - local labels in macros currently behave strangely
+- interpretation of $ (current pc) used in dataseg?
+- a way to specify if ZP or absolute addressing mode should be used?
+- variable-number-of-argument macros
+- -W flag allowing more fine-grained control of warnings
+- inlining function calls?
+- generate listing!
+  - final binary: instruction by instruction, prints all the addresses + bytes
+- a way to specify fixed-point numbers?

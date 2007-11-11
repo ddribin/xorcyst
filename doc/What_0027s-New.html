@@ -1,0 +1,254 @@
+<html lang="en">
+<head>
+<title>What's New - The XORcyst Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="The XORcyst Manual">
+<meta name="generator" content="makeinfo 4.7">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="index.html#Top" title="Top">
+<link rel="next" href="Overview.html#Overview" title="Overview">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This is the manual for The XORcyst version 1.4.5.
+
+Copyright (C) 2004, 2005 Kent Hansen.-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc { font-variant:small-caps }
+  span.roman { font-family: serif; font-weight: normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="What_0027s-New"></a>Next:&nbsp;<a rel="next" accesskey="n" href="Overview.html#Overview">Overview</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="index.html#Top">Top</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr><br>
+</div>
+
+<h2 class="chapter">1 What's New</h2>
+
+<h3 class="heading">Version 1.4.5</h3>
+
+<p><strong>Assembler</strong>
+
+     <ul>
+<li>Fixed bug that prevented local labels from being used as operand to <code>DB</code>, <code>DW</code>, <code>DD</code> directives.
+
+     <li>Fixed bug in processing of array of operands to <code>DB</code>, <code>DW</code>, <code>DD</code> directives (some high-level constructs were only reduced in first item).
+
+     <li>Negative immediate operand no longer gives truncation warning as long as it fits in signed byte (<code>DB</code>, immediate mode instructions) or word (<code>DW</code>).
+
+     <li>Added <code>BLT</code>, <code>BGE</code> as aliases for <code>BCC</code>, <code>BCS</code> (unsigned comparison).
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Prints physical addresses of relocated public symbols when <code>--verbose</code>.
+
+   </ul>
+
+<h3 class="heading">Version 1.4.4</h3>
+
+<p><strong>Linker</strong>
+
+     <ul>
+<li>Fixed bug in RAM allocator.
+
+     <li>Prints statistics on RAM management (total, used, left) when <code>--verbose</code>.
+
+   </ul>
+
+<h3 class="heading">Version 1.4.3</h3>
+
+<p><strong>Assembler</strong>
+
+     <ul>
+<li>Support for anonymous unions.
+
+     <li>Fixed bug in result of <code>sizeof</code> operator when applied to an initialized structure variable.
+
+     <li>Returns error code so that i.e. Make stops after the first erroneous invocation.
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Returns error code so that i.e. Make stops after the first erroneous invocation.
+
+   </ul>
+
+<h3 class="heading">Version 1.4.2</h3>
+
+<p><strong>Assembler</strong>
+
+     <ul>
+<li>Symbols can be indexed statically, C-style; see section 3.2.16, &ldquo;Indexing symbols statically&rdquo;.
+
+     <li><code>sizeof</code> operator now works correctly when applied to an array.
+
+     <li>Fixed bug that lead to dysfunctional symbol table when using `=' equates.
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Fixed bug in RAM allocator.
+
+     <li>Fixed line number bug in error messages.
+
+     <li>Removed duplicate error message (unresolved symbols).
+
+   </ul>
+
+<h3 class="heading">Version 1.4.1</h3>
+
+<p>This is a bugfix release.
+
+   <p><strong>Assembler</strong>
+
+     <ul>
+<li>Fixed bug in processing of declaration of array of user-defined type (!).
+
+     <li>Fixed bug that lead to no error message when declaring an uninitialized variable of non-existing user-defined type.
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Fixed imperfection in allocation of alignment-constrained data.
+
+     <li>Fixed memory leak in RAM allocator.
+
+   </ul>
+
+<h3 class="heading">Version 1.4.0</h3>
+
+<p><strong>Assembler</strong>
+
+     <ul>
+<li>Added <code>--debug</code> switch (short form: <code>-g</code>). When this switch is given, the assembler will retain file and line information in the object file, which the linker can use to produce more descriptive link-time warning and error messages.
+
+     <li><code>LABEL</code> directive can take a specific address as argument, so that &ldquo;pointers&rdquo; can be made to any part of memory (i.e. you can address memory location <code>$200</code> as a structure (or array of structures), without having to explicitly define storage for it).
+
+     <li>Constraints can be communicated to the linker on how contents of data segments should be mapped to RAM; see section 3.2.19, &ldquo;Controlling data mapping&rdquo;.
+
+     <li>PUBLIC modifier can be specified directly when defining a variable.
+
+     <li>Fixed a bug in code generation of exported string constants.
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Uses the information generated from the assembler <code>--debug</code> switch to produce descriptive warning and error messages.
+
+     <li>Rewrote data segment mapping function to take zeropage and alignment constraints into account.
+
+     <li>Improved code relocation; as a result, the current PC ($) can be used freely in any expression, and the <code>origin</code> argument for the <code>pad</code> command works.
+
+     <li>Fixed a linker script parsing bug.
+
+   </ul>
+
+<h3 class="heading">Version 1.3.5</h3>
+
+<p><strong>Assembler</strong>
+
+     <ul>
+
+     <li>Added ability to declare storage for array of user-defined types, C-style (works for native types too).
+
+     <li>Added ability to specify the type of data that a label addresses.
+
+     <li>Fixed bug in code generation of storage of user-defined types.
+
+     <li>Fixed some error detection and parsing woes.
+
+     <li>Added <code>DEFINE</code> directive (same semantics as <code>EQU</code>, but potentially more compact).
+
+   </ul>
+
+   <p><strong>Linker</strong>
+
+     <ul>
+<li>Fixed a bad code relocation bug.
+
+     <li>Implemented bank operator (<code>^</code>).
+
+     <li><code>--verbose</code> switch now gives helpful info on what the linker is doing.
+
+   </ul>
+
+<h3 class="heading">Version 1.3.0</h3>
+
+     <ul>
+<li>Added support for user-defined records (<code>RECORD</code> directive, <code>MASK</code> operator).
+
+     <li>Added <code>WHILE</code> directive.
+
+     <li>Implemented <code>ELIF</code> directive.
+
+     <li>Improved <code>--define</code> switch: A value can now be assigned to the identifier (i.e. <code>--define a=10</code>).
+
+     <li><code>SIZEOF</code> operator now works on variable identifiers too.
+
+     <li>Fixed bug that prevented single-character identifiers from working.
+
+     <li>Added <code>--no-warn</code> switch to suppress assembler warnings.
+
+     <li>Early support for <code>--verbose</code> switch.
+
+</ul>
+
+<h3 class="heading">Version 1.2.0</h3>
+
+     <ul>
+<li>Added support for forward/backward branches (<code>-</code>, <code>--</code>, <code>+</code>, <code>++</code>, and so on, up to eight levels (<code>++++++++</code>)).
+
+     <li>Fixed bug that caused the assembler to run out of file handles when including a large number of files.
+
+     <li>Fixed bug that caused <code>.db &lt;a, &gt;b</code> and other lines with <code>&lt; &gt;</code> to be parsed erroneously.
+
+</ul>
+
+<h3 class="heading">Version 1.1.0</h3>
+
+     <ul>
+<li>Full support for user-defined types: Structures, unions and enums.
+
+     <li>Better separation of symbol types. In the previous versions, <em>everything</em> was a label. The assembler now distinguishes properly between labels, procedures, variables, constants and user-defined types.
+
+     <li>Support for anonymous macros (<code>rept</code> directive).
+
+     <li>Crash-bug fixes (<code>if</code> directive, <code>incbin</code> directive).
+
+     <li>Preliminary support for <code>--define=</code><var>IDENT</var> assembler switch (can be used in <code>ifdef</code> and <code>ifndef</code> directives).
+
+     <li>Added <code>message</code> directive.
+
+     <li>Improved literal expression folding. <var>"hello " + 123</var> will now be folded to <var>"hello 123"</var>.
+
+     <li>Added assembler switch <code>--swap-parens</code>, which swaps the operators used for indirection from [ ] to ( ).
+
+     <li>Syntax of <code>extrn</code> directive changed slightly: Must now specify the symbol type.
+
+     <li>Relaxed syntax of <code>db</code>, <code>dsb</code> and similar directives. If no expression is given as argument, a single item is allocated.
+
+</ul>
+
+   </body></html>
+
