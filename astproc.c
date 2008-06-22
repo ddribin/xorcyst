@@ -4005,6 +4005,16 @@ static int inc_pc_by_data(astnode *data, void *arg, astnode **next)
 }
 
 /**
+ * Increments PC according to the size of the included binary.
+ */
+static int inc_pc_by_binary(astnode *node, void *arg, astnode **next)
+{
+    assert(!in_dataseg);
+    codeseg_pc += node->binary.size;
+    return 0;
+}
+
+/**
  * Increments PC according to the size of the storage.
  */
 static int inc_pc_by_storage(astnode *storage, void *arg, astnode **next)
@@ -4050,6 +4060,7 @@ void astproc_fourth_pass(astnode *root)
             { INSTRUCTION_NODE, inc_pc_by_instruction },
             { DATA_NODE, inc_pc_by_data },
             { STORAGE_NODE, inc_pc_by_storage },
+            { BINARY_NODE, inc_pc_by_binary },
             { STRUC_DECL_NODE, noop },
             { UNION_DECL_NODE, noop },
             { ENUM_DECL_NODE, noop },
@@ -4174,6 +4185,16 @@ static int write_data(astnode *data, void *arg, astnode **next)
 }
 
 /**
+ * Writes binary.
+ */
+static int write_binary(astnode *node, void *arg, astnode **next)
+{
+    FILE *fp = (FILE *)arg;
+    fwrite(node->binary.data, 1, node->binary.size, fp);
+    return 0;
+}
+
+/**
  * This pass is only performed if the output format is pure 6502.
  * It writes the binary code.
  */
@@ -4193,6 +4214,7 @@ void astproc_fifth_pass(astnode *root)
         { INSTRUCTION_NODE, write_instruction },
         { DATA_NODE, write_data },
         { STORAGE_NODE, inc_pc_by_storage },
+        { BINARY_NODE, write_binary },
         { STRUC_DECL_NODE, noop },
         { UNION_DECL_NODE, noop },
         { ENUM_DECL_NODE, noop },
