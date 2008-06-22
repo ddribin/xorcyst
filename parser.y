@@ -56,10 +56,11 @@
 int yyparse(void);
 void yyerror(const char *);   /* In lexer */
 int yylex(void);    /* In lexer */
-int yypushandrestart(const char *);   /* In lexer */
+int yypushandrestart(const char *, int);   /* In lexer */
 void __yy_memcpy(char *, char *, int);
 extern char *yytext;    /* In lexer */
 extern YYLTYPE yylloc;  /* In lexer */
+char *scan_include(int); /* In lexer */
 extern astnode *root_node;  /* Root of the generated parse tree */
 void handle_incsrc(astnode *);  /* See below */
 void handle_incbin(astnode *);  /* See below */
@@ -498,7 +499,7 @@ incbin_statement:
 
 file_specifier:
     STRING_LITERAL { $$ = astnode_create_string($1, @$); }
-    | FILE_PATH { $$ = astnode_create_file_path($1, @$); }
+    | '<' { $$ = astnode_create_file_path(scan_include('>'), @$); }
     ;
 
 macro_decl_statement:
@@ -592,32 +593,26 @@ void handle_incsrc(astnode *n)
     char errs[512];
     /* Get the node which describes the file to include */
     astnode *file = astnode_get_child(n, 0);
-
-    switch (astnode_get_type(file)) {
-        case STRING_NODE:
-        /* TODO: add path searching */
-        case FILE_PATH_NODE:
-        switch (yypushandrestart(file->string)) {
-            case 0:
-            /* Success */
-            break;
-            case 1:
-            /* Failed to open file */
-            sprintf(errs, "could not open '%s' for reading", file->string);
-            yyerror(errs);
-            break;
-            case 2:
-            /* Stack overflow */
-            yyerror("Maximum include nesting level reached");
-            break;
-        }
+    int quoted_form = (astnode_get_type(file) == STRING_NODE) ? 1 : 0;
+    switch (yypushandrestart(file->string, quoted_form)) {
+        case 0:
+        /* Success */
         break;
-
-        default: break;
+        case 1:
+        /* Failed to open file */
+        sprintf(errs, "could not open '%s' for reading", file->string);
+        yyerror(errs);
+        break;
+        case 2:
+        /* Stack overflow */
+        yyerror("Maximum include nesting level reached");
+        break;
     }
 }
 
 // TODO: This shouldn't be done here but rather in astproc module.
+
+FILE *open_included_file(const char *, int, char **);
 
 /**
  * Takes care of including the binary contents of the file specified by a parsed
@@ -634,53 +629,27 @@ void handle_incbin(astnode *n)
     /* Get the node which describes the file to include */
     astnode *file = astnode_get_child(n, 0);
     const char *filename = file->string;
-
-    switch (astnode_get_type(file)) {
-        case STRING_NODE:
-        /* TODO: add path searching */
-        case FILE_PATH_NODE:
-        /* Attempt to open file */
-        fp = fopen(filename, "rb");
-        if (!fp && (filename[0] != '/')) {
-            /* Try search paths */
-            /* ### copied from scanner.l -- generalize */
-            int i;
-            for (i = 0; i < xasm_args.include_path_count; ++i) {
-                const char *include_path = xasm_args.include_paths[i];
-                char *path = (char *)malloc(
-                    strlen(include_path) + strlen("/") + strlen(filename) + 1);
-                strcpy(path, include_path);
-                strcat(path, "/");
-                strcat(path, filename);
-                fp = fopen(path, "rb");
-                free(path);
-                if (fp)
-                    break;
-            }
+    int quoted_form = (astnode_get_type(file) == STRING_NODE) ? 1 : 0;
+    /* Try to open it */
+    fp = open_included_file(filename, quoted_form, NULL);
+    if (fp) {
+        /* Get filesize */
+        fseek(fp, 0, SEEK_END);
+        size = ftell(fp);
+        rewind(fp);
+        if (size > 0) {
+            /* Allocate buffer to hold file contents */
+            data = (unsigned char *)malloc(size);
+            /* Read file contents into buffer */
+            fread(data, 1, size, fp);
+            /* Insert binary node */
+            astnode_add_sibling(n, astnode_create_binary(data, size, n->loc) );
         }
-        if (fp) {
-            /* Get filesize */
-            fseek(fp, 0, SEEK_END);
-            size = ftell(fp);
-            rewind(fp);
-            if (size > 0) {
-                /* Allocate buffer to hold file contents */
-                data = (unsigned char *)malloc(size);
-                /* Read file contents into buffer */
-                fread(data, 1, size, fp);
-                /* Insert binary node */
-                astnode_add_sibling(n, astnode_create_binary(data, size, n->loc) );
-            }
-            /* Close file */
-            fclose(fp);
-        }
-        else {
-            /* Couldn't open file */
-            sprintf(errs, "could not open '%s' for reading", file->string);
-            yyerror(errs);
-        }
-        break;
-
-        default: break;
+        /* Close file */
+        fclose(fp);
+    } else {
+        /* Couldn't open file */
+        sprintf(errs, "could not open '%s' for reading", file->string);
+        yyerror(errs);
     }
 }

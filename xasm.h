@@ -43,4 +43,6 @@ typedef struct tag_xasm_arguments xasm_arguments;
 
 extern xasm_arguments xasm_args;
 
+extern char *xasm_path;
+
 #endif  /* !XASM_H */

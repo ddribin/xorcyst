@@ -1745,6 +1745,7 @@ static void flatten_user_data(astnode *n, astnode *type, astnode *list)
  */
 static int load_charmap(astnode *n, void *arg, astnode **next)
 {
+    /* TODO: should probably be done in the parsing phase (same path resolution as for INCSRC and INCBIN) */
     astnode *file;
     /* Get file descriptor */
     file = astnode_get_child(n, 0);

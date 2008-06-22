@@ -166,7 +166,7 @@
 
 
 #if ! defined (YYSTYPE) && ! defined (YYSTYPE_IS_DECLARED)
-#line 65 "parser.y"
+#line 69 "parser.y"
 typedef union YYSTYPE {
     long integer;
     int mnemonic;
@@ -176,7 +176,7 @@ typedef union YYSTYPE {
     astnode *node;
 } YYSTYPE;
 /* Line 1248 of yacc.c.  */
-#line 179 "parser.h"
+#line 179 "y.tab.h"
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

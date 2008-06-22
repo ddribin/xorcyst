@@ -257,6 +257,7 @@ LOCATION_STEP (yylloc);
  */
 typedef struct tag_file_stack_rec {
     const char *name; /* Name of the file */
+    char *path; /* Absolute path */
     YY_BUFFER_STATE buf;    /* flex input buffer */
     YYLTYPE loc;    /* Current position in file */
     FILE *fp;   /* File handle */
@@ -283,6 +284,73 @@ void yyresetloc(void)
 }
 
 /**
+ * Helper function used to handle INCSRC and INCBIN
+ * statements during parsing.
+ */
+FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
+{
+    FILE *fp = 0;
+    char *path = 0;
+    if (filename[0] == '/') {
+        /* Absolute path */
+        fp = fopen(filename, "rt");
+        if (fp) {
+            char *lastslash = strrchr(filename, '/');
+            path = (char *)malloc(lastslash - filename + 1);
+            strncpy(path, filename, lastslash - filename);
+        }
+    } else {
+        /* Not absolute path */
+        int i;
+        if (quoted_form) {
+            /* Try parent includes */
+            for (i = file_stack_ptr; i >= 0; --i) {
+                const char *include_path = file_stack[i].path;
+                char *tmp = (char *)malloc(
+                    strlen(include_path) + strlen("/") + strlen(filename) + 1);
+                strcpy(tmp, include_path);
+                strcat(tmp, "/");
+                strcat(tmp, filename);
+                fp = fopen(tmp, "rt");
+                if (fp) {
+                    char *lastslash = strrchr(tmp, '/');
+                    path = (char *)malloc(lastslash - tmp + 1);
+                    strncpy(path, tmp, lastslash - tmp);
+                    free(tmp);
+                    break;
+                }
+                free(tmp);
+                /* We only search the current dir for now. */
+                break;
+            }
+        }
+        if (!fp) {
+            /* Try search paths */
+            for (i = 0; i < xasm_args.include_path_count; ++i) {
+                const char *include_path = xasm_args.include_paths[i];
+                char *tmp = (char *)malloc(
+                    strlen(include_path) + strlen("/") + strlen(filename) + 1);
+                strcpy(tmp, include_path);
+                strcat(tmp, "/");
+                strcat(tmp, filename);
+                fp = fopen(tmp, "rt");
+                if (fp) {
+                    char *lastslash = strrchr(tmp, '/');
+                    path = (char *)malloc(lastslash - tmp + 1);
+                    strncpy(path, tmp, lastslash - tmp);
+                    free(tmp);
+                    break;
+                }
+                free(tmp);
+             }
+        }
+    }
+    if (path_out)
+        *path_out = path;
+    return fp;
+}
+
+/**
  * Function called by lexer upon EOF(yyin).
  */
 int yywrap()
@@ -291,6 +359,7 @@ int yywrap()
     yy_delete_buffer(YY_CURRENT_BUFFER);
     /* Close current file */
     fclose(FTOS().fp);
+    free(FTOS().path);
     /* Resume scanning of previous buffer, if any */
     if (file_stack_ptr > 0) {
         /* Pop stack */
@@ -314,38 +383,23 @@ int yywrap()
  * @param filename Name of new file to start scanning
  * @return error code (0, 1 or 2)
  */
-int yypushandrestart(const char *filename)
+int yypushandrestart(const char *filename, int quoted_form)
 {
-    FILE *fp;
+    FILE *fp = 0;
+    char *path = 0;
     /* Check for stack overflow */
     if (file_stack_ptr == FILE_STACK_SIZE-1) {
         /* Error, stack overflow */
         return 2;
     }
-    /* Attempt to open file */
-    fp = fopen(filename, "rt");
-    if (!fp && (filename[0] != '/')) {
-        /* Try search paths */
-        int i;
-        for (i = 0; i < xasm_args.include_path_count; ++i) {
-            const char *include_path = xasm_args.include_paths[i];
-            char *path = (char *)malloc(
-                strlen(include_path) + strlen("/") + strlen(filename) + 1);
-            strcpy(path, include_path);
-            strcat(path, "/");
-            strcat(path, filename);
-            fp = fopen(path, "rt");
-            free(path);
-            if (fp)
-                break;
-        }
-    }
+    fp = open_included_file(filename, quoted_form, &path);
     if (fp) {
         /* Save position in current file */
         FTOS().loc = yylloc;
         /* Push the new file */
         file_stack_ptr++;
         FTOS().name = filename;
+        FTOS().path = path;
         FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
         FTOS().fp = fp;
         /* Reset file location */
@@ -354,8 +408,7 @@ int yypushandrestart(const char *filename)
         yy_switch_to_buffer(FTOS().buf);
         /* Success */
         return 0;
-    }
-    else {
+    } else {
         /* Error, couldn't open file */
         return 1;
     }
@@ -375,9 +428,29 @@ int yybegin(const char *filename, int swap_parens, int ignore_case)
     /* Attempt to open the given file */
     fp = fopen(filename, "rt");
     if (fp) {
+        /* Figure out path */
+        char *path;
+        char *lastslash = strrchr(filename, '/');
+        if (filename[0] != '/') {
+            /* Not absolute */
+            if (lastslash) {
+                path = (char *)malloc(strlen(xasm_path) + 1 + (lastslash - filename) + 1);
+                strcpy(path, xasm_path);
+                strcat(path, "/");
+                strncat(path, filename, lastslash - filename);
+            } else {
+                path = (char *)malloc(strlen(xasm_path) + 1);
+                strcpy(path, xasm_path);
+            }
+        } else {
+            /* Absolute */
+            path = (char *)malloc(lastslash - filename + 1);
+            strncpy(path, filename, lastslash - filename);
+        }
         /* Init stack */
         file_stack_ptr = 0;
         FTOS().name = filename;
+        FTOS().path = path;
         FTOS().buf = yy_create_buffer(fp, YY_BUF_SIZE);
         FTOS().fp = fp;
         /* Reset file location */
@@ -386,8 +459,7 @@ int yybegin(const char *filename, int swap_parens, int ignore_case)
         yy_switch_to_buffer(FTOS().buf);
         /* Success */
         return 1;
-    }
-    else {
+    } else {
         /* Couldn't open file */
         return 0;
     }
@@ -448,4 +520,28 @@ const char *maybe_ignorecase(char *str)
     if (yyignorecase)
         __strupr(str);
     return str;
+}
+
+char *scan_include(int terminator)
+{
+    static char buf[1024];
+    int i = 0;
+    while (1) {
+        int c = input();
+        if (c == terminator)
+            break;
+        else if (c == '\n') {
+            yyerror("unterminated include filename");
+            unput(c);
+            break;
+        } else if (i == 1023) {
+            yyerror("include filename is too long");
+            break;
+        } else {
+            buf[i++] = (char)c;
+        }
+    }
+    buf[i] = '\0';
+    LOCATION_STEP (yylloc); 
+    return buf;
 }

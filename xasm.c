@@ -94,6 +94,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "getopt.h"
 #include "astnode.h"
 #include "astproc.h"
@@ -114,11 +115,12 @@ int yybegin(const char *, int, int);
 /* Other. */
 astnode *root_node;
 static symtab *symbol_table;
+char *xasm_path;
 
 /*---------------------------------------------------------------------------*/
 /* Argument parsing stuff. */
 
-static char program_version[] = "xasm 1.5.0";
+static char program_version[] = "xasm 1.5.1";
 
 /* Argument variables set by arg parser. */
 xasm_arguments xasm_args;
@@ -415,6 +417,9 @@ static int total_errors()
 int main(int argc, char *argv[]) {
     char *default_outfile = 0;
 
+    /* Working directory is needed for include statements */
+    xasm_path = getcwd(NULL, 0);
+
     /* Create global symbol table (auto-pushed on stack) */
     symbol_table = symtab_create();
 
@@ -496,6 +501,8 @@ int main(int argc, char *argv[]) {
             free(xasm_args.include_paths[i]);
         free(xasm_args.include_paths);
     }
+
+    free(xasm_path);
 
     return (total_errors() == 0) ? 0 : 1;
 }
