@@ -1939,15 +1939,15 @@ static void scripterr(script *s, script_command *c, char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
 
-    /* Print error message */
-    fprintf(stderr, "error: %s:%d: `%s': ", s->name, c->line, script_command_type_to_string(c->type) );
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-
+    if (!suppress) {
+        /* Print error message */
+        fprintf(stderr, "error: %s:%d: `%s': ", s->name, c->line, script_command_type_to_string(c->type) );
+        vfprintf(stderr, fmt, ap);
+        fprintf(stderr, "\n");
+        /* Increase error count */
+        err_count++;
+    }
     va_end(ap);
-
-    /* Increase error count */
-    err_count++;
 }
 
 #define require_arg(s, c, a, d) { \
