@@ -4131,6 +4131,7 @@ static int write_instruction(astnode *instr, void *arg, astnode **next)
         }
         astnode_finalize(operand);
     }
+    codeseg_pc += opcode_length(instr->instr.opcode);
     return 0;
 }
 
@@ -4186,12 +4187,35 @@ static int write_data(astnode *data, void *arg, astnode **next)
 }
 
 /**
+ * Writes storage (padding).
+ */
+static int write_storage(astnode *storage, void *arg, astnode **next)
+{
+    FILE *fp = (FILE *)arg;
+    astnode *type = LHS(storage);
+    astnode *count = eval_expression(RHS(storage));
+    assert(type->datatype == BYTE_DATATYPE);
+    assert(!in_dataseg);
+    if (count) {
+        int i;
+        assert(astnode_get_type(count) == INTEGER_NODE);
+        for (i = 0; i < count->integer; ++i)
+            fputc(0, fp);
+        codeseg_pc += count->integer;
+        astnode_finalize(count);
+    }
+    return 0;
+}
+
+/**
  * Writes binary.
  */
 static int write_binary(astnode *node, void *arg, astnode **next)
 {
     FILE *fp = (FILE *)arg;
+    assert(!in_dataseg);
     fwrite(node->binary.data, 1, node->binary.size, fp);
+    codeseg_pc += node->binary.size;
     return 0;
 }
 
@@ -4214,7 +4238,7 @@ void astproc_fifth_pass(astnode *root)
         { ORG_NODE, set_pc_from_org },
         { INSTRUCTION_NODE, write_instruction },
         { DATA_NODE, write_data },
-        { STORAGE_NODE, inc_pc_by_storage },
+        { STORAGE_NODE, write_storage },
         { BINARY_NODE, write_binary },
         { STRUC_DECL_NODE, noop },
         { UNION_DECL_NODE, noop },
