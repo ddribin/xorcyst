@@ -1,6 +1,7 @@
 - .undef
 - a way to define temporary variables for a proc (on the stack)?
 - types must be defined before they are used
+- a way to get the length of a string constant (extend sizeof or provide length(s) function)
 - .module or .namespace
 - .obj, .objend
 - .radix
