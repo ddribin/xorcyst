@@ -19,3 +19,4 @@
 - generate listing!
   - final binary: instruction by instruction, prints all the addresses + bytes
 - a way to specify fixed-point numbers?
+- .ifdef inside struct/union
