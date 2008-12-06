@@ -300,14 +300,14 @@ typedef struct tag_xunit xunit;
 /**
  * Describes a 6502 RAM block available for allocation.
  */
-struct tag_avail_block
+struct tag_avail_ram_block
 {
     int start;  /* Start address in 6502 space */
     int end;    /* End address in 6502 space (not inclusive) */
-    struct tag_avail_block *next;
+    struct tag_avail_ram_block *next;
 };
 
-typedef struct tag_avail_block avail_block;
+typedef struct tag_avail_ram_block avail_ram_block;
 
 /** */
 struct tag_calc_address_args
@@ -349,7 +349,7 @@ static int warn_count;
 static int suppress;
 
 /* Head of the list of available 6502 RAM blocks (for data allocation). */
-static avail_block *ram_block_head = NULL;
+static avail_ram_block *ram_block_head = NULL;
 
 /* Total amount of 6502 RAM (bytes) that was registered */
 static int total_ram = 0;
@@ -468,7 +468,7 @@ static void verbose(int level, char *fmt, ...)
 static int ram_left()
 {
     int sum;
-    avail_block *b;
+    avail_ram_block *b;
     for (sum = 0, b = ram_block_head; b != NULL; b = b->next) {
         sum += b->end - b->start;
     }
@@ -483,9 +483,9 @@ static int ram_left()
  */
 static void add_ram_block(int start, int end)
 {
-    avail_block *b;
+    avail_ram_block *b;
     /* Allocate a block struct */
-    avail_block *new_block = (avail_block *)malloc( sizeof(avail_block) );
+    avail_ram_block *new_block = (avail_ram_block *)malloc( sizeof(avail_ram_block) );
     if (new_block != NULL) {
         /* Set the fields */
         new_block->start = start;
@@ -501,7 +501,7 @@ static void add_ram_block(int start, int end)
             for (b = ram_block_head; b->next != NULL; b = b->next) ;
             b->next = new_block;
         }
-        verbose(1, "  added RAM block: %X-%X", new_block->start, new_block->end);
+        verbose(1, "  added RAM block: %.4X-%.4X", new_block->start, new_block->end);
     }
 }
 
@@ -512,14 +512,14 @@ static void add_ram_block(int start, int end)
  */
 static int alloc_ram(local *l)
 {
-    int left;
-    int pad;
     /* Try the available blocks in order. */
     /* Use the first one that's sufficient. */
-    avail_block *b;
-    avail_block *n;
-    avail_block *p = NULL;
+    avail_ram_block *b;
+    avail_ram_block *p = NULL;
     for (b = ram_block_head; b != NULL; p = b, b = b->next) {
+        int left;
+        int pad;
+        avail_ram_block *n;
         /* Check if zero page block required */
         if (l->flags & LABEL_FLAG_ZEROPAGE) {
             if (b->start >= 0x100) {
@@ -541,7 +541,7 @@ static int alloc_ram(local *l)
                 pad = (1 << l->align) - pad;
                 pad = (left < pad) ? left : pad;
                 if (pad < left) {
-                    n = (avail_block *)malloc(sizeof(avail_block));
+                    n = (avail_ram_block *)malloc(sizeof(avail_ram_block));
                     n->start = b->start;
                     n->end = n->start + pad;
                     b->start += pad;
@@ -584,8 +584,8 @@ static int alloc_ram(local *l)
  */
 static void finalize_ram_blocks()
 {
-    avail_block *b;
-    avail_block *t;
+    avail_ram_block *b;
+    avail_ram_block *t;
     for (b = ram_block_head; b != NULL; b = t) {
         t = b->next;
         SAFE_FREE(b);
@@ -1839,12 +1839,27 @@ static void label_qsort(local **a, int p, int r)
  */
 static void map_data_to_ram()
 {
-    int i, j, k;
-    local_array *la;
+    int i, k;
     local **total_order;
     local *l;
     int count;
-    int size;
+    /* Use a bit array to keep track of allocations,
+       to ensure that there is no overlap */
+    unsigned char *allocated;
+    int ram_base, ram_end;
+    {
+        avail_ram_block *b;
+        ram_base = 10000000;
+        ram_end = -10000000;
+        for (b = ram_block_head; b != NULL; b = b->next) {
+            if (b->start < ram_base)
+                ram_base = b->start;
+            if (b->end > ram_end)
+                ram_end = b->end;
+        }
+    }
+    allocated = (unsigned char *)malloc(((ram_end - ram_base) + 7) / 8);
+    memset(allocated, 0, ((ram_end - ram_base) + 7) / 8);
     /* Calculate total number of labels to map */
     count = 0;
     for (i=0; i<unit_count; i++) {
@@ -1853,8 +1868,11 @@ static void map_data_to_ram()
     /* Put pointers to all data labels in one big array */
     total_order = (local **)malloc( count * sizeof(local *) );
     for (i=0, k=0; i<unit_count; i++) {
+        int j;
+        local_array *la;
         la = &units[i].data_locals;
         for (j=0; j<la->size; j++) {
+            int size;
             /* Use virtual addresses to calculate size from this label to next */
             if (j == la->size-1) {
                 size = units[i].data_size;
@@ -1876,8 +1894,16 @@ static void map_data_to_ram()
         if (alloc_ram(l) == 1) {
             /* Good, label mapped successfully */
             l->resolved = 1;
-            if (l->name != NULL) {
-                verbose(1, "  %.4X-%.4X %s", l->phys_addr, l->phys_addr + l->size-1, l->name);
+            verbose(1, "  %.4X-%.4X %s (%s)", l->phys_addr,
+                    l->phys_addr + l->size-1, l->name ? l->name : "",
+                    l->owner->_unit_.name);
+            {
+                /* Verify that there's no overlap with other variable */
+                int a;
+                for (a = l->phys_addr; a < l->phys_addr + l->size; ++a) {
+                    assert((allocated[(a - ram_base) / 8] & (1 << (a & 7))) == 0);
+                    allocated[(a - ram_base) / 8] |= 1 << (a & 7);
+                }
             }
         }
         else {
@@ -1887,6 +1913,7 @@ static void map_data_to_ram()
         }
     }
     free(total_order);
+    free(allocated);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1904,8 +1931,9 @@ static void set_code_address(unsigned char *b, void *arg)
         /* Set the physical address to current PC */
         l->phys_addr = pc;
         l->resolved = 1;
-        if ((l->name != NULL) && program_args.verbose) {
-            printf("  %.4X %s\n", l->phys_addr, l->name);
+        if (program_args.verbose) {
+            fprintf(stdout, "  %.4X %s (%s)\n", l->phys_addr,
+                    l->name ? l->name : "", l->owner->_unit_.name);
         }
     }
     /* Increase label index */
