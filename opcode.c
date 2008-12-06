@@ -1033,7 +1033,7 @@ unsigned char opcode_zp_equiv(unsigned char op)
  */
 const char *opcode_to_string(unsigned char op)
 {
-    static char *mnemonic_lookup[] = {
+    static char *mnemonic_lookup[256] = {
         "BRK","ORA","???","???","???","ORA","ASL","???","PHP","ORA","ASL","???","???","ORA","ASL","???",
         "BPL","ORA","???","???","???","ORA","ASL","???","CLC","ORA","???","???","???","ORA","ASL","???",
         "JSR","AND","???","???","BIT","AND","ROL","???","PLP","AND","ROL","???","BIT","AND","ROL","???",
@@ -1052,4 +1052,284 @@ const char *opcode_to_string(unsigned char op)
         "BEQ","SBC","???","???","???","SBC","INC","???","SED","SBC","???","???","???","SBC","INC","???"
     };
     return mnemonic_lookup[op];
+}
+
+addressing_mode opcode_addressing_mode(unsigned char op)
+{
+    /* Lookup-table indexed by opcode */
+    static addressing_mode amode_lookup[256] = {
+        IMPLIED_MODE, /* BRK */
+        PREINDEXED_INDIRECT_MODE, /* ORA (Indirect,X) */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* ORA */
+        ZEROPAGE_MODE, /* ASL */
+        INVALID_MODE,
+        IMPLIED_MODE,  /* PHP */
+        IMMEDIATE_MODE, /* ORA */
+        ACCUMULATOR_MODE, /* ASL */
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* ORA */
+        ABSOLUTE_MODE, /* ASL */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BPL */
+        POSTINDEXED_INDIRECT_MODE, /* ORA (Indirect),Y */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* ORA */
+        ZEROPAGE_X_MODE, /* ASL */
+        INVALID_MODE,
+        IMPLIED_MODE, /* CLC */
+        ABSOLUTE_Y_MODE, /* ORA */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* ORA */
+        ABSOLUTE_X_MODE, /* ASL */
+        INVALID_MODE,
+
+        ABSOLUTE_MODE, /* JSR */
+        PREINDEXED_INDIRECT_MODE, /* AND */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* BIT */
+        ZEROPAGE_MODE, /* AND */
+        ZEROPAGE_MODE, /* ROL */
+        INVALID_MODE,
+        IMPLIED_MODE, /* PLP */
+        IMMEDIATE_MODE, /* AND */
+        ACCUMULATOR_MODE, /* ROL */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* BIT */
+        ABSOLUTE_MODE, /* AND */
+        ABSOLUTE_MODE, /* ROL */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BMI */
+        POSTINDEXED_INDIRECT_MODE, /* AND */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* AND */
+        ZEROPAGE_X_MODE, /* ROL */
+        INVALID_MODE,
+        IMPLIED_MODE, /* SEC */
+        ABSOLUTE_Y_MODE, /* AND */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* AND */
+        ABSOLUTE_X_MODE, /* ROL */
+        INVALID_MODE,
+
+        IMPLIED_MODE, /* RTI */
+        PREINDEXED_INDIRECT_MODE, /* EOR */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* EOR */
+        ZEROPAGE_MODE, /* LSR */
+        INVALID_MODE,
+        IMPLIED_MODE, /* PHA */
+        IMMEDIATE_MODE, /* EOR */
+        ACCUMULATOR_MODE, /* LSR */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* JMP */
+        ABSOLUTE_MODE, /* EOR */
+        ABSOLUTE_MODE, /* LSR */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BVC */
+        POSTINDEXED_INDIRECT_MODE, /* EOR */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* EOR */
+        ZEROPAGE_X_MODE, /* LSR */
+        INVALID_MODE,
+        IMPLIED_MODE, /* CLI */
+        ABSOLUTE_Y_MODE, /* EOR */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* EOR */
+        ABSOLUTE_X_MODE, /* LSR */
+        INVALID_MODE,
+
+        IMPLIED_MODE, /* RTS */
+        PREINDEXED_INDIRECT_MODE, /* ADC */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* ADC */
+        ZEROPAGE_MODE, /* ROR */
+        INVALID_MODE,
+        IMPLIED_MODE, /* PLA */
+        IMMEDIATE_MODE, /* ADC */
+        ACCUMULATOR_MODE, /* ROR */
+        INVALID_MODE,
+        INDIRECT_MODE, /* JMP */
+        ABSOLUTE_MODE, /* ADC */
+        ABSOLUTE_MODE, /* ROR */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BVS */
+        POSTINDEXED_INDIRECT_MODE, /* ADC */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* ADC */
+        ZEROPAGE_X_MODE, /* ROR */
+        INVALID_MODE,
+        IMPLIED_MODE, /* SEI */
+        ABSOLUTE_Y_MODE, /* ADC */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* ADC */
+        ABSOLUTE_X_MODE, /* ROR */
+        INVALID_MODE,
+
+        INVALID_MODE,
+        PREINDEXED_INDIRECT_MODE, /* STA */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* STY */
+        ZEROPAGE_MODE, /* STA */
+        ZEROPAGE_MODE, /* STX */
+        INVALID_MODE,
+        IMPLIED_MODE, /* DEY */
+        INVALID_MODE,
+        IMPLIED_MODE, /* TXA */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* STY */
+        ABSOLUTE_MODE, /* STA */
+        ABSOLUTE_MODE, /* STX */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BCC */
+        POSTINDEXED_INDIRECT_MODE, /* STA */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* STY */
+        ZEROPAGE_X_MODE, /* STA */
+        ZEROPAGE_X_MODE, /* STX */
+        INVALID_MODE,
+        IMPLIED_MODE, /* TYA */
+        ABSOLUTE_Y_MODE, /* STA */
+        IMPLIED_MODE, /* TXS */
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* STA */
+        INVALID_MODE,
+        INVALID_MODE,
+
+        IMMEDIATE_MODE, /* LDY */
+        PREINDEXED_INDIRECT_MODE, /* LDA */
+        IMMEDIATE_MODE, /* LDX */
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* LDY */
+        ZEROPAGE_MODE, /* LDA */
+        ZEROPAGE_MODE, /* LDX */
+        INVALID_MODE,
+        IMPLIED_MODE, /* TAY */
+        IMMEDIATE_MODE, /* LDA */
+        IMPLIED_MODE, /* TAX */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* LDY */
+        ABSOLUTE_MODE, /* LDA */
+        ABSOLUTE_MODE, /* LDX */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BCS */
+        POSTINDEXED_INDIRECT_MODE, /* LDA */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* LDY */
+        ZEROPAGE_X_MODE, /* LDA */
+        ZEROPAGE_X_MODE, /* LDX */
+        INVALID_MODE,
+        IMPLIED_MODE, /* CLV */
+        ABSOLUTE_Y_MODE, /* LDA */
+        IMPLIED_MODE, /* TSX */
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* LDY */
+        ABSOLUTE_X_MODE, /* LDA */
+        ABSOLUTE_X_MODE, /* LDX */
+        INVALID_MODE,
+
+        IMMEDIATE_MODE, /* CPY */
+        PREINDEXED_INDIRECT_MODE, /* CMP */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* CPY */
+        ZEROPAGE_MODE, /* CMP */
+        ZEROPAGE_MODE, /* DEC */
+        INVALID_MODE,
+        IMPLIED_MODE, /* INY */
+        IMMEDIATE_MODE, /* CMP */
+        IMPLIED_MODE, /* DEX */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* CPY */
+        ABSOLUTE_MODE, /* CMP */
+        ABSOLUTE_MODE, /* DEC */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BNE */
+        POSTINDEXED_INDIRECT_MODE, /* CMP */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* CMP */
+        ZEROPAGE_X_MODE, /* DEC */
+        INVALID_MODE,
+        IMPLIED_MODE, /* CLD */
+        ABSOLUTE_Y_MODE, /* CMP */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* CMP */
+        ABSOLUTE_X_MODE, /* DEC */
+        INVALID_MODE,
+
+        IMMEDIATE_MODE, /* CPX */
+        PREINDEXED_INDIRECT_MODE, /* SBC */
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_MODE, /* CPX */
+        ZEROPAGE_MODE, /* SBC */
+        ZEROPAGE_MODE, /* INC */
+        INVALID_MODE,
+        IMPLIED_MODE, /* INX */
+        IMMEDIATE_MODE, /* SBC */
+        IMPLIED_MODE, /* NOP */
+        INVALID_MODE,
+        ABSOLUTE_MODE, /* CPX */
+        ABSOLUTE_MODE, /* SBC */
+        ABSOLUTE_MODE, /* INC */
+        INVALID_MODE,
+
+        RELATIVE_MODE, /* BEQ */
+        POSTINDEXED_INDIRECT_MODE, /* SBC */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ZEROPAGE_X_MODE, /* SBC */
+        ZEROPAGE_X_MODE, /* INC */
+        INVALID_MODE,
+        IMPLIED_MODE, /* SED */
+        ABSOLUTE_Y_MODE, /* SBC */
+        INVALID_MODE,
+        INVALID_MODE,
+        INVALID_MODE,
+        ABSOLUTE_X_MODE, /* SBC */
+        ABSOLUTE_X_MODE, /* INC */
+        INVALID_MODE
+    };
+    /* */
+    return amode_lookup[op];
 }

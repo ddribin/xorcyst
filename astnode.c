@@ -77,6 +77,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 #include "astnode.h"
 
 #define SAFE_FREE(a) if (a) { free(a); a = NULL; }
@@ -107,6 +108,7 @@ const char *addressing_mode_to_string(addressing_mode am)
         case POSTINDEXED_INDIRECT_MODE: return "POSTINDEXED_INDIRECT_MODE";
         case INDIRECT_MODE:     return "INDIRECT_MODE";
         case RELATIVE_MODE:     return "RELATIVE_MODE";
+        case INVALID_MODE: assert(0); break;
     }
     return "addressing_mode_to_string: invalid addressing mode";
 }

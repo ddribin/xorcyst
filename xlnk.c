@@ -364,6 +364,13 @@ static int bank_id;
 static unsigned char *unit_file = NULL; /* length byte followed by chars */
 static int unit_line = -1;
 
+/* Turn on to produce flat (dis)assembly code. The resulting code can be
+   assembled by xasm using the --pure-binary switch.
+   It's useful for checking that the linker doesn't do anything stupid
+   in binary output mode.
+*/
+static const int generate_assembly = 0;
+
 /*--------------------------------------------------------------------------*/
 
 /**
@@ -1107,6 +1114,7 @@ static void inc_pc_dsb(unsigned char *b, void *arg)
     else {
         /* Error, unresolved */
         //err("unresolved symbol");
+        assert(0);
     }
 
     finalize_constant(&c);
@@ -1200,14 +1208,14 @@ static void write_instr(unsigned char *b, void *arg)
     /* Get opcode */
     i = 1;
     op = get_1(b, &i);
+    assert(opcode_length(op) > 1);
     /* Get expression ID */
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-
+    assert(c.type == INTEGER_CONSTANT);
     /* Write the opcode */
     fputc(op, args->fp);
-
     if (opcode_length(op) == 2) {
         /* Operand must fit in 1 byte */
         /* Check if it's a relative jump */
@@ -1237,8 +1245,8 @@ static void write_instr(unsigned char *b, void *arg)
             /* Write it */
             fputc(c.integer, args->fp);
         }
-    }
-    else {
+    } else {
+        assert(opcode_length(op) == 3);
         /* Operand must fit in 2 bytes */
         if (c.integer >= 0x10000) {
             err("instruction operand doesn't fit in 2 bytes");
@@ -1323,6 +1331,8 @@ static void write_dx(unsigned char *b, void *arg)
                 case CMD_DD:    inc_pc( 4, arg );   break;
             }
         }
+    } else {
+        assert(0);
     }
 
     finalize_constant(&c);
@@ -1380,10 +1390,10 @@ static void write_dsb(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
+    assert(c.type == INTEGER_CONSTANT);
     if (c.integer < 0) {
         err("negative count");
-    }
-    else if (c.integer > 0) {
+    } else if (c.integer > 0) {
         /* Write zeroes */
         for (i=0; i<c.integer; i++) {
             fputc(0, args->fp);
@@ -1421,6 +1431,343 @@ static void write_as_binary(FILE *fp, xunit *u)
     args.fp = fp;
     /* Reset PC */
     pc = u->code_origin;
+    /* Do the walk */
+    bytecode_walk(u->_unit_.codeseg.bytes, handlers, (void *)&args);
+}
+
+/*--------------------------------------------------------------------------*/
+/* Functions for writing 6502 assembly from bytecodes. */
+
+/**
+  Prints \a size bytes of data defined by \a buf to \a out.
+*/
+static void print_chunk(FILE *out, const char *label,
+                        const unsigned char *buf, int size, int cols)
+{
+    int i, j, m;
+    int pos = 0;
+    if (label)
+        fprintf(out, "%s:\n", label);
+    for (i = 0; i < size / cols; ++i) {
+        fprintf(out, ".DB ");
+        for (j = 0; j < cols-1; ++j)
+            fprintf(out, "$%.2X,", buf[pos++]);
+        fprintf(out, "$%.2X\n", buf[pos++]);
+    }
+    m = size % cols;
+    if (m > 0) {
+        fprintf(out, ".DB ");
+        for (j = 0; j < m-1; ++j)
+            fprintf(out, "$%.2X,", buf[pos++]);
+        fprintf(out, "$%.2X\n", buf[pos++]);
+    }
+}
+
+/**
+ * Writes an array of bytes.
+ */
+static void asm_write_bin8(unsigned char *b, void *arg)
+{
+    int count;
+    int i;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get 8-bit count */
+    i = 1;
+    count = get_1(b, &i) + 1;
+    /* Write data */
+    //    fprintf(args->fp, "; %d byte(s)\n", count);
+    print_chunk(args->fp, /*label=*/0, &b[i], count, /*cols=*/16);
+    /* Advance PC */
+    inc_pc( count, arg );
+}
+
+/**
+ * Writes an array of bytes.
+ */
+static void asm_write_bin16(unsigned char *b, void *arg)
+{
+    int count;
+    int i;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get 16-bit count */
+    i = 1;
+    count = get_2(b, &i) + 1;
+    /* Write data */
+    //    fprintf(args->fp, "; %d byte(s)\n", count);
+    print_chunk(args->fp, /*label=*/0, &b[i], count, /*cols=*/16);
+    /* Advance PC */
+    inc_pc( count, arg );
+}
+
+/**
+ * Writes a label.
+ */
+static void asm_write_label(unsigned char *b, void *arg)
+{
+    unsigned char flags;
+    int i= 1;
+    write_binary_args *args = (write_binary_args *)arg;
+    fprintf(args->fp, "; label");
+    flags = get_1(b, &i);
+    if (flags & LABEL_FLAG_EXPORT) {
+        /* Read and print the name */
+        char *name;
+        int len = get_1(b, &i) + 1;
+        name = (char *)malloc( len + 1 );
+        assert(name != 0);
+        memcpy(name, &b[i], len);
+        name[len] = '\0';
+        i += len;
+        fprintf(args->fp, " %s", name);
+        free(name);
+    } else {
+        fprintf(args->fp, " PC=$%.4X", pc);
+    }
+    fprintf(args->fp, "\n");
+}
+
+/**
+ * Writes an instruction.
+ */
+static void asm_write_instr(unsigned char *b, void *arg)
+{
+    constant c;
+    unsigned char op;
+    addressing_mode mode;
+    int i;
+    int exid;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get opcode */
+    i = 1;
+    op = get_1(b, &i);
+    assert(opcode_length(op) > 1);
+    mode = opcode_addressing_mode(op);
+    assert(mode != INVALID_MODE);
+    /* Get expression ID */
+    exid = get_2(b, &i);
+    /* Evaluate expression */
+    eval_expression(args->xu, exid, &c);
+    assert(c.type == INTEGER_CONSTANT);
+    /* Write the opcode */
+    fprintf(args->fp, "%s", opcode_to_string(op));
+    switch (mode) {
+        case IMPLIED_MODE:
+        case ACCUMULATOR_MODE:
+        break;
+        case IMMEDIATE_MODE:
+        fprintf(args->fp, " #$");
+        break;
+        case ZEROPAGE_MODE:
+        case ZEROPAGE_X_MODE:
+        case ZEROPAGE_Y_MODE:
+        case ABSOLUTE_MODE:
+        case ABSOLUTE_X_MODE:
+        case ABSOLUTE_Y_MODE:
+        fprintf(args->fp, " $");
+        break;
+        case PREINDEXED_INDIRECT_MODE:
+        case POSTINDEXED_INDIRECT_MODE:
+        case INDIRECT_MODE:
+        fprintf(args->fp, " [$");
+        break;
+        case RELATIVE_MODE:
+        fprintf(args->fp, " $");
+        break;
+        case INVALID_MODE:
+        break;
+    }
+    /* Write the operand */
+    fprintf(args->fp, "%.4X", (unsigned)c.integer);
+    switch (mode) {
+        case IMPLIED_MODE:
+        case ACCUMULATOR_MODE:
+        case IMMEDIATE_MODE:
+        case ZEROPAGE_MODE:
+	break;
+        case ZEROPAGE_X_MODE:
+        fprintf(args->fp, ",X");
+	break;
+        case ZEROPAGE_Y_MODE:
+        fprintf(args->fp, ",Y");
+	break;
+        case ABSOLUTE_MODE:
+	break;
+        case ABSOLUTE_X_MODE:
+        fprintf(args->fp, ",X");
+	break;
+        case ABSOLUTE_Y_MODE:
+        fprintf(args->fp, ",Y");
+        break;
+        case PREINDEXED_INDIRECT_MODE:
+        fprintf(args->fp, ",X]");
+	break;
+        case POSTINDEXED_INDIRECT_MODE:
+        fprintf(args->fp, "],Y");
+	break;
+        case INDIRECT_MODE:
+        fprintf(args->fp, "]");
+        break;
+        case RELATIVE_MODE:
+        break;
+        case INVALID_MODE:
+        break;
+    }
+    /* Write newline */
+    fprintf(args->fp, "\n");
+    /* Advance PC */
+    inc_pc( opcode_length(op), arg );
+}
+
+/**
+ * Writes a byte, word or dword.
+ */
+static void asm_write_dx(unsigned char *b, void *arg)
+{
+    constant c;
+    int i;
+    int exid;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get expression ID */
+    i = 1;
+    exid = get_2(b, &i);
+    /* Evaluate expression */
+    eval_expression(args->xu, exid, &c);
+    if (c.type == INTEGER_CONSTANT) {
+        switch (b[0]) {
+            case CMD_DB:
+            fprintf(args->fp, ".DB $%.2X", (unsigned)c.integer);
+            break;
+            case CMD_DW:
+       	    fprintf(args->fp, ".DW $%.4X", (unsigned)c.integer);
+            break;
+            case CMD_DD:
+       	    fprintf(args->fp, ".DD $%.8X", (unsigned)c.integer);
+            break;
+        }
+        /* Advance PC */
+        switch (b[0]) {
+            case CMD_DB:    inc_pc( 1, arg );   break;
+            case CMD_DW:    inc_pc( 2, arg );   break;
+            case CMD_DD:    inc_pc( 4, arg );   break;
+        }
+    } else if (c.type == STRING_CONSTANT) {
+        int count = strlen(c.string);
+        switch (b[0]) {
+            case CMD_DB:
+            fprintf(args->fp, ".DB");
+            break;
+            case CMD_DW:
+            fprintf(args->fp, ".DW");
+            break;
+            case CMD_DD:
+            fprintf(args->fp, ".DD");
+            break;
+        }
+        fprintf(args->fp, " \"%s\"", c.string);
+        /* Advance PC */
+        switch (b[0]) {
+            case CMD_DB:    inc_pc( count * 1, arg );   break;
+            case CMD_DW:    inc_pc( count * 2, arg );   break;
+            case CMD_DD:    inc_pc( count * 4, arg );   break;
+        }
+    } else {
+        assert(0);
+    }
+    fprintf(args->fp, "\n");
+    finalize_constant(&c);
+}
+
+/**
+ * Writes a series of zeroes.
+ */
+static void asm_write_dsi8(unsigned char *b, void *arg)
+{
+    int count;
+    int i;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get 8-bit count */
+    i = 1;
+    count = get_1(b, &i) + 1;
+    /* Pad */
+    fprintf(args->fp, ".DSB $%X\n", count);
+    /* Advance PC */
+    inc_pc( count, arg );
+}
+
+/**
+ * Writes a series of zeroes.
+ */
+static void asm_write_dsi16(unsigned char *b, void *arg)
+{
+    int count;
+    int i;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get 16-bit count */
+    i = 1;
+    count = get_2(b, &i) + 1;
+    /* Pad */
+    fprintf(args->fp, ".DSB $%X\n", count);
+    /* Advance PC */
+    inc_pc( count, arg );
+}
+
+/**
+ * Writes a series of zeroes.
+ */
+static void asm_write_dsb(unsigned char *b, void *arg)
+{
+    constant c;
+    int i;
+    int exid;
+    write_binary_args *args = (write_binary_args *)arg;
+    /* Get expression ID */
+    i = 1;
+    exid = get_2(b, &i);
+    /* Evaluate expression */
+    eval_expression(args->xu, exid, &c);
+    assert(c.type == INTEGER_CONSTANT);
+    if (c.integer < 0) {
+        err("negative count");
+    }
+    else if (c.integer > 0) {
+        /* Pad */
+        fprintf(args->fp, ".DSB $%X\n", (unsigned)c.integer);
+        /* Advance PC */
+        inc_pc( c.integer, arg );
+    }
+}
+
+/**
+ * Writes a code segment as fully native 6502 code.
+ * @param fp File handle
+ * @param u Unit whose code to write
+ */
+static void write_as_assembly(FILE *fp, xunit *u)
+{
+    write_binary_args args;
+    /* Table of callback functions for our purpose. */
+    bytecodeproc handlers[] =
+    {
+        NULL,       /* CMD_END */
+        asm_write_bin8, /* CMD_BIN8 */
+        asm_write_bin16,    /* CMD_BIN16 */
+        asm_write_label,    /* CMD_LABEL */
+        asm_write_instr,    /* CMD_INSTR */
+        asm_write_dx,   /* CMD_DB */
+        asm_write_dx,   /* CMD_DW */
+        asm_write_dx,   /* CMD_DD */
+        asm_write_dsi8, /* CMD_DSI8 */
+        asm_write_dsi16,    /* CMD_DSI16 */
+        asm_write_dsb   /* CMD_DSB */
+    };
+    /* Fill in args */
+    args.xu = u;
+    args.fp = fp;
+    /* Reset PC */
+    pc = u->code_origin;
+    fprintf(fp, "; ***************************************\n");
+    fprintf(fp, "; * %s, PC=$%.4X\n", u->_unit_.name, pc);
+    fprintf(fp, "; ***************************************\n");
     /* Do the walk */
     bytecode_walk(u->_unit_.codeseg.bytes, handlers, (void *)&args);
 }
@@ -2378,7 +2725,7 @@ static void write_bank(script *s, script_command *c, void *arg)
  * Generates the final binary output from the linker.
  * @param sc Linker script
  */
-static void generate_output(script *sc)
+static void generate_binary_output(script *sc)
 {
     FILE *fp = NULL;
     /* Table of mappings for our purpose */
@@ -2400,6 +2747,204 @@ static void generate_output(script *sc)
     script_walk(sc, map, (void *)&fp);
     /* Pad last bank if necessary */
     maybe_pad_bank(sc, sc->first_command, fp);
+}
+
+/*--------------------------------------------------------------------------*/
+/* Functions for producing assembly code based on a sequential list of
+script commands. */
+
+/**
+ * Sets the output file according to 'output' script command.
+ * @param s Linker script
+ * @param c Command of type OUTPUT_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_set_output(script *s, script_command *c, void *arg)
+{
+    /* No-op when generating assembly. */
+}
+
+/**
+ * Copies a file to output according to 'copy' script command.
+ * @param s Linker script
+ * @param c Command of type COPY_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_copy_to_output(script *s, script_command *c, void *arg)
+{
+    char *file;
+    FILE **fpp;
+    FILE *cf;
+    /* Arg is pointer to file handle pointer */
+    fpp = (FILE **)arg;
+    /* Get the name of file to copy */
+    require_arg(s, c, "file", file);
+    /* Attempt to open the file to copy */
+    cf = fopen(file, "rb");
+    if (cf == NULL) {
+        scripterr(s, c, "could not open `%s' for reading", file);
+    } else {
+        unsigned char buf[1024];
+        int count = fread(buf, 1, 1024, cf);
+        fprintf(*fpp, "; begin %s\n", file);
+        while (count > 0) {
+            print_chunk(*fpp, /*label=*/0, buf, count, /*cols=*/16);
+            count = fread(buf, 1, 1024, cf);
+        }
+        fprintf(*fpp, "; end %s\n", file);
+        /* Advance offset */
+        bank_offset += ftell(cf);
+        pc += ftell(cf);
+        /* Close the copied file */
+        fclose(cf);
+        /* Check if exceeded bank size */
+        if (bank_offset > bank_size) {
+            scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
+        }
+    }
+}
+
+/**
+ * Starts a new bank according to 'bank' script command.
+ * @param s Linker script
+ * @param c Command of type BANK_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_start_bank(script *s, script_command *c, void *arg)
+{
+    FILE *fp = *(FILE**)arg;
+    start_bank(s, c, arg);
+    fprintf(fp, ".ORG $%.4X\n", pc);
+}
+
+/**
+ * Writes unit according to 'link' script command.
+ * @param s Linker script
+ * @param c Command of type LINK_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_write_unit(script *s, script_command *c, void *arg)
+{
+    FILE **fpp;
+    xunit *xu;
+    char *file;
+    /* Arg is pointer to file handle pointer */
+    fpp = (FILE **)arg;
+    /* Get the name of the unit */
+    require_arg(s, c, "file", file);
+    /* Look it up */
+    xu = (xunit *)hashtab_get(unit_hash, file);
+    /* Write it */
+    verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
+    write_as_assembly(*fpp, xu);
+    /* Advance offset */
+    bank_offset += xu->code_size;
+    /* Check if exceeded bank size */
+    if (bank_offset > bank_size) {
+        scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
+    }
+}
+
+/**
+ * Pads output file according to 'pad' script command.
+ * @param s Linker script
+ * @param c Command of type PAD_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_write_pad(script *s, script_command *c, void *arg)
+{
+    FILE **fpp;
+    int count;
+    int offset;
+    int origin;
+    char *offset_str;
+    char *origin_str;
+    char *size_str;
+    /* Arg is pointer to file handle pointer */
+    fpp = (FILE **)arg;
+    if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
+        offset = str_to_int(offset_str);
+        /* Calculate number of zeroes to write */
+        count = offset - bank_offset;
+    } else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
+        origin = str_to_int(origin_str);
+        /* Calculate number of zeroes to write */
+        count = origin - pc;
+    } else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
+        count = str_to_int(size_str);
+    } else {
+        scripterr(s, c, "missing argument");
+        count = 0;
+    }
+    /* Sanity check */
+    if (count < 0) {
+        scripterr(s, c, "cannot pad backwards");
+        count = 0;
+    } else if (count > 0) {
+        verbose(1, "  padding %d bytes...", count);
+    }
+    /* Pad! */
+    fprintf(*fpp, ".DSB $%X\n", count);
+    /* Advance offset */
+    bank_offset += count;
+    pc += count;
+    /* Check if exceeded bank size */
+    if (bank_offset > bank_size) {
+        scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
+    }
+}
+
+/**
+ * Pads to end of bank in file if bank size not reached.
+ * @param s Linker script
+ * @param c Command of type BANK_COMMAND
+ * @param fp File handle
+ */
+static void asm_maybe_pad_bank(script *s, script_command *c, FILE *fp)
+{
+    if ( (bank_size != 0x7FFFFFFF) && (bank_offset < bank_size) ) {
+        fprintf(fp, ".DSB $%X\n", bank_size - bank_offset);
+    }
+}
+
+/**
+ * Finishes old bank in output and starts new bank.
+ * @param s Linker script
+ * @param c Command of type BANK_COMMAND
+ * @param arg Pointer to file handle
+ */
+static void asm_write_bank(script *s, script_command *c, void *arg)
+{
+    FILE **fpp = (FILE **)arg;
+    /* Pad bank if necessary */
+    asm_maybe_pad_bank(s, c, *fpp);
+    /* Start new bank */
+    asm_start_bank(s, c, arg);
+}
+
+static void generate_assembly_output(script *sc, FILE *fp)
+{
+    /* Table of mappings for our purpose */
+    static script_commandprocmap map[] = {
+        { OUTPUT_COMMAND, asm_set_output },
+        { COPY_COMMAND, asm_copy_to_output },
+        { BANK_COMMAND, asm_write_bank },
+        { LINK_COMMAND, asm_write_unit },
+        { PAD_COMMAND, asm_write_pad },
+        { BAD_COMMAND, NULL }
+    };
+    /* Reset offsets */
+    bank_size = 0x7FFFFFFF;
+    bank_offset = 0;
+    bank_origin = 0;
+    bank_id = -1;
+    pc = 0;
+    fprintf(fp, ".CODESEG\n");
+    /* Do the walk */
+    script_walk(sc, map, (void *)&fp);
+    /* Pad last bank if necessary */
+    asm_maybe_pad_bank(sc, sc->first_command, fp);
+    fprintf(fp, ".END\n");
 }
 
 /*--------------------------------------------------------------------------*/
@@ -2640,7 +3185,9 @@ int main(int argc, char **argv)
             /* Only continue with processing if all code labels were mapped */
             if (err_count == 0) {
                 verbose(1, "generating output...");
-                generate_output(&sc);
+                generate_binary_output(&sc);
+                if (generate_assembly)
+                    generate_assembly_output(&sc, stdout);
             }
         }
     }

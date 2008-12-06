@@ -39,5 +39,6 @@ unsigned char opcode_get(instr_mnemonic, addressing_mode);
 int opcode_length(unsigned char);
 unsigned char opcode_zp_equiv(unsigned char);
 const char *opcode_to_string(unsigned char);
+addressing_mode opcode_addressing_mode(unsigned char);
 
 #endif  /* !OPCODE_H */

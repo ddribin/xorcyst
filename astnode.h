@@ -96,7 +96,8 @@ enum tag_addressing_mode {
     PREINDEXED_INDIRECT_MODE,
     POSTINDEXED_INDIRECT_MODE,
     INDIRECT_MODE,
-    RELATIVE_MODE
+    RELATIVE_MODE,
+    INVALID_MODE
 };
 
 typedef enum tag_addressing_mode addressing_mode;
