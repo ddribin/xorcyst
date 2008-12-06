@@ -104,6 +104,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 #include "getopt.h"
 #include "objdef.h"
 #include "opcode.h"
@@ -348,7 +349,7 @@ static int warn_count;
 static int suppress;
 
 /* Head of the list of available 6502 RAM blocks (for data allocation). */
-static avail_block *first_block = NULL;
+static avail_block *ram_block_head = NULL;
 
 /* Total amount of 6502 RAM (bytes) that was registered */
 static int total_ram = 0;
@@ -468,7 +469,7 @@ static int ram_left()
 {
     int sum;
     avail_block *b;
-    for (sum = 0, b = first_block; b != NULL; b = b->next) {
+    for (sum = 0, b = ram_block_head; b != NULL; b = b->next) {
         sum += b->end - b->start;
     }
     return sum;
@@ -491,13 +492,13 @@ static void add_ram_block(int start, int end)
         new_block->end = end;
         new_block->next = NULL;
         /* Add it to list */
-        if (first_block == NULL) {
+        if (ram_block_head == NULL) {
             /* Start the list */
-            first_block = new_block;
+            ram_block_head = new_block;
         }
         else {
             /* Add to end */
-            for (b = first_block; b->next != NULL; b = b->next) ;
+            for (b = ram_block_head; b->next != NULL; b = b->next) ;
             b->next = new_block;
         }
         verbose(1, "  added RAM block: %X-%X", new_block->start, new_block->end);
@@ -518,7 +519,7 @@ static int alloc_ram(local *l)
     avail_block *b;
     avail_block *n;
     avail_block *p = NULL;
-    for (b = first_block; b != NULL; p = b, b = b->next) {
+    for (b = ram_block_head; b != NULL; p = b, b = b->next) {
         /* Check if zero page block required */
         if (l->flags & LABEL_FLAG_ZEROPAGE) {
             if (b->start >= 0x100) {
@@ -545,8 +546,8 @@ static int alloc_ram(local *l)
                     n->end = n->start + pad;
                     b->start += pad;
                     n->next = b;
-                    if (b == first_block) {
-                        first_block = n;    /* New head */
+                    if (b == ram_block_head) {
+                        ram_block_head = n;    /* New head */
                     }
                     b = n;
                 }
@@ -562,7 +563,7 @@ static int alloc_ram(local *l)
             /* Remove from linked list */
             if (p == NULL) {
                 /* Set successor block as new head */
-                first_block = b->next;
+                ram_block_head = b->next;
             }
             else {
                 /* Squeeze out */
@@ -585,7 +586,7 @@ static void finalize_ram_blocks()
 {
     avail_block *b;
     avail_block *t;
-    for (b = first_block; b != NULL; b = t) {
+    for (b = ram_block_head; b != NULL; b = t) {
         t = b->next;
         SAFE_FREE(b);
     }
@@ -1626,6 +1627,13 @@ static void register_one_local(unsigned char *b, void *arg)
         lptr->phys_addr = get_2(b, &i);
         lptr->resolved = 1;
     }
+#if 0
+    if (program_args.verbose) {
+        verbose(1, "      %s align=%d resolved=%d",
+                lptr->name ? lptr->name : "(anonymous)",
+                lptr->align, lptr->resolved);
+    }
+#endif
     /* Point to next local in array */
     *lpptr += 1;
 }
@@ -1678,12 +1686,13 @@ static void register_locals(unsigned char *b, local_array *la, xunit *xu)
 static void enter_exported_symbol(hashtab *tab, void *key, void *data, unit *u)
 {
     /* Make sure symbol doesn't already exist */
-    if ((hashtab_get(label_hash, key) != NULL) ||
-    (hashtab_get(constant_hash, key) != NULL) ) {
+    if ((hashtab_get(label_hash, key) != NULL)
+        || (hashtab_get(constant_hash, key) != NULL) ) {
         /* Error, duplicate symbol */
         err("duplicate symbol `%s' exported from unit `%s'", (char *)key, u->name);
     }
     else {
+        verbose(1, "      %s", (char*)key);
         /* Enter it */
         hashtab_put(tab, key, data);
     }
@@ -1737,6 +1746,7 @@ static void set_data_address(unsigned char *b, void *arg)
     if (!l->resolved) {
         /* Set the virtual address */
         l->virt_addr = pc;
+        verbose(2, "    %.4X %s", l->virt_addr, l->name ? l->name : "");
     }
     /* Increase label index */
     args->index++;
@@ -1771,6 +1781,7 @@ static void calc_data_addresses(xunit *u)
     args.index = 0;
     /* Reset PC */
     pc = 0;
+    verbose(1, "  %s", u->_unit_.name);
     /* Map away! */
     bytecode_walk(u->_unit_.dataseg.bytes, handlers, (void *)&args);
     /* Store the end address, which is the total size of data */
@@ -2571,6 +2582,7 @@ int main(int argc, char **argv)
     /* Make sure all units were loaded */
     if (err_count != 0) {
         // TODO
+        assert(0);
     }
 
     /* Only continue with processing if no unresolved symbols */
@@ -2581,8 +2593,8 @@ int main(int argc, char **argv)
             calc_data_addresses(&units[i]);
         }
 
-        // TODO: Count references: go through all instructions, find EXTRN and LOCAL operands in expressions
-        // TODO: Find modes of access for each DATA label (i.e. label MUST be allocated in zero page)
+        /* TODO: Count references: go through all instructions, find EXTRN and LOCAL operands in expressions */
+        /* TODO: Find modes of access for each DATA label (i.e. label MUST be allocated in zero page) */
 
         /* Map all data labels to 6502 RAM locations */
         verbose(1, "mapping data to RAM...");
