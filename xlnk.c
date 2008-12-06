@@ -212,7 +212,7 @@ parse_arguments (int argc, char **argv)
             break;
 
             case 'v':
-            program_args.verbose = 1;
+            ++program_args.verbose;
             break;
 
             case 0:
@@ -302,7 +302,7 @@ typedef struct tag_xunit xunit;
 struct tag_avail_block
 {
     int start;  /* Start address in 6502 space */
-    int end;    /* End address in 6502 space */
+    int end;    /* End address in 6502 space (not inclusive) */
     struct tag_avail_block *next;
 };
 
@@ -350,6 +350,7 @@ static int suppress;
 /* Head of the list of available 6502 RAM blocks (for data allocation). */
 static avail_block *first_block = NULL;
 
+/* Total amount of 6502 RAM (bytes) that was registered */
 static int total_ram = 0;
 
 /* Bank info */
@@ -440,13 +441,14 @@ static void warn(char *fmt, ...)
 
 /**
  * Prints a message if --verbose switch was given.
+ * @param level verbosity level
  * @param fmt format string for printf
  */
-static void verbose(char *fmt, ...)
+static void verbose(int level, char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    if (!suppress && program_args.verbose) {
+    if (!suppress && program_args.verbose >= level) {
         vfprintf(stdout, fmt, ap);
         fprintf(stdout, "\n");
     }
@@ -498,7 +500,7 @@ static void add_ram_block(int start, int end)
             for (b = first_block; b->next != NULL; b = b->next) ;
             b->next = new_block;
         }
-        verbose("  added RAM block: %X-%X", new_block->start, new_block->end);
+        verbose(1, "  added RAM block: %X-%X", new_block->start, new_block->end);
     }
 }
 
@@ -1578,6 +1580,9 @@ static int count_locals(unsigned char *b)
     return count;
 }
 
+/**
+ * Variable that points to the unit that locals are being registered for.
+ */
 static xunit *reg_unit = NULL;
 
 /**
@@ -1861,7 +1866,7 @@ static void map_data_to_ram()
             /* Good, label mapped successfully */
             l->resolved = 1;
             if (l->name != NULL) {
-                verbose("  %.4X-%.4X %s", l->phys_addr, l->phys_addr + l->size-1, l->name);
+                verbose(1, "  %.4X-%.4X %s", l->phys_addr, l->phys_addr + l->size-1, l->name);
             }
         }
         else {
@@ -2041,13 +2046,13 @@ static void register_one_unit(script *s, script_command *c, void *arg)
         return;
     }
     xu->loaded = 1;
-    verbose("  unit `%s' loaded", file);
+    verbose(1, "  unit `%s' loaded", file);
     /* Register locals for both segments */
-    verbose("    registering local symbols...");
+    verbose(1, "    registering local symbols...");
     register_locals(xu->_unit_.dataseg.bytes, &xu->data_locals, xu);
     register_locals(xu->_unit_.codeseg.bytes, &xu->code_locals, xu);
     /* Enter exported symbols into hash tables */
-    verbose("    registering public symbols...");
+    verbose(1, "    registering public symbols...");
     enter_exported_constants(&xu->_unit_);
     enter_exported_locals(&xu->data_locals, &xu->_unit_);
     enter_exported_locals(&xu->code_locals, &xu->_unit_);
@@ -2101,7 +2106,7 @@ static void set_output(script *s, script_command *c, void *arg)
         scripterr(s, c, "could not open `%s' for writing", file);
     }
     else {
-        verbose("  output goes to `%s'", file);
+        verbose(1, "  output goes to `%s'", file);
     }
 }
 
@@ -2132,7 +2137,7 @@ static void copy_to_output(script *s, script_command *c, void *arg)
             scripterr(s, c, "could not open `%s' for reading", file);
         }
         else {
-            verbose("  copying `%s' to output at position %ld...", file, ftell(*fpp) );
+            verbose(1, "  copying `%s' to output at position %ld...", file, ftell(*fpp) );
             /* Copy it to output, byte for byte */
             for (k = fgetc(cf); !feof(cf); k = fgetc(cf) ) {
                 fputc(k, *fpp);
@@ -2217,7 +2222,7 @@ static void write_unit(script *s, script_command *c, void *arg)
         /* Look it up */
         xu = (xunit *)hashtab_get(unit_hash, file);
         /* Write it */
-        verbose("  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
+        verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
         write_as_binary(*fpp, xu);
         /* Advance offset */
         bank_offset += xu->code_size;
@@ -2274,7 +2279,7 @@ static void write_pad(script *s, script_command *c, void *arg)
             count = 0;
         }
         else if (count > 0) {
-            verbose("  padding %d bytes...", count);
+            verbose(1, "  padding %d bytes...", count);
         }
         /* Write zeroes */
         for (i=0; i<count; i++) {
@@ -2425,7 +2430,7 @@ static void set_unit_origin(script *s, script_command *c, void *arg)
     /* Now we can calculate the physical code addresses of the unit. */
     calc_code_addresses(xu);
     /* Print info if verbose mode */
-    verbose("  unit `%s' relocated to %.4X", xu->_unit_.name, xu->code_origin);
+    verbose(1, "  unit `%s' relocated to %.4X", xu->_unit_.name, xu->code_origin);
     /* Increase bank offset */
     bank_offset += xu->code_size;
 }
@@ -2511,9 +2516,9 @@ static void maybe_print_ram_statistics()
     if (total_ram > 0) {
         left = ram_left();
         used = total_ram - left;
-        verbose("  total RAM: %d bytes", total_ram);
-        verbose("  RAM used:  %d bytes (%d%%)", used, (int)(((float)used / (float)total_ram)*100.0f) );
-        verbose("  RAM left:  %d bytes (%d%%)", left, (int)(((float)left / (float)total_ram)*100.0f) );
+        verbose(1, "  total RAM: %d bytes", total_ram);
+        verbose(1, "  RAM used:  %d bytes (%d%%)", used, (int)(((float)used / (float)total_ram)*100.0f) );
+        verbose(1, "  RAM left:  %d bytes (%d%%)", left, (int)(((float)left / (float)total_ram)*100.0f) );
     }
 }
 
@@ -2536,14 +2541,14 @@ int main(int argc, char **argv)
     warn_count = 0;
 
     /* Parse the linker script */
-    verbose("parsing linker script...");
+    verbose(1, "parsing linker script...");
     if (script_parse(program_args.input_file, &sc) == 0) {
         /* Something bad happened when parsing script, halt */
         return(1);
     }
 
     /* Process all ram commands */
-    verbose("registering RAM blocks...");
+    verbose(1, "registering RAM blocks...");
     register_ram_blocks(&sc);
 
     /* Create hash tables to hold symbols */
@@ -2561,7 +2566,7 @@ int main(int argc, char **argv)
         units = NULL;
     }
     /* Process link commands */
-    verbose("loading units...");
+    verbose(1, "loading units...");
     register_units(&sc);
     /* Make sure all units were loaded */
     if (err_count != 0) {
@@ -2571,7 +2576,7 @@ int main(int argc, char **argv)
     /* Only continue with processing if no unresolved symbols */
     if (err_count == 0) {
         /* Calculate 0-relative addresses of data labels */
-        verbose("calculating data addresses...");
+        verbose(1, "calculating data addresses...");
         for (i=0; i<unit_count; i++) {
             calc_data_addresses(&units[i]);
         }
@@ -2580,13 +2585,13 @@ int main(int argc, char **argv)
         // TODO: Find modes of access for each DATA label (i.e. label MUST be allocated in zero page)
 
         /* Map all data labels to 6502 RAM locations */
-        verbose("mapping data to RAM...");
+        verbose(1, "mapping data to RAM...");
         map_data_to_ram();
         maybe_print_ram_statistics();
 
         /* Only continue with processing if all data labels were mapped */
         if (err_count == 0) {
-            verbose("relocating code...");
+            verbose(1, "relocating code...");
             suppress = 1;
             relocate_units(&sc);
             suppress = 0;
@@ -2594,14 +2599,14 @@ int main(int argc, char **argv)
 
             /* Only continue with processing if all code labels were mapped */
             if (err_count == 0) {
-                verbose("generating output...");
+                verbose(1, "generating output...");
                 generate_output(&sc);
             }
         }
     }
 
     /* Cleanup */
-    verbose("cleaning up...");
+    verbose(1, "cleaning up...");
 
     /* Finalize units */
     for (i=0; i<unit_count; i++) {
