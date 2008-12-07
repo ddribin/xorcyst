@@ -1518,7 +1518,7 @@ static void asm_write_label(unsigned char *b, void *arg)
         memcpy(name, &b[i], len);
         name[len] = '\0';
         i += len;
-        fprintf(args->fp, " %s", name);
+        fprintf(args->fp, " %s (PC=$%.4X)", name, pc);
         free(name);
     } else {
         fprintf(args->fp, " PC=$%.4X", pc);
