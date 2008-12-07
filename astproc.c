@@ -653,6 +653,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* 0+expr == expr */
                 astnode_remove_child(expr, rhs);
                 astnode_replace(expr, rhs);
+                astnode_finalize(expr);
                 return rhs;
             }
             else if ((astnode_is_type(rhs, INTEGER_NODE) && (rhs->integer == 0))
@@ -660,6 +661,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* expr+0 == expr */
                 astnode_remove_child(expr, lhs);
                 astnode_replace(expr, lhs);
+                astnode_finalize(expr);
                 return lhs;
             }
             else if ((astnode_is_type(lhs, INTEGER_NODE) && (lhs->integer == 1))
@@ -667,6 +669,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* 1*expr == expr */
                 astnode_remove_child(expr, rhs);
                 astnode_replace(expr, rhs);
+                astnode_finalize(expr);
                 return rhs;
             }
             else if ((astnode_is_type(rhs, INTEGER_NODE) && (rhs->integer == 1))
@@ -675,6 +678,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* expr/1 == expr */
                 astnode_remove_child(expr, lhs);
                 astnode_replace(expr, lhs);
+                astnode_finalize(expr);
                 return lhs;
             }
             else {
