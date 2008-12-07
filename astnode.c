@@ -421,11 +421,13 @@ astnode *astnode_create(astnode_type type, location loc)
  */
 void astnode_finalize(astnode *n)
 {
+    astnode *c;
     /* Remove the node from the tree it's in. */
     astnode_remove(n);
     /* Finalize all its children recursively. */
-    while (astnode_get_first_child(n) != NULL) {
-        astnode_finalize(astnode_remove_child_at(n, 0));
+    while ((c = astnode_get_first_child(n)) != NULL) {
+        astnode_remove_child(n, c);
+        astnode_finalize(c);
     }
     /* Free up memory. */
     switch (astnode_get_type(n)) {
@@ -1534,7 +1536,6 @@ astnode *astnode_create_local_id(const char *s, location loc)
 astnode *astnode_create_list(astnode *l)
 {
     astnode *n;
-    location dummyloc;
     /* Create the node */
     if (l != NULL) {
         n = astnode_create(LIST_NODE, l->loc);
@@ -1543,6 +1544,8 @@ astnode *astnode_create_list(astnode *l)
     }
     else {
         /* Make a node with zero children */
+        location dummyloc;
+        dummyloc.file = 0;
         n = astnode_create(LIST_NODE, dummyloc);
     }
     /* Return the newly created node (or NULL) */

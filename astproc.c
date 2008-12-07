@@ -1843,7 +1843,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
         /* If it's a string, replace by array of integers */
         /* (makes it easier to process later... favour regularity) */
         if (astnode_is_type(expr, STRING_NODE)) {
-            astnode_remove_child_at(n, j);  /* Remove string */
+            astnode_remove_child(n, expr);  /* Remove string */
             for (k=strlen(expr->string)-1; k>=0; k--) {
                 /* Check if we should map character from custom charmap */
                 if (type->datatype == CHAR_DATATYPE) {
@@ -2000,13 +2000,13 @@ static int process_ifdef(astnode *n, void *arg, astnode **next)
     if (e != NULL) {
         /* Symbol is defined. */
         /* Replace IFDEF node by the true-branch statement list */
-        stmts = astnode_remove_children( astnode_remove_child_at(n, 1));
+        stmts = astnode_remove_children(astnode_get_child(n, 1));
         astnode_replace(n, stmts);
         *next = stmts;
     } else {
         /* Symbol is not defined. */
         /* Replace IFDEF node by the false-branch statement list (if any) */
-        stmts = astnode_remove_children( astnode_remove_child_at(n, 2));
+        stmts = astnode_remove_children( astnode_get_child(n, 2));
         if (stmts != NULL) {
             astnode_replace(n, stmts);
             *next = stmts;
@@ -2035,13 +2035,13 @@ static int process_ifndef(astnode *n, void *arg, astnode **next)
     if (e == NULL) {
         /* Symbol is not defined. */
         /* Replace IFNDEF node by the true-branch statement list */
-        stmts = astnode_remove_children( astnode_remove_child_at(n, 1));
+        stmts = astnode_remove_children(astnode_get_child(n, 1));
         astnode_replace(n, stmts);
         *next = stmts;
     } else {
         /* Symbol is defined. */
         /* Replace IFNDEF node by the false-branch statement list, if any */
-        stmts = astnode_remove_children( astnode_remove_child_at(n, 2));
+        stmts = astnode_remove_children(astnode_get_child(n, 2));
         if (stmts != NULL) {
             astnode_replace(n, stmts);
             *next = stmts;
@@ -2080,7 +2080,7 @@ static int process_if(astnode *n, void *arg, astnode **next)
                 /* Non-zero is true, zero is false */
                 if (expr->integer) {
                     /* Replace IF node by the true-branch statement list */
-                    stmts = astnode_remove_children( astnode_remove_child_at(c, 1) );
+                    stmts = astnode_remove_children( astnode_get_child(c, 1) );
                     astnode_replace(n, stmts);
                     astnode_finalize(n);
                     *next = stmts;
