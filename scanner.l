@@ -296,8 +296,10 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
         fp = fopen(filename, "rt");
         if (fp) {
             char *lastslash = strrchr(filename, '/');
-            path = (char *)malloc(lastslash - filename + 1);
-            strncpy(path, filename, lastslash - filename);
+            int len = lastslash - filename;
+            path = (char *)malloc(len + 1);
+            strncpy(path, filename, len);
+            path[len] = '\0';
         }
     } else {
         /* Not absolute path */
@@ -314,8 +316,10 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
                 fp = fopen(tmp, "rt");
                 if (fp) {
                     char *lastslash = strrchr(tmp, '/');
-                    path = (char *)malloc(lastslash - tmp + 1);
-                    strncpy(path, tmp, lastslash - tmp);
+                    int len = lastslash - tmp;
+                    path = (char *)malloc(len + 1);
+                    strncpy(path, tmp, len);
+                    path[len] = '\0';
                     free(tmp);
                     break;
                 }
@@ -336,8 +340,10 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
                 fp = fopen(tmp, "rt");
                 if (fp) {
                     char *lastslash = strrchr(tmp, '/');
-                    path = (char *)malloc(lastslash - tmp + 1);
-                    strncpy(path, tmp, lastslash - tmp);
+                    int len = lastslash - tmp;
+                    path = (char *)malloc(len + 1);
+                    strncpy(path, tmp, len);
+                    path[len] = '\0';
                     free(tmp);
                     break;
                 }
