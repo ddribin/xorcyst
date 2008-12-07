@@ -61,6 +61,7 @@ const char *maybe_ignorecase(char *);
 #include "xasm.h"
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 /* Each time we match a string, move the end cursor to its end. */
 #define YY_USER_ACTION  yylloc.last_column += yyleng;
 %}
@@ -297,6 +298,7 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
         if (fp) {
             char *lastslash = strrchr(filename, '/');
             int len = lastslash - filename;
+            assert(len > 0);
             path = (char *)malloc(len + 1);
             strncpy(path, filename, len);
             path[len] = '\0';
@@ -317,6 +319,7 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
                 if (fp) {
                     char *lastslash = strrchr(tmp, '/');
                     int len = lastslash - tmp;
+                    assert(len > 0);
                     path = (char *)malloc(len + 1);
                     strncpy(path, tmp, len);
                     path[len] = '\0';
@@ -341,6 +344,7 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
                 if (fp) {
                     char *lastslash = strrchr(tmp, '/');
                     int len = lastslash - tmp;
+                    assert(len > 0);
                     path = (char *)malloc(len + 1);
                     strncpy(path, tmp, len);
                     path[len] = '\0';
@@ -440,18 +444,23 @@ int yybegin(const char *filename, int swap_parens, int ignore_case)
         if (filename[0] != '/') {
             /* Not absolute */
             if (lastslash) {
-                path = (char *)malloc(strlen(xasm_path) + 1 + (lastslash - filename) + 1);
+                int len = lastslash - filename;
+                assert(len > 0);
+                path = (char *)malloc(strlen(xasm_path) + 1 + len + 1);
                 strcpy(path, xasm_path);
                 strcat(path, "/");
-                strncat(path, filename, lastslash - filename);
+                strncat(path, filename, len);
             } else {
                 path = (char *)malloc(strlen(xasm_path) + 1);
                 strcpy(path, xasm_path);
             }
         } else {
             /* Absolute */
-            path = (char *)malloc(lastslash - filename + 1);
-            strncpy(path, filename, lastslash - filename);
+            int len = lastslash - filename;
+            assert(len > 0);
+            path = (char *)malloc(len + 1);
+            strncpy(path, filename, len);
+            path[len] = '\0';
         }
         /* Init stack */
         file_stack_ptr = 0;

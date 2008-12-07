@@ -396,7 +396,6 @@ void astnode_print(const astnode *n, int level)
  */
 astnode *astnode_create(astnode_type type, location loc)
 {
-    /* Fix: Sometimes loc.file is NULL for some reason */
     extern const char *yy_current_filename();
     if (loc.file == NULL) {
         loc.file = yy_current_filename();
