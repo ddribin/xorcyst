@@ -346,8 +346,11 @@ static int substitute_id(astnode *n, void *arg, astnode **next)
         }
         astnode_replace(n, cl);
         astnode_finalize(n);
+        *next = cl;
+        return 0;
+    } else {
+        return 1;
     }
-    return 1;
 }
 
 /**
@@ -1769,14 +1772,15 @@ static int process_instruction(astnode *n, void *arg, astnode **next)
         /* Remove from AST */
         astnode_remove(n);
         astnode_finalize(n);
+        return 0;
     }
     else {
         /* The instruction operand */
         expr = astnode_get_child(n, 0);
         /* Substitute defines and fold constants */
         reduce_expression(expr);
+        return 1;
     }
-    return 1;
 }
 
 /**
@@ -1792,6 +1796,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
     astnode *expr;
     astnode *list;
     astnode *stmts;
+    int ret = 1;
     type = astnode_get_child(n, 0); /* DATATYPE_NODE */
     if (in_dataseg) {
         err(n->loc, "value not allowed in data segment");
@@ -1827,6 +1832,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
             astnode_finalize(n);
             astnode_finalize(list);
             *next = stmts;
+            ret = 0;
         }
     }
     /* Go through the list of data values, replacing defines and folding constants */
@@ -1854,7 +1860,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
             astnode_finalize(expr);
         }
     }
-    return 1;
+    return ret;
 }
 
 /**
@@ -2309,6 +2315,7 @@ static int enter_var(astnode *n, void *arg, astnode **next)
         /* Remove from AST */
         astnode_remove(n);
         astnode_finalize(n);
+        return 0;
     } else {
         /* Validate modifiers */
         if ((n->modifiers & ZEROPAGE_FLAG) && !in_dataseg) {
@@ -2317,9 +2324,9 @@ static int enter_var(astnode *n, void *arg, astnode **next)
         }
         /* Enter it! */
         symtab_enter(id->ident, VAR_SYMBOL, astnode_clone(RHS(n), n->loc), (in_dataseg ? DATA_FLAG : 0) | n->modifiers | modifiers);
+        /* */
+        return 1;
     }
-    /* */
-    return 1;
 }
 
 /**
@@ -2344,14 +2351,15 @@ static int enter_proc(astnode *n, void *arg, astnode **next)
         /* Remove from AST */
         astnode_remove(n);
         astnode_finalize(n);
+        return 0;
     } else {
         /* Enter it! RHS(n) is the list of procedure statements */
         symtab_enter(id->ident, PROC_SYMBOL, RHS(n), (in_dataseg ? DATA_FLAG : 0) );
         /* Increase global namespace counter */
         label_count++;
+        /* */
+        return 1;
     }
-    /* */
-    return 1;
 }
 
 /**
@@ -2517,7 +2525,7 @@ static int enter_struc(astnode *n, void *arg, astnode **next)
         /* Restore previous symbol table */
         symtab_pop();
     }
-    /* Remove STRUC node from AST */
+    /* ### Remove STRUC node from AST */
 //    astnode_remove(n);
 //    astnode_finalize(n);
     return 0;
@@ -2623,7 +2631,7 @@ static int enter_union(astnode *n, void *arg, astnode **next)
             enter_union_fields(se, n);
         }
     }
-    /* Remove UNION node from AST */
+    /* ### Remove UNION node from AST */
 //    astnode_remove(n);
 //    astnode_finalize(n);
     return 0;
@@ -2674,7 +2682,7 @@ static int enter_enum(astnode *n, void *arg, astnode **next)
         }
         symtab_pop();
     }
-    /* Remove ENUM node from AST */
+    /* ### Remove ENUM node from AST */
 //    astnode_remove(n);
 //    astnode_finalize(n);
     return 0;
@@ -2745,7 +2753,7 @@ static int enter_record(astnode *n, void *arg, astnode **next)
         }
         symtab_pop();
     }
-    /* Remove RECORD node from AST */
+    /* ### Remove RECORD node from AST */
 //    astnode_remove(n);
 //    astnode_finalize(n);
     return 0;
@@ -2774,6 +2782,7 @@ static int globalize_local(astnode *n, void *arg, astnode **next)
             /* Remove from AST */
             astnode_remove(n);
             astnode_finalize(n);
+            return 0;
         } else {
             /* Enter it in symbol table */
             symtab_enter(n->label, LABEL_SYMBOL, n, (in_dataseg ? DATA_FLAG : 0) );
@@ -3000,6 +3009,7 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
     int i;
     symbol_ident_list list;
     symtab_entry *enum_def;
+    int ret = 1;
     if (is_field_ref(n)) {
         return 1;   /* Validated by validate_dotref() */
     }
@@ -3017,15 +3027,13 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
             if (e != NULL) {
                 /* Found it */
                 /* Replace id by SCOPE_NODE */
-                astnode_replace(
-                    n,
-                    astnode_create_scope(
-                        astnode_create_identifier(enum_def->id, n->loc),
-                        astnode_clone(n, n->loc),
-                        n->loc
-                    )
-                );
+                astnode *scope = astnode_create_scope(
+                    astnode_create_identifier(enum_def->id, n->loc),
+                    astnode_clone(n, n->loc), n->loc);
+                astnode_replace(n, scope);
                 astnode_finalize(n);
+                *next = scope;
+                ret = 0;
                 break;
             }
         }
@@ -3034,7 +3042,7 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
         if (e == NULL) {
             strtok(n->ident, "#");  /* Remove globalize junk */
 //            err(n->loc, "unknown symbol `%s'", n->ident);
-            /* Replace by integer 0 */
+            /* ### Replace by integer 0 */
             //astnode_replace(n, astnode_create_integer(0, n->loc) );
             //astnode_finalize(n);
             warn(n->loc, "`%s' undeclared; assuming external label", n->ident);
@@ -3044,7 +3052,7 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
     assert(e);
     /* Increase reference count */
     e->ref_count++;
-    return 1;
+    return ret;
 }
 
 /**
@@ -3065,7 +3073,7 @@ static int validate_index(astnode *n, void *arg, astnode **next)
         err(n->loc, "identifier expected");
         astnode_replace(n, astnode_create_integer(0, n->loc) );
         astnode_finalize(n);
-        return 1;
+        return 0;
     }
     e = symtab_lookup(id->ident);
     if (e != NULL) {
@@ -3074,6 +3082,7 @@ static int validate_index(astnode *n, void *arg, astnode **next)
             err(n->loc, "`%s' cannot be indexed", id->ident);
             astnode_replace(n, astnode_create_integer(0, n->loc) );
             astnode_finalize(n);
+            return 0;
         } else {
             // TODO: bounds check
             reduce_index(n);
@@ -3082,6 +3091,7 @@ static int validate_index(astnode *n, void *arg, astnode **next)
         err(n->loc, "unknown symbol `%s'", id->ident);
         astnode_replace(n, astnode_create_integer(0, n->loc) );
         astnode_finalize(n);
+        return 0;
     }
     return 1;
 }
@@ -3103,6 +3113,7 @@ static int validate_scoperef(astnode *n, void *arg, astnode **next)
         /* Replace by integer 0 */
         astnode_replace(n, astnode_create_integer(0, n->loc) );
         astnode_finalize(n);
+        return 0;
     } else {
         /* Get symbol on right of :: operator */
         symbol = RHS(n);
@@ -3229,6 +3240,7 @@ static int validate_dotref(astnode *n, void *arg, astnode **next)
         /* Replace by integer 0 */
         astnode_replace(n, astnode_create_integer(0, n->loc) );
         astnode_finalize(n);
+        return 0;
     } else {
         /* Increase reference count */
         father->ref_count++;
@@ -3239,6 +3251,7 @@ static int validate_dotref(astnode *n, void *arg, astnode **next)
             /* Replace by integer 0 */
             astnode_replace(n, astnode_create_integer(0, n->loc) );
             astnode_finalize(n);
+            return 0;
         } else {
             /* Look up variable's type definition and verify it's a structure */
             def = symtab_lookup(LHS(type)->ident);
@@ -3247,11 +3260,13 @@ static int validate_dotref(astnode *n, void *arg, astnode **next)
                 /* Replace by integer 0 */
                 astnode_replace(n, astnode_create_integer(0, n->loc) );
                 astnode_finalize(n);
+                return 0;
             } else if ( !((def->type == STRUC_SYMBOL) || (def->type == UNION_SYMBOL)) ) {
                 err(n->loc, "`%s' is not a structure", left->ident);
                 /* Replace by integer 0 */
                 astnode_replace(n, astnode_create_integer(0, n->loc) );
                 astnode_finalize(n);
+                return 0;
             } else {
                 /* Verify fields recursively */
                 symtab_push(def->symtab);
@@ -3523,6 +3538,8 @@ static int reduce_user_storage(astnode *n, void *arg, astnode **next)
             );
             astnode_replace(n, byte_storage);
             astnode_finalize(n);
+            *next = byte_storage;
+            return 0;
         } else {
             err(n->loc, "unknown symbol `%s'", LHS(type)->ident);
             /* Remove from AST */
