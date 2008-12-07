@@ -482,6 +482,7 @@ static int expand_macro(astnode *n, void *arg, astnode **next)
         /* Expand the body */
         decl_body = astnode_get_child(decl, 2);
         exp_body = astnode_clone(decl_body, n->loc);
+        assert(astnode_get_type(exp_body) == LIST_NODE);
         /* Substitute actuals for formals */
         for (i=0; i<astnode_get_child_count(actuals); i++) {
             /* The id to substitute */
@@ -494,13 +495,16 @@ static int expand_macro(astnode *n, void *arg, astnode **next)
         /* Make locals a bit more global */
         globalize_macro_expanded_locals(exp_body, count);
         /* Replace MACRO_NODE by the macro body instance */
-        astnode_replace(n, astnode_get_child(exp_body, 0));
+        {
+            astnode *stmts = astnode_remove_children(exp_body);
+            astnode_replace(n, stmts);
+            *next = stmts;
+            astnode_finalize(exp_body);
+        }
         /* Discard the replaced node */
         astnode_finalize(n);
         /* Increase macro expansion counter */
         count++;
-        /* Set next node to start of body */
-        *next = exp_body;
     }
     /* */
     return 0;
