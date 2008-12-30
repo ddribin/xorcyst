@@ -762,6 +762,10 @@ astnode *astnode_clone(const astnode *n, location loc)
         case LABEL_NODE:
         case LOCAL_LABEL_NODE:
         case LOCAL_ID_NODE:
+        case FORWARD_BRANCH_DECL_NODE:
+        case BACKWARD_BRANCH_DECL_NODE:
+        case FORWARD_BRANCH_NODE:
+        case BACKWARD_BRANCH_NODE:
         c->string = (char *)malloc(strlen(n->string)+1);
         if (c->string != NULL) {
             strcpy(c->string, n->string);
@@ -818,7 +822,22 @@ int astnode_equal(const astnode *n1, const astnode *n2)
         case BINARY_NODE:   if (n1->binary.size != n2->binary.size) return 0;   break;
         case DATATYPE_NODE: if (n1->datatype != n2->datatype) return 0; break;
         case TOMBSTONE_NODE:    if (n1->param != n2->param) return 0;   break;
-        case INSTRUCTION_NODE:  if ( (n1->instr.mnemonic != n2->instr.mnemonic) || (n1->instr.mode != n2->instr.mode) ) return 0;   break;
+
+        case INSTRUCTION_NODE:
+            if ( (n1->instr.mnemonic != n2->instr.mnemonic)
+                 || (n1->instr.mode != n2->instr.mode) ) {
+                return 0;
+            }
+            break;
+
+        case FORWARD_BRANCH_DECL_NODE:
+        case BACKWARD_BRANCH_DECL_NODE:
+        case FORWARD_BRANCH_NODE:
+        case BACKWARD_BRANCH_NODE:
+            if (strcmp(n1->ident, n2->ident))
+                return 0;
+            break;
+
         default:
         /* Has no internal attributes */
         break;

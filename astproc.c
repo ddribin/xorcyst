@@ -2918,6 +2918,7 @@ static int process_forward_branch_decl(astnode *n, void *arg, astnode **next)
     astnode *l;
     int i;
     char str[32];
+    assert(!strchr(n->ident, '#'));
     /* Get branch info structure for label (+, ++, ...) */
     forward_branch_info *fwd = &forward_branch[strlen(n->ident)-1];
     /* Morph n to globally unique label */
@@ -2946,6 +2947,7 @@ static int process_forward_branch_decl(astnode *n, void *arg, astnode **next)
 static int process_backward_branch_decl(astnode *n, void *arg, astnode **next)
 {
     char str[32];
+    assert(!strchr(n->ident, '#'));
     /* Get branch info */
     backward_branch_info *bwd = &backward_branch[strlen(n->ident)-1];
     bwd->decl = n;

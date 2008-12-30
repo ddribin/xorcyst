@@ -422,6 +422,7 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
         put_1(fp, CMD_LABEL);
         /* Look it up in symbol table */
         e = symtab_lookup(n->label);
+        assert(e != 0);
         /* IMPORTANT: Tag label uniquely so we can refer to it in expressions */
         e->tag = tag++;
         /* Write flag byte */
