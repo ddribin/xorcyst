@@ -357,6 +357,8 @@ FILE *open_included_file(const char *filename, int quoted_form, char **path_out)
     }
     if (path_out)
         *path_out = path;
+    else
+        free(path);
     return fp;
 }
 

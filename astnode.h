@@ -352,8 +352,6 @@ astnode *astnode_get_next_sibling(const astnode *);
 astnode *astnode_get_prev_sibling(const astnode *);
 void astnode_print(const astnode *, int);
 astnode *astnode_clone(const astnode *, location);
-//void astnode_serialize(astnode *, FILE *);
-//astnode *astnode_deserialize(FILE *);
 int astnode_equal(const astnode *, const astnode *);
 int astnode_is_literal(const astnode *);
 const char *astnode_type_to_string(astnode_type);

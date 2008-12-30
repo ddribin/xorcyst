@@ -570,7 +570,9 @@ astnode *astproc_fold_constants(astnode *expr)
                     case LE_OPERATOR:   folded = astnode_create_integer(lhs->integer <= rhs->integer, expr->loc);   break;
                     case GE_OPERATOR:   folded = astnode_create_integer(lhs->integer >= rhs->integer, expr->loc);   break;
 
-                    default:    /* Error, actually */
+                    default:
+                    fprintf(stderr, "internal error: operator not handled in astproc_fold_constants()\n");
+                    assert(0);
                     folded = expr;
                     break;
                 }
@@ -1706,6 +1708,8 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
                 flat->loc
             )
         );
+    } else {
+        astnode_finalize(fill);
     }
     symtab_pop();
 }
@@ -1804,8 +1808,8 @@ static int process_data(astnode *n, void *arg, astnode **next)
     astnode *expr;
     astnode *list;
     astnode *stmts;
-    int ret = 1;
-    type = astnode_get_child(n, 0); /* DATATYPE_NODE */
+    type = astnode_get_child(n, 0);
+    assert(astnode_is_type(type, DATATYPE_NODE));
     if (in_dataseg) {
         err(n->loc, "value not allowed in data segment");
         /* Replace with storage node  */
@@ -1840,7 +1844,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
             astnode_finalize(n);
             astnode_finalize(list);
             *next = stmts;
-            ret = 0;
+            return 0;
         }
     }
     /* Go through the list of data values, replacing defines and folding constants */
@@ -1868,7 +1872,7 @@ static int process_data(astnode *n, void *arg, astnode **next)
             astnode_finalize(expr);
         }
     }
-    return ret;
+    return 1;
 }
 
 /**
