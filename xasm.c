@@ -238,12 +238,6 @@ static void
 parse_arguments (int argc, char **argv)
 {
     int key;
-    char *id;
-    char *str;
-    astnode *val;
-    symtab_entry *e;
-    /* Dummy location for --define */
-    static location loc = { 0, 0, 0, 0, NULL };
     /* getopt_long stores the option index here. */
     int index = 0;
 
@@ -278,35 +272,46 @@ parse_arguments (int argc, char **argv)
             xasm_args.output_file = optarg;
             break;
 
-            case 'D':
-            if (strchr(optarg, '=') != NULL) {
-                /* IDENT=VALUE */
-                id = strtok(optarg, "=");
-                str = strtok(NULL, "\0");
-                /* Parse the value */
-                if (str[0] == '\"') {
-                    /* Assume string */
-                    str = strtok(&str[1], "\"");
-                    val = astnode_create_string(str, loc);
+            case 'D': {
+                char *id;
+                char *str;
+                astnode *val;
+                static location loc = { 0, 0, 0, 0, NULL };
+                if (strchr(optarg, '=') != NULL) {
+                    /* IDENT=VALUE */
+                    id = strtok(optarg, "=");
+                    str = strtok(NULL, "\0");
+                    if (str) {
+                        /* Parse the value */
+                        if (str[0] == '\"') {
+                            /* Assume string */
+                            str = strtok(&str[1], "\"");
+                            val = astnode_create_string(str, loc);
+                        } else {
+                            /* Assume integer */
+                            val = astnode_create_integer(strtol(str, NULL, 0), loc);
+                        }
+                    } else {
+                        /* No value given -- use empty string */
+                        val = astnode_create_string("", loc);
+                    }
                 } else {
-                    /* Assume integer */
-                    val = astnode_create_integer(strtol(str, NULL, 0), loc);
+                    id = optarg;
+                    val = astnode_create_integer(0, loc);
                 }
-            } else {
-                id = optarg;
-                val = astnode_create_integer(0, loc);
-            }
-            if (validate_ident(id)) {
-                e = symtab_lookup(id);
-                if (e == NULL) {
-                    symtab_enter(id, CONSTANT_SYMBOL, val, 0);
+                if (validate_ident(id)) {
+                    symtab_entry *e;
+                    e = symtab_lookup(id);
+                    if (e == NULL) {
+                        symtab_enter(id, CONSTANT_SYMBOL, val, 0);
+                    } else {
+                        /* Error, redefinition */
+                        fprintf(stderr, "--ident: `%s' already defined\n", id);
+                    }
                 } else {
-                    /* Error, redefinition */
-                    fprintf(stderr, "--ident: `%s' already defined\n", id);
+                    /* Error, bad identifier */
+                    fprintf(stderr, "--ident: `%s' is not a valid identifier\n", id);
                 }
-            } else {
-                /* Error, bad identifier */
-                fprintf(stderr, "--ident: `%s' is not a valid identifier\n", id);
             }
             break;
 
