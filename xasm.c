@@ -355,6 +355,7 @@ parse_arguments (int argc, char **argv)
 
             default:
             /* Forgot to handle a short option, most likely */
+            fprintf(stderr, "internal error: unhandled option `%c'\n", key);
             exit(1);
             break;
         }
