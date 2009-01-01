@@ -400,9 +400,7 @@ astnode *astnode_create(astnode_type type, location loc)
     if (loc.file == NULL) {
         loc.file = yy_current_filename();
     }
-    /* Allocate memory for node struct */
     astnode *n = (astnode *)malloc(sizeof(astnode));
-    /* Fill in struct only if alloc succeeded */
     if (n != NULL) {
         n->type = type;
         n->loc = loc;
@@ -479,10 +477,8 @@ void astnode_replace(astnode *old_node, astnode *new_node)
 {
     astnode *p;
     int i;
-    /* Get the parent of the node to be replaced */
     p = astnode_get_parent(old_node);
     if (p != NULL) {
-        /* Call remove_child on parent */
         i = astnode_remove_child(p, old_node);
         /* Insert new child at old child's position */
         astnode_insert_child(p, new_node, i);
@@ -587,7 +583,6 @@ void astnode_insert_child(astnode *p, astnode *c, int i)
             n->next_sibling = x;
             x->prev_sibling = n;
         }
-        /* Set parent */
         astnode_set_parent(c, p);
         /* Check if head */
         if (i == 0) {
@@ -694,7 +689,6 @@ astnode *astnode_get_child(const astnode *n, int index)
         }
         return c;
     }
-    /* Node is NULL, so return NULL */
     return NULL;
 }
 
@@ -937,9 +931,7 @@ int astnode_is_literal(const astnode *n)
 
 astnode *astnode_create_null(location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(NULL_NODE, loc);
-    /* Return the newly created node */
     return n;
 }
 
@@ -952,14 +944,12 @@ astnode *astnode_create_null(location loc)
  */
 astnode *astnode_create_instruction(int mnemonic, addressing_mode mode, astnode *operand, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(INSTRUCTION_NODE, loc);
     /* Store the mnemonic and addressing mode */
     n->instr.mnemonic = mnemonic;
     n->instr.mode = mode;
     /* This node has one child: The operand, which is an expression */
     astnode_add_child(n, operand);
-    /* Return the newly created node */
     return n;
 }
 
@@ -970,14 +960,12 @@ astnode *astnode_create_instruction(int mnemonic, addressing_mode mode, astnode 
  */
 astnode *astnode_create_identifier(const char *ident, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(IDENTIFIER_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(ident)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, ident);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -988,11 +976,8 @@ astnode *astnode_create_identifier(const char *ident, location loc)
  */
 astnode *astnode_create_integer(int value, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(INTEGER_NODE, loc);
-    /* Store the integer which this node represents */
     n->integer = value;
-    /* Return the newly created node */
     return n;
 }
 
@@ -1003,14 +988,12 @@ astnode *astnode_create_integer(int value, location loc)
  */
 astnode *astnode_create_string(const char *value, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(STRING_NODE, loc);
     /* Allocate and store text */
     n->string = (char *)malloc(strlen(value)+1);
     if (n->string != NULL) {
         strcpy(n->string, value);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1023,14 +1006,11 @@ astnode *astnode_create_string(const char *value, location loc)
  */
 astnode *astnode_create_arithmetic(arithmetic_operator oper, astnode *left, astnode *right, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ARITHMETIC_NODE, loc);
-    /* Store the operator, which describes the type of expression */
     n->oper = oper;
     /* This node has two children: left-hand side and right-hand side expression */
     /* For unary operators right-hand side should be <code>NULL</code> */
     astnode_add_children(n, 2, left, right);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1044,7 +1024,6 @@ astnode *astnode_create_arithmetic(arithmetic_operator oper, astnode *left, astn
  */
 astnode *astnode_create_if(astnode *expr, astnode *then, astnode *elif, astnode *els, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(IF_NODE, loc);
     /* This node has several children: List of CASE nodes, possibly ended by DEFAULT node */
     astnode_add_child(n, astnode_create_case(expr, then, loc) );
@@ -1052,7 +1031,6 @@ astnode *astnode_create_if(astnode *expr, astnode *then, astnode *elif, astnode 
     if (els != NULL) {
         astnode_add_child(n, astnode_create_default(els, loc));
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1064,7 +1042,6 @@ astnode *astnode_create_if(astnode *expr, astnode *then, astnode *elif, astnode 
  */
 astnode *astnode_create_case(astnode *expr, astnode *then, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(CASE_NODE, loc);
     /* This node has two children: expression to test and list of statements. */
     astnode_add_children(
@@ -1073,7 +1050,6 @@ astnode *astnode_create_case(astnode *expr, astnode *then, location loc)
         expr,
         astnode_create_list(then)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1084,14 +1060,12 @@ astnode *astnode_create_case(astnode *expr, astnode *then, location loc)
  */
 astnode *astnode_create_default(astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(DEFAULT_NODE, loc);
     /* This node has list of statements as children. */
     astnode_add_child(
         n,
         stmts
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1104,7 +1078,6 @@ astnode *astnode_create_default(astnode *stmts, location loc)
  */
 astnode *astnode_create_ifdef(astnode *ident, astnode *then, astnode *els, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(IFDEF_NODE, loc);
     /* This node has three children: identifier to test, then-part, else-part */
     astnode_add_children(
@@ -1114,7 +1087,6 @@ astnode *astnode_create_ifdef(astnode *ident, astnode *then, astnode *els, locat
         astnode_create_list(then),
         astnode_create_list(els)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1127,7 +1099,6 @@ astnode *astnode_create_ifdef(astnode *ident, astnode *then, astnode *els, locat
  */
 astnode *astnode_create_ifndef(astnode *ident, astnode *then, astnode *els, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(IFNDEF_NODE, loc);
     /* This node has three children: identifier to test, then-part, else-part */
     astnode_add_children(
@@ -1137,7 +1108,6 @@ astnode *astnode_create_ifndef(astnode *ident, astnode *then, astnode *els, loca
         astnode_create_list(then),
         astnode_create_list(els)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1150,7 +1120,6 @@ astnode *astnode_create_ifndef(astnode *ident, astnode *then, astnode *els, loca
  */
 astnode *astnode_create_macro_decl(astnode *ident, astnode *params, astnode *body, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(MACRO_DECL_NODE, loc);
     /* This node has three children:
     1) An identifier, which is the name of the macro
@@ -1163,7 +1132,6 @@ astnode *astnode_create_macro_decl(astnode *ident, astnode *params, astnode *bod
         astnode_create_list(params),
         astnode_create_list(body)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1175,16 +1143,13 @@ astnode *astnode_create_macro_decl(astnode *ident, astnode *params, astnode *bod
  */
 astnode *astnode_create_macro(astnode *ident, astnode *args, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(MACRO_NODE, loc);
-    /* Add the children */
     astnode_add_children(
         n,
         2,
         ident,
         astnode_create_list(args)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1196,11 +1161,8 @@ astnode *astnode_create_macro(astnode *ident, astnode *args, location loc)
  */
 astnode *astnode_create_equ(astnode *ident, astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(EQU_NODE, loc);
-    /* Add the children */
     astnode_add_children(n, 2, ident, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1212,11 +1174,8 @@ astnode *astnode_create_equ(astnode *ident, astnode *expr, location loc)
  */
 astnode *astnode_create_assign(astnode *ident, astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ASSIGN_NODE, loc);
-    /* Add the children */
     astnode_add_children(n, 2, ident, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1228,7 +1187,6 @@ astnode *astnode_create_assign(astnode *ident, astnode *expr, location loc)
  */
 astnode *astnode_create_storage(astnode *type, astnode *count, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(STORAGE_NODE, loc);
     /* Add the type of data (enumerated or identifier) */
     astnode_add_child(n, type);
@@ -1238,7 +1196,6 @@ astnode *astnode_create_storage(astnode *type, astnode *count, location loc)
         count = astnode_create_integer(1, loc);
     }
     astnode_add_child(n, count);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1249,11 +1206,9 @@ astnode *astnode_create_storage(astnode *type, astnode *count, location loc)
  */
 astnode *astnode_create_incsrc(astnode *file, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(INCSRC_NODE, loc);
     /* One child: Path to file */
     astnode_add_child(n, file);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1264,11 +1219,9 @@ astnode *astnode_create_incsrc(astnode *file, location loc)
  */
 astnode *astnode_create_incbin(astnode *file, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(INCBIN_NODE, loc);
     /* One child: Path to file */
     astnode_add_child(n, file);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1279,11 +1232,9 @@ astnode *astnode_create_incbin(astnode *file, location loc)
  */
 astnode *astnode_create_charmap(astnode *file, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(CHARMAP_NODE, loc);
     /* One child: Path to file */
     astnode_add_child(n, file);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1294,11 +1245,8 @@ astnode *astnode_create_charmap(astnode *file, location loc)
  */
 astnode *astnode_create_struc(astnode *vals, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(STRUC_NODE, loc);
-    /* Children: value list */
     astnode_add_child(n, vals);
-    /* Return the newly created node */
     return n;
 }
 /**
@@ -1309,12 +1257,9 @@ astnode *astnode_create_struc(astnode *vals, location loc)
  */
 astnode *astnode_create_struc_decl(astnode *id, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(STRUC_DECL_NODE, loc);
-    /* Two children: Identifier, statement list */
     astnode_add_child(n, id);
     astnode_add_child(n, stmts);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1326,12 +1271,9 @@ astnode *astnode_create_struc_decl(astnode *id, astnode *stmts, location loc)
  */
 astnode *astnode_create_union_decl(astnode *id, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(UNION_DECL_NODE, loc);
-    /* Two children: Identifier, statement list */
     astnode_add_child(n, id);
     astnode_add_child(n, stmts);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1343,12 +1285,9 @@ astnode *astnode_create_union_decl(astnode *id, astnode *stmts, location loc)
  */
 astnode *astnode_create_enum_decl(astnode *id, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ENUM_DECL_NODE, loc);
-    /* Two children: Identifier, statement list */
     astnode_add_child(n, id);
     astnode_add_child(n, stmts);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1360,12 +1299,9 @@ astnode *astnode_create_enum_decl(astnode *id, astnode *stmts, location loc)
  */
 astnode *astnode_create_record_decl(astnode *id, astnode *fields, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(RECORD_DECL_NODE, loc);
-    /* Two children: Identifier, field list */
     astnode_add_child(n, id);
     astnode_add_child(n, fields);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1377,12 +1313,9 @@ astnode *astnode_create_record_decl(astnode *id, astnode *fields, location loc)
  */
 astnode *astnode_create_bitfield_decl(astnode *id, astnode *width, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(BITFIELD_DECL_NODE, loc);
-    /* Two children: Identifier and width */
     astnode_add_child(n, id);
     astnode_add_child(n, width);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1391,11 +1324,8 @@ astnode *astnode_create_bitfield_decl(astnode *id, astnode *width, location loc)
  */
 astnode *astnode_create_public(astnode *l, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(PUBLIC_NODE, loc);
-    /* Add list of identifiers as child */
     astnode_add_child(n, l);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1407,15 +1337,10 @@ astnode *astnode_create_public(astnode *l, location loc)
  */
 astnode *astnode_create_extrn(astnode *l, astnode *t, astnode *f, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(EXTRN_NODE, loc);
-    /* Add type specifier as child */
     astnode_add_child(n, t);
-    /* Add list of identifiers as child */
     astnode_add_child(n, astnode_create_list(l));
-    /* Add from unit identifier */
     astnode_add_child(n, f);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1424,11 +1349,8 @@ astnode *astnode_create_extrn(astnode *l, astnode *t, astnode *f, location loc)
  */
 astnode *astnode_create_dataseg(int modifiers, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(DATASEG_NODE, loc);
-    /* Set modifiers */
     n->modifiers = modifiers;
-    /* Return the newly created node */
     return n;
 }
 
@@ -1437,9 +1359,7 @@ astnode *astnode_create_dataseg(int modifiers, location loc)
  */
 astnode *astnode_create_codeseg(location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(CODESEG_NODE, loc);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1451,13 +1371,9 @@ astnode *astnode_create_codeseg(location loc)
  */
 astnode *astnode_create_data(astnode *type, astnode *data, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(DATA_NODE, loc);
-    /* Add the type of data (enumerated or identifier) */
     astnode_add_child(n, type);
-    /* Add list of values */
     astnode_add_child(n, data);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1471,14 +1387,12 @@ astnode *astnode_create_data(astnode *type, astnode *data, location loc)
  */
 astnode *astnode_create_file_path(const char *path, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(FILE_PATH_NODE, loc);
     /* Allocate and store text */
     n->file_path = (char *)malloc(strlen(path)+1);
     if (n->file_path != NULL) {
         strcpy(n->file_path, path);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1491,7 +1405,6 @@ astnode *astnode_create_file_path(const char *path, location loc)
  */
 astnode *astnode_create_label(const char *s, astnode *addr, astnode *type, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(LABEL_NODE, loc);
     /* Allocate and store text */
     n->label = (char *)malloc(strlen(s)+1);
@@ -1507,7 +1420,6 @@ astnode *astnode_create_label(const char *s, astnode *addr, astnode *type, locat
     }
     astnode_add_child(n, type);
     astnode_add_child(n, addr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1518,14 +1430,12 @@ astnode *astnode_create_label(const char *s, astnode *addr, astnode *type, locat
  */
 astnode *astnode_create_local_label(const char *s, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(LOCAL_LABEL_NODE, loc);
     /* Allocate and store text */
     n->label = (char *)malloc(strlen(s)+1);
     if (n->label != NULL) {
         strcpy(n->label, s);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1536,14 +1446,12 @@ astnode *astnode_create_local_label(const char *s, location loc)
  */
 astnode *astnode_create_local_id(const char *s, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(LOCAL_ID_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(s)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, s);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1560,14 +1468,12 @@ astnode *astnode_create_list(astnode *l)
         n = astnode_create(LIST_NODE, l->loc);
         /* Add list of values */
         astnode_add_child(n, l);
-    }
-    else {
+    } else {
         /* Make a node with zero children */
         location dummyloc;
         dummyloc.file = 0;
         n = astnode_create(LIST_NODE, dummyloc);
     }
-    /* Return the newly created node (or NULL) */
     return n;
 }
 
@@ -1588,12 +1494,9 @@ astnode *astnode_create_pc(location loc)
  */
 astnode *astnode_create_binary(unsigned char *bin, int size, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(BINARY_NODE, loc);
-    /* Set data */
     n->binary.data = bin;
     n->binary.size = size;
-    /* Return the newly created node */
     return n;
 }
 
@@ -1605,11 +1508,8 @@ astnode *astnode_create_binary(unsigned char *bin, int size, location loc)
  */
 astnode *astnode_create_tombstone(astnode_type type, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(TOMBSTONE_NODE, loc);
-    /* Store the type of the old node */
     n->param = (long)type;
-    /* Return the newly created node */
     return n;
 }
 
@@ -1621,12 +1521,9 @@ astnode *astnode_create_tombstone(astnode_type type, location loc)
  */
 astnode *astnode_create_dot(astnode *before, astnode *after, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(DOT_NODE, loc);
-    /* Two children: 'before' . 'after' */
     astnode_add_child(n, before);
     astnode_add_child(n, after);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1637,11 +1534,8 @@ astnode *astnode_create_dot(astnode *before, astnode *after, location loc)
  */
 astnode *astnode_create_sizeof(astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(SIZEOF_NODE, loc);
-    /* One child: expression */
     astnode_add_child(n, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1653,15 +1547,11 @@ astnode *astnode_create_sizeof(astnode *expr, location loc)
  */
 astnode *astnode_create_datatype(datatype t, astnode *id, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(DATATYPE_NODE, loc);
-    /* Set the datatype */
     n->datatype = t;
-    /* Possibly one child: identifier */
     if (id != NULL) {
         astnode_add_child(n, id);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1674,14 +1564,10 @@ astnode *astnode_create_datatype(datatype t, astnode *id, location loc)
  */
 astnode *astnode_create_var_decl(int modifiers, astnode *id, astnode *data, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(VAR_DECL_NODE, loc);
-    /* Set modifiers */
     n->modifiers = modifiers;
-    /* Two children: Identifier and datatype+initializer */
     astnode_add_child(n, id);
     astnode_add_child(n, data);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1690,12 +1576,9 @@ astnode *astnode_create_var_decl(int modifiers, astnode *id, astnode *data, loca
  */
 astnode *astnode_create_scope(astnode *left, astnode *right, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(SCOPE_NODE, loc);
-    /* Two children: left and right */
     astnode_add_child(n, left);
     astnode_add_child(n, right);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1707,7 +1590,6 @@ astnode *astnode_create_scope(astnode *left, astnode *right, location loc)
  */
 astnode *astnode_create_proc(astnode *ident, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(PROC_NODE, loc);
     /* This node has two children:
     1) An identifier, which is the name of the procedure
@@ -1718,7 +1600,6 @@ astnode *astnode_create_proc(astnode *ident, astnode *stmts, location loc)
         ident,
         astnode_create_list(stmts)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1730,7 +1611,6 @@ astnode *astnode_create_proc(astnode *ident, astnode *stmts, location loc)
  */
 astnode *astnode_create_rept(astnode *expr, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(REPT_NODE, loc);
     /* This node has two children:
     1) An expression, which is the repeat count
@@ -1741,7 +1621,6 @@ astnode *astnode_create_rept(astnode *expr, astnode *stmts, location loc)
         expr,
         astnode_create_list(stmts)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1753,7 +1632,6 @@ astnode *astnode_create_rept(astnode *expr, astnode *stmts, location loc)
  */
 astnode *astnode_create_while(astnode *expr, astnode *stmts, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(WHILE_NODE, loc);
     /* This node has two children:
     1) A boolean expression
@@ -1764,7 +1642,6 @@ astnode *astnode_create_while(astnode *expr, astnode *stmts, location loc)
         expr,
         astnode_create_list(stmts)
     );
-    /* Return the newly created node */
     return n;
 }
 
@@ -1775,11 +1652,8 @@ astnode *astnode_create_while(astnode *expr, astnode *stmts, location loc)
  */
 astnode *astnode_create_message(astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(MESSAGE_NODE, loc);
-    /* This node has one children: An expression, which is the message to print */
     astnode_add_child(n, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1790,11 +1664,8 @@ astnode *astnode_create_message(astnode *expr, location loc)
  */
 astnode *astnode_create_warning(astnode *str, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(WARNING_NODE, loc);
-    /* This node has one child: A string, which is the warning to print */
     astnode_add_child(n, str);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1805,11 +1676,8 @@ astnode *astnode_create_warning(astnode *str, location loc)
  */
 astnode *astnode_create_error(astnode *str, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ERROR_NODE, loc);
-    /* This node has one child: A string, which is the error to print */
     astnode_add_child(n, str);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1820,14 +1688,12 @@ astnode *astnode_create_error(astnode *str, location loc)
  */
 astnode *astnode_create_forward_branch_decl(const char *ident, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(FORWARD_BRANCH_DECL_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(ident)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, ident);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1838,14 +1704,12 @@ astnode *astnode_create_forward_branch_decl(const char *ident, location loc)
  */
 astnode *astnode_create_backward_branch_decl(const char *ident, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(BACKWARD_BRANCH_DECL_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(ident)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, ident);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1856,14 +1720,12 @@ astnode *astnode_create_backward_branch_decl(const char *ident, location loc)
  */
 astnode *astnode_create_forward_branch(const char *ident, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(FORWARD_BRANCH_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(ident)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, ident);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1874,14 +1736,12 @@ astnode *astnode_create_forward_branch(const char *ident, location loc)
  */
 astnode *astnode_create_backward_branch(const char *ident, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(BACKWARD_BRANCH_NODE, loc);
     /* Allocate and store text */
     n->ident = (char *)malloc(strlen(ident)+1);
     if (n->ident != NULL) {
         strcpy(n->ident, ident);
     }
-    /* Return the newly created node */
     return n;
 }
 
@@ -1892,11 +1752,8 @@ astnode *astnode_create_backward_branch(const char *ident, location loc)
  */
 astnode *astnode_create_mask(astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(MASK_NODE, loc);
-    /* One child: expression */
     astnode_add_child(n, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1908,12 +1765,9 @@ astnode *astnode_create_mask(astnode *expr, location loc)
  */
 astnode *astnode_create_align(astnode *idents, astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ALIGN_NODE, loc);
-    /* This node has two children: List of identifiers and alignment constraint */
     astnode_add_child(n, astnode_create_list(idents) );
     astnode_add_child(n, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1925,12 +1779,9 @@ astnode *astnode_create_align(astnode *idents, astnode *expr, location loc)
  */
 astnode *astnode_create_index(astnode *ident, astnode *expr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(INDEX_NODE, loc);
-    /* This node has two children: Identifier and expression */
     astnode_add_child(n, ident);
     astnode_add_child(n, expr);
-    /* Return the newly created node */
     return n;
 }
 
@@ -1941,10 +1792,7 @@ astnode *astnode_create_index(astnode *ident, astnode *expr, location loc)
  */
 astnode *astnode_create_org(astnode *addr, location loc)
 {
-    /* Create the node */
     astnode *n = astnode_create(ORG_NODE, loc);
-    /* This node has one child: The address */
     astnode_add_child(n, addr);
-    /* Return the newly created node */
     return n;
 }

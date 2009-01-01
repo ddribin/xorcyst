@@ -135,7 +135,7 @@ static int label_count = 0;
 static int in_dataseg = 0;
 
 /* Default symbol modifiers, i.e. ZEROPAGE_FLAG, PUBLIC_FLAG */
-static int modifiers = 0;
+static int symbol_modifiers = 0;
 
 /* Used when we are outputting pure 6502 binary */
 static int dataseg_pc;
@@ -213,7 +213,6 @@ static void err(location loc, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
 
-    /* Print error message w/ location info */
     fprintf(stderr, "error: %s:", loc.file);
     LOCATION_PRINT(stderr, loc);
     fprintf(stderr, ": ");
@@ -222,7 +221,6 @@ static void err(location loc, const char *fmt, ...)
 
     va_end(ap);
 
-    /* Increase total error count */
     err_count++;
 }
 
@@ -236,7 +234,6 @@ static void warn(location loc, const char *fmt, ...)
     va_list ap;
     if (!xasm_args.no_warn) {
         va_start(ap, fmt);
-        /* Print warning message w/ location info */
         fprintf(stderr, "warning: %s:", loc.file);
         LOCATION_PRINT(stderr, loc);
         fprintf(stderr, ": ");
@@ -245,7 +242,6 @@ static void warn(location loc, const char *fmt, ...)
         va_end(ap);
     }
 
-    /* Increase total warning count */
     warn_count++;
 }
 
@@ -268,13 +264,11 @@ int astproc_err_count()
  */
 static astnodeproc astproc_node_type_to_proc(astnode_type type, const astnodeprocmap *map)
 {
-    /* Try all map entries */
     for (; map->proc != NULL; map += 1) {
         if (map->type == type) {
-            return map->proc;   /* Match */
+            return map->proc;
         }
     }
-    /* No match */
     return NULL;
 }
 
@@ -291,10 +285,10 @@ static void astproc_walk_recursive(astnode *n, void *arg, const astnodeprocmap *
     astnode *c;
     astnode *t;
     if (n == NULL) { return; }
-    /* Process this node if it has a processor function */
     astnodeproc p = astproc_node_type_to_proc(astnode_get_type(n), map);
     if (p != NULL) {
-        if (!p(n, arg, next)) return;   /* Don't walk children */
+        if (!p(n, arg, next))
+            return;   /* Don't walk children */
     }
     /* Walk the node's children recursively */
     for (c=n->first_child; c != NULL; c = t) {
@@ -327,25 +321,24 @@ static int noop(astnode *n, void *arg, astnode **next)
 
 /**
  * Substitutes an identifier node with subst_expr if the id is equal to subst_id.
- * @param n A node of type IDENTIFIER_NODE
+ * @param id A node of type IDENTIFIER_NODE
  * @param arg Array of length 2, containing (expr, id) pair
  */
-static int substitute_id(astnode *n, void *arg, astnode **next)
+static int substitute_id(astnode *id, void *arg, astnode **next)
 {
     /* arg is array containing expression and identifier */
     astnode **array = (astnode **)arg;
     astnode *subst_expr = array[0];
     astnode *subst_id = array[1];
-    /* Test if this node and the identifier to replace are equal */
-    if (astnode_equal(n, subst_id)) {
+    if (astnode_equal(id, subst_id)) {
         /* They're equal, replace it by expression. */
-        astnode *cl = astnode_clone(subst_expr, n->loc);
+        astnode *cl = astnode_clone(subst_expr, id->loc);
         /* ### Generalize: traverse all children, set the flag */
         if (astnode_get_type(cl) == LOCAL_ID_NODE) {
             cl->flags |= 0x80; /* don't globalize it */
         }
-        astnode_replace(n, cl);
-        astnode_finalize(n);
+        astnode_replace(id, cl);
+        astnode_finalize(id);
         *next = cl;
         return 0;
     } else {
@@ -405,7 +398,6 @@ static int globalize_macro_expanded_local(astnode *n, void *arg, astnode **next)
             strcat(n->ident, str);
         }
     }
-    /* */
     return 1;
 }
 
@@ -431,10 +423,10 @@ static void globalize_macro_expanded_locals(astnode *exp_body, int count)
 /**
  * Expands a macro; that is, replaces a macro invocation in the AST with the
  * macro body. Substitutes parameter names for values.
- * @param n Must be a node of type MACRO_NODE
+ * @param macro Must be a node of type MACRO_NODE
  * @param arg Not used
  */
-static int expand_macro(astnode *n, void *arg, astnode **next)
+static int expand_macro(astnode *macro, void *arg, astnode **next)
 {
     astnode *decl;
     astnode *decl_body;
@@ -445,43 +437,36 @@ static int expand_macro(astnode *n, void *arg, astnode **next)
     astnode *expr;
     int i;
     /* Keeps track of the current/total number of macro expansions */
-    static int count = 0;
-    /* Get the name of the macro to expand */
-    id = astnode_get_child(n, 0);
-    /* Look up its definition in symbol table */
+    static int macro_expansion_count = 0;
+
+    id = astnode_get_child(macro, 0);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     symtab_entry *e = symtab_lookup(id->ident);
-    /* If it's not in the symbol table, error. */
     if (e == NULL) {
-        err(n->loc, "unknown macro or directive `%s'", id->ident);
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(macro->loc, "unknown macro or directive `%s'", id->ident);
+        astnode_remove(macro);
+        astnode_finalize(macro);
         return 0;
     }
     else if (e->type != MACRO_SYMBOL) {
-        err(n->loc, "cannot expand `%s'; not a macro", e->id);
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(macro->loc, "cannot expand `%s'; not a macro", e->id);
+        astnode_remove(macro);
+        astnode_finalize(macro);
         return 0;
     }
     else {
-        /* e->def has pointer to proper MACRO_DECL_NODE */
         decl = (astnode *)e->def;
-        /* Get the lists of formals and actuals */
         formals = astnode_get_child(decl, 1);
-        actuals = astnode_get_child(n, 1);
-        /* Verify that argument count is correct */
+        actuals = astnode_get_child(macro, 1);
         if (astnode_get_child_count(formals) != astnode_get_child_count(actuals)) {
-            err(n->loc, "macro `%s' does not take %d argument(s)", id->ident, astnode_get_child_count(actuals) );
-            /* Remove from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            err(macro->loc, "macro `%s' does not take %d argument(s)", id->ident, astnode_get_child_count(actuals) );
+            astnode_remove(macro);
+            astnode_finalize(macro);
             return 0;
         }
         /* Expand the body */
         decl_body = astnode_get_child(decl, 2);
-        exp_body = astnode_clone(decl_body, n->loc);
+        exp_body = astnode_clone(decl_body, macro->loc);
         assert(astnode_get_type(exp_body) == LIST_NODE);
         /* Substitute actuals for formals */
         for (i=0; i<astnode_get_child_count(actuals); i++) {
@@ -493,20 +478,18 @@ static int expand_macro(astnode *n, void *arg, astnode **next)
             substitute_expr_for_id(expr, id, exp_body);
         }
         /* Make locals a bit more global */
-        globalize_macro_expanded_locals(exp_body, count);
+        globalize_macro_expanded_locals(exp_body, macro_expansion_count);
         /* Replace MACRO_NODE by the macro body instance */
         {
             astnode *stmts = astnode_remove_children(exp_body);
-            astnode_replace(n, stmts);
+            astnode_replace(macro, stmts);
             *next = stmts;
             astnode_finalize(exp_body);
         }
-        /* Discard the replaced node */
-        astnode_finalize(n);
-        /* Increase macro expansion counter */
-        count++;
+
+        astnode_finalize(macro);
+        macro_expansion_count++;
     }
-    /* */
     return 0;
 }
 
@@ -735,10 +718,8 @@ static astnode *substitute_ident(astnode *expr)
 {
     astnode *c;
     symtab_entry *e;
-    /* Look it up in symbol table */
     e = symtab_lookup(expr->ident);
     if (e != NULL) {
-        /* Found it. Test if it's a define. */
         if (e->type == CONSTANT_SYMBOL) {
             /* This is a defined symbol that should be
             replaced by the expression it stands for */
@@ -747,9 +728,6 @@ static astnode *substitute_ident(astnode *expr)
             astnode_finalize(expr);
             expr = c;
         }
-    }
-    else {
-        /* Didn't find it in symbol table. */
     }
     return expr;
 }
@@ -832,7 +810,6 @@ static astnode *reduce_sizeof(astnode *expr)
         break;
 
         case USER_DATATYPE:
-        /* Look up the data type in symbol table */
         id = LHS(type);
         e = symtab_global_lookup(id->ident);
         ok = 0;
@@ -1144,9 +1121,11 @@ static astnode *reduce_index(astnode *expr)
     astnode *id;
     astnode *index;
     id = LHS(expr);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     index = reduce_expression(RHS(expr));
     /* Lookup identifier */
     e = symtab_lookup(id->ident);
+    assert(e != 0);
     /* Get its datatype */
     type = LHS(e->def);
     /* Create expression: identifier + sizeof(datatype) * index */
@@ -1164,7 +1143,6 @@ static astnode *reduce_index(astnode *expr)
     /* Replace index expression */
     astnode_replace(expr, c);
     astnode_finalize(expr);
-    /* Return the new expression */
     return c;
 }
 
@@ -1279,7 +1257,6 @@ static void reduce_record(symtab_entry *r, astnode *init, astnode *flat)
     astnode *result;
     astnode *mask;
     astnode *repl;
-    /* Validate initializer */
     if (!astnode_is_type(init, STRUC_NODE)) {
         err(init->loc, "record initializer expected");
         return;
@@ -1346,9 +1323,7 @@ static void reduce_record(symtab_entry *r, astnode *init, astnode *flat)
         result,
         init->loc
     );
-    /* Add to list */
     astnode_add_child(flat, repl);
-    /* Restore old symbol table */
     symtab_pop();
 }
 
@@ -1376,7 +1351,6 @@ static void reduce_enum(symtab_entry *e, astnode *expr, astnode *list)
             astnode_clone(sym->def, expr->loc),
             expr->loc
         );
-        /* Add to list */
         astnode_add_child(list, repl);
     }
 }
@@ -1402,7 +1376,6 @@ static void flatten_union_recursive(symtab_entry *s, astnode *init, astnode *fla
     astnode *temp;
     ordered_field_list *list;
     int num;
-    /* Validate initializer */
     if (!astnode_is_type(init, STRUC_NODE)) {
         err(init->loc, "union initializer expected");
         return;
@@ -1476,7 +1449,6 @@ static void flatten_union_recursive(symtab_entry *s, astnode *init, astnode *fla
             break;
 
             case USER_DATATYPE:
-            /* Look up user type definition */
             t = symtab_global_lookup(LHS(type)->ident);
             switch (t->type) {
                 case STRUC_SYMBOL:
@@ -1510,7 +1482,6 @@ static void flatten_union_recursive(symtab_entry *s, astnode *init, astnode *fla
             )
         );
     }
-    /* Determine reason for stopping loop */
     if (val != NULL) {
         err(init->loc, "too many field initializers");
     }
@@ -1545,7 +1516,6 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
     astnode *valvals;
     ordered_field_list *list;
     int num;
-    /* Validate initializer */
     if (!astnode_is_type(init, STRUC_NODE)) {
         err(init->loc, "structure initializer expected");
         return;
@@ -1554,7 +1524,6 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
     symtab_push(s->symtab);
     fill = astnode_clone(s->struc.size, flat->loc);
     for (val = init->first_child, list = s->struc.fields; (val != NULL) && (list != NULL); list = list->next, val = val->next_sibling) {
-        /* Get field definition */
         e = list->entry;
         /* Check if normal field or anonymous union */
         if (e->type == UNION_SYMBOL) {
@@ -1649,7 +1618,6 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
                 break;
 
                 case USER_DATATYPE:
-                /* Look up user type definition */
                 t = symtab_global_lookup(LHS(type)->ident);
                 if (astnode_is_type(val, NULL_NODE)) {
                     /* Output sizeof(type) bytes to fill in */
@@ -1695,7 +1663,6 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
             );
         }
     }
-    /* Determine reason for stopping loop */
     if (val != NULL) {
         err(init->loc, "too many field initializers");
     }
@@ -1724,17 +1691,14 @@ static void flatten_struc_recursive(symtab_entry *s, astnode *init, astnode *fla
 static void flatten_user_data(astnode *n, astnode *type, astnode *list)
 {
     symtab_entry *def;
-    /* Look up type definition */
     def = symtab_global_lookup(LHS(type)->ident);
     if (def != NULL) {
         switch (def->type) {
             case STRUC_SYMBOL:
-            /* Flatten structure initializer to series of simple data statements */
             flatten_struc_recursive(def, n, list);
             break;
 
             case UNION_SYMBOL:
-            /* Flatten union initializer to series of simple data statements */
             flatten_union_recursive(def, n, list);
             break;
 
@@ -1762,9 +1726,7 @@ static int load_charmap(astnode *n, void *arg, astnode **next)
 {
     /* TODO: should probably be done in the parsing phase (same path resolution as for INCSRC and INCBIN) */
     astnode *file;
-    /* Get file descriptor */
     file = astnode_get_child(n, 0);
-    /* Try to load the charmap */
     if (charmap_parse(file->file_path, charmap) == 0) {
         err(n->loc, "could not open `%s' for reading", file->file_path);
     }
@@ -1773,23 +1735,20 @@ static int load_charmap(astnode *n, void *arg, astnode **next)
 
 /**
  * First-time processing of instruction node.
- * @param n Node of type INSTRUCTION_NODE
+ * @param instr Node of type INSTRUCTION_NODE
  * @param arg Not used
  */
-static int process_instruction(astnode *n, void *arg, astnode **next)
+static int process_instruction(astnode *instr, void *arg, astnode **next)
 {
     astnode *expr;
     if (in_dataseg) {
-        err(n->loc, "instructions not allowed in data segment");
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(instr->loc, "instructions not allowed in data segment");
+        astnode_remove(instr);
+        astnode_finalize(instr);
         return 0;
     }
     else {
-        /* The instruction operand */
-        expr = astnode_get_child(n, 0);
-        /* Substitute defines and fold constants */
+        expr = astnode_get_child(instr, 0);
         reduce_expression(expr);
         return 1;
     }
@@ -1797,10 +1756,10 @@ static int process_instruction(astnode *n, void *arg, astnode **next)
 
 /**
  * First-time processing of data node.
- * @param n Node of type DATA_NODE
+ * @param data Node of type DATA_NODE
  * @param arg Not used
  */
-static int process_data(astnode *n, void *arg, astnode **next)
+static int process_data(astnode *data, void *arg, astnode **next)
 {
     int j;
     int k;
@@ -1808,61 +1767,60 @@ static int process_data(astnode *n, void *arg, astnode **next)
     astnode *expr;
     astnode *list;
     astnode *stmts;
-    type = astnode_get_child(n, 0);
+    type = astnode_get_child(data, 0);
     assert(astnode_is_type(type, DATATYPE_NODE));
     if (in_dataseg) {
-        err(n->loc, "value not allowed in data segment");
+        err(data->loc, "value not allowed in data segment");
         /* Replace with storage node  */
         astnode_replace(
-            n,
+            data,
             astnode_create_storage(
-                astnode_create_datatype(BYTE_DATATYPE, NULL, n->loc),
-                astnode_create_integer(1, n->loc),
-                n->loc
+                astnode_create_datatype(BYTE_DATATYPE, NULL, data->loc),
+                astnode_create_integer(1, data->loc),
+                data->loc
             )
         );
-        astnode_finalize(n);
+        astnode_finalize(data);
         return 0;
     }
     if (type->datatype == USER_DATATYPE) {
         /* Make sure the type exists */
         if (symtab_global_lookup(LHS(type)->ident) == NULL) {
-            err(n->loc, "unknown type `%s'", LHS(type)->ident);
-            /* Remove from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            err(data->loc, "unknown type `%s'", LHS(type)->ident);
+            astnode_remove(data);
+            astnode_finalize(data);
             return 0;
         } else {
             /* Attempt to reduce user data to native data */
-            list = astnode_create(LIST_NODE, n->loc);
+            list = astnode_create(LIST_NODE, data->loc);
             for (expr = type->next_sibling; expr != NULL; expr = expr->next_sibling) {
                 flatten_user_data(expr, type, list);
             }
             /* Replace initializers with generated list */
             stmts = astnode_remove_children(list);
-            astnode_replace(n, stmts);
-            astnode_finalize(n);
+            astnode_replace(data, stmts);
+            astnode_finalize(data);
             astnode_finalize(list);
             *next = stmts;
             return 0;
         }
     }
     /* Go through the list of data values, replacing defines and folding constants */
-    for (j=1; j<astnode_get_child_count(n); j++) {
-        expr = astnode_get_child(n, j);
+    for (j=1; j<astnode_get_child_count(data); j++) {
+        expr = astnode_get_child(data, j);
         /* Substitute defines and fold constants */
         expr = reduce_expression(expr);
         /* If it's a string, replace by array of integers */
         /* (makes it easier to process later... favour regularity) */
         if (astnode_is_type(expr, STRING_NODE)) {
-            astnode_remove_child(n, expr);  /* Remove string */
+            astnode_remove_child(data, expr);  /* Remove string */
             for (k=strlen(expr->string)-1; k>=0; k--) {
                 /* Check if we should map character from custom charmap */
                 if (type->datatype == CHAR_DATATYPE) {
                     expr->string[k] = charmap[(unsigned)expr->string[k]];
                 }
                 /* Append character value to array */
-                astnode_insert_child(n, astnode_create_integer((unsigned char)expr->string[k], n->loc), j);
+                astnode_insert_child(data, astnode_create_integer((unsigned char)expr->string[k], data->loc), j);
             }
             if (type->datatype == CHAR_DATATYPE) {
                 /* It's normal byte array now */
@@ -1877,17 +1835,17 @@ static int process_data(astnode *n, void *arg, astnode **next)
 
 /**
  * First-time processing of storage node.
- * @param n Node of type STORAGE_NODE
+ * @param storage Node of type STORAGE_NODE
  * @param arg Not used
  */
-static int process_storage(astnode *n, void *arg, astnode **next)
+static int process_storage(astnode *storage, void *arg, astnode **next)
 {
     int item_size;
     astnode *type;
     astnode *expr;
     astnode *new_expr;
-    type = LHS(n);
-    expr = RHS(n);
+    type = LHS(storage);
+    expr = RHS(storage);
     /* If not BYTE_DATATYPE, multiply by word/dword-size */
     switch (type->datatype) {
         case BYTE_DATATYPE:
@@ -1913,7 +1871,7 @@ static int process_storage(astnode *n, void *arg, astnode **next)
     // TODO: Validate range somewhere else than here please... ???
     if (astnode_is_type(expr, INTEGER_NODE)) {
         if ((expr->integer <= 0) || (expr->integer >= 0x10000)) {
-            err(n->loc, "operand out of range");
+            err(storage->loc, "operand out of range");
         }
     }
     return 1;
@@ -1921,63 +1879,54 @@ static int process_storage(astnode *n, void *arg, astnode **next)
 
 /**
  * Process EQU node.
- * @param n Node of type EQU_NODE
+ * @param equ Node of type EQU_NODE
  * @param arg Not used
  */
-static int process_equ(astnode *n, void *arg, astnode **next)
+static int process_equ(astnode *equ, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *id;
     astnode *expr;
-    /* The expression which describes the value */
-    expr = astnode_clone(astnode_get_child(n, 1), n->loc);
-    /* Substitute defines and fold constants */
+    expr = astnode_clone(astnode_get_child(equ, 1), equ->loc);
     expr = reduce_expression(expr);
-    /* The identifier which is being defined */
-    id = astnode_get_child(n, 0);
-    /* Look up in symbol table */
+    id = astnode_get_child(equ, 0);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     e = symtab_lookup(id->ident);
     if (e == NULL) {
-        /* Symbol is being defined */
         // TODO: Check that expression is a constant?
-        /* Enter it in symbol table */
         symtab_enter(id->ident, CONSTANT_SYMBOL, expr, 0);
     } else {
         /* Symbol is being redefined */
         /* This is not allowed for EQU equate! */
         if (!astnode_equal((astnode *)(e->def), expr)) {
-            warn(n->loc, "redefinition of `%s' is not identical; ignored", id->ident);
+            warn(equ->loc, "redefinition of `%s' is not identical; ignored", id->ident);
         }
     }
-    /* Remove the equate node from the tree. */
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(equ);
+    astnode_finalize(equ);
     return 0;
 }
 
 /**
  * Process '=' node.
- * @param n Node of type ASSIGN_NODE
+ * @param assign Node of type ASSIGN_NODE
  * @param arg Not used
  */
-static int process_assign(astnode *n, void *arg, astnode **next)
+static int process_assign(astnode *assign, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *id;
     astnode *expr;
     /* If it's part of ENUM declaration, don't touch */
-    if (astnode_has_ancestor_of_type(n, ENUM_DECL_NODE)) {
+    if (astnode_has_ancestor_of_type(assign, ENUM_DECL_NODE)) {
         return 0;
     }
     /* Very similar to EQU, except symbol 1) can be
     redefined and 2) is volatile (see end of proc) */
-    /* The expression which describes the value */
-    expr = astnode_clone(astnode_get_child(n, 1), n->loc);
-    /* Substitute defines and fold constants */
+    expr = astnode_clone(astnode_get_child(assign, 1), assign->loc);
     expr = reduce_expression(expr);
-    /* The identifier which is being (re)defined */
-    id = astnode_get_child(n, 0);
-    /* Look up in symbol table */
+    id = astnode_get_child(assign, 0);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     e = symtab_lookup(id->ident);
     if (e == NULL) {
         /* Symbol is being defined for the first time */
@@ -1986,99 +1935,96 @@ static int process_assign(astnode *n, void *arg, astnode **next)
     } else {
         /* Symbol is being redefined */
         /* This is OK for ASSIGN equate, simply replace definition */
-        // ### store a list of definitions
+        // ### store a list of definitions, otherwise we leak
         expr->loc = e->def->loc;
         e->def = expr;
     }
-    /* Remove the equate node from the tree. */
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(assign);
+    astnode_finalize(assign);
     return 0;
 }
 
 /**
  * Process IFDEF-node.
- * @param n Node of type IFDEF_NODE
+ * @param ifdef Node of type IFDEF_NODE
  * @param arg Not used
  */
-static int process_ifdef(astnode *n, void *arg, astnode **next)
+static int process_ifdef(astnode *ifdef, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *id;
     astnode *stmts;
-    /* The identifier which is being tested */
-    id = astnode_get_child(n, 0);
+    id = astnode_get_child(ifdef, 0);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     e = symtab_lookup(id->ident);
     if (e != NULL) {
         /* Symbol is defined. */
         /* Replace IFDEF node by the true-branch statement list */
-        stmts = astnode_remove_children(astnode_get_child(n, 1));
-        astnode_replace(n, stmts);
+        stmts = astnode_remove_children(astnode_get_child(ifdef, 1));
+        astnode_replace(ifdef, stmts);
         *next = stmts;
     } else {
         /* Symbol is not defined. */
         /* Replace IFDEF node by the false-branch statement list (if any) */
-        stmts = astnode_remove_children( astnode_get_child(n, 2));
+        stmts = astnode_remove_children( astnode_get_child(ifdef, 2));
         if (stmts != NULL) {
-            astnode_replace(n, stmts);
+            astnode_replace(ifdef, stmts);
             *next = stmts;
         } else {
-            astnode_remove(n);
+            astnode_remove(ifdef);
         }
     }
-    /* Discard the original node */
-    astnode_finalize(n);
+    astnode_finalize(ifdef);
     return 0;
 }
 
 /**
  * Process IFNDEF-node.
- * @param n Node of type IFNDEF_NODE
+ * @param ifndef Node of type IFNDEF_NODE
  * @param arg Not used
  */
-static int process_ifndef(astnode *n, void *arg, astnode **next)
+static int process_ifndef(astnode *ifndef, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *id;
     astnode *stmts;
-    /* The identifier which is being tested */
-    id = astnode_get_child(n, 0);
+    id = astnode_get_child(ifndef, 0);
+    assert(astnode_is_type(id, IDENTIFIER_NODE));
     e = symtab_lookup(id->ident);
     if (e == NULL) {
         /* Symbol is not defined. */
         /* Replace IFNDEF node by the true-branch statement list */
-        stmts = astnode_remove_children(astnode_get_child(n, 1));
-        astnode_replace(n, stmts);
+        stmts = astnode_remove_children(astnode_get_child(ifndef, 1));
+        astnode_replace(ifndef, stmts);
         *next = stmts;
     } else {
         /* Symbol is defined. */
         /* Replace IFNDEF node by the false-branch statement list, if any */
-        stmts = astnode_remove_children(astnode_get_child(n, 2));
+        stmts = astnode_remove_children(astnode_get_child(ifndef, 2));
         if (stmts != NULL) {
-            astnode_replace(n, stmts);
+            astnode_replace(ifndef, stmts);
             *next = stmts;
         } else {
-            astnode_remove(n);
+            astnode_remove(ifndef);
         }
     }
-    /* Discard the original node */
-    astnode_finalize(n);
+    astnode_finalize(ifndef);
     return 0;
 }
 
 /**
  * Process IF-node.
- * @param n Node of type IF_NODE
+ * @param if_node Node of type IF_NODE
  * @param arg Not used
  */
-static int process_if(astnode *n, void *arg, astnode **next)
+static int process_if(astnode *if_node, void *arg, astnode **next)
 {
     astnode *expr;
     astnode *stmts;
     astnode *c;
     int ret = 0;
     /* IF_NODE has a list of CASE, DEFAULT nodes as children */
-    for (c = astnode_get_first_child(n); c != NULL; c = astnode_get_next_sibling(c) ) {
+    for (c = astnode_get_first_child(if_node); c != NULL; c = astnode_get_next_sibling(c) ) {
         if (astnode_is_type(c, CASE_NODE)) {
             /* The expression which is being tested */
             expr = astnode_get_child(c, 0);
@@ -2093,8 +2039,8 @@ static int process_if(astnode *n, void *arg, astnode **next)
                 if (expr->integer) {
                     /* Replace IF node by the true-branch statement list */
                     stmts = astnode_remove_children( astnode_get_child(c, 1) );
-                    astnode_replace(n, stmts);
-                    astnode_finalize(n);
+                    astnode_replace(if_node, stmts);
+                    astnode_finalize(if_node);
                     *next = stmts;
                     return ret;
                 }
@@ -2105,38 +2051,38 @@ static int process_if(astnode *n, void *arg, astnode **next)
         } else {  /* DEFAULT_NODE */
             /* Replace IF node by the false-branch statement list */
             stmts = astnode_remove_children(c);
-            astnode_replace(n, stmts);
-            astnode_finalize(n);
+            astnode_replace(if_node, stmts);
+            astnode_finalize(if_node);
             *next = stmts;
             return ret;
         }
     }
     /* No match, remove IF node from AST */
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(if_node);
+    astnode_finalize(if_node);
     return ret;
 }
 
 /**
  * Process dataseg-node.
- * @param n Node of type DATASEG_NODE
+ * @param dataseg Node of type DATASEG_NODE
  * @param arg Not used
  */
-static int process_dataseg(astnode *n, void *arg, astnode **next)
+static int process_dataseg(astnode *dataseg, void *arg, astnode **next)
 {
-    modifiers = n->modifiers;
+    symbol_modifiers = dataseg->modifiers;
     in_dataseg = 1; /* true */
     return 0;
 }
 
 /**
  * Process codeseg-node.
- * @param n Node of type CODESEG_NODE
+ * @param codeseg Node of type CODESEG_NODE
  * @param arg Not used
  */
-static int process_codeseg(astnode *n, void *arg, astnode **next)
+static int process_codeseg(astnode *codeseg, void *arg, astnode **next)
 {
-    modifiers = 0;
+    symbol_modifiers = 0;
     in_dataseg = 0; /* false */
     return 0;
 }
@@ -2146,23 +2092,22 @@ static int process_codeseg(astnode *n, void *arg, astnode **next)
  * @param n Node of type ORG_NODE
  * @param arg Not used
  */
-static int process_org(astnode *n, void *arg, astnode **next)
+static int process_org(astnode *org, void *arg, astnode **next)
 {
     if (!xasm_args.pure_binary) {
-        err(n->loc, "org directive can only be used when output format is pure 6502 binary");
+        err(org->loc, "org directive can only be used when output format is pure 6502 binary");
     } else {
-        astnode *addr = astnode_get_child(n, 0);
+        astnode *addr = astnode_get_child(org, 0);
         addr = reduce_expression_complete(addr);
         if (astnode_is_type(addr, INTEGER_NODE)) {
             /* Range check */
             if ((addr->integer < 0) || (addr->integer >= 0x10000)) {
-                err(n->loc, "org address out of 64K range");
+                err(org->loc, "org address out of 64K range");
             }
         } else {
-            err(n->loc, "org address does not evaluate to literal");
-            /* Remove from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            err(org->loc, "org address does not evaluate to literal");
+            astnode_remove(org);
+            astnode_finalize(org);
         }
     }
     return 0;
@@ -2170,16 +2115,15 @@ static int process_org(astnode *n, void *arg, astnode **next)
 
 /**
  * Process REPT node.
- * @param n Node of type REPT_NODE
+ * @param rept Node of type REPT_NODE
  * @param arg Not used
  */
-static int process_rept(astnode *n, void *arg, astnode **next)
+static int process_rept(astnode *rept, void *arg, astnode **next)
 {
     astnode *count;
     astnode *stmts;
     astnode *list;
-    /* The repeat count */
-    count = astnode_get_child(n, 0);
+    count = astnode_get_child(rept, 0);
     /* Try to reduce count expression to literal */
     count = reduce_expression_complete(count);
     /* Resulting expression must be an integer literal,
@@ -2187,49 +2131,46 @@ static int process_rept(astnode *n, void *arg, astnode **next)
     */
     if (astnode_is_type(count, INTEGER_NODE)) {
         if (count->integer < 0) {
-            warn(n->loc, "REPT ignored; negative repeat count (%d)", count->integer);
-            /* Remove from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            warn(rept->loc, "REPT ignored; negative repeat count (%d)", count->integer);
+            astnode_remove(rept);
+            astnode_finalize(rept);
         } else if (count->integer > 0) {
             /* Expand body <count> times */
-            list = astnode_clone(astnode_get_child(n, 1), n->loc);
+            list = astnode_clone(astnode_get_child(rept, 1), rept->loc);
             stmts = astnode_remove_children(list);
             astnode_finalize(list);
             while (--count->integer > 0) {
-                list = astnode_clone(astnode_get_child(n, 1), n->loc);
+                list = astnode_clone(astnode_get_child(rept, 1), rept->loc);
                 astnode_add_sibling(stmts, astnode_remove_children(list) );
                 astnode_finalize(list);
             }
-            astnode_replace(n, stmts);
-            astnode_finalize(n);
+            astnode_replace(rept, stmts);
+            astnode_finalize(rept);
             *next = stmts;
         } else {
-            /* count == 0, remove from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            /* count == 0 */
+            astnode_remove(rept);
+            astnode_finalize(rept);
         }
     } else {
-        err(n->loc, "repeat count does not evaluate to literal");
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(rept->loc, "repeat count does not evaluate to literal");
+        astnode_remove(rept);
+        astnode_finalize(rept);
     }
     return 0;
 }
 
 /**
  * Process WHILE node.
- * @param n Node of type WHILE_NODE
+ * @param while_node Node of type WHILE_NODE
  * @param arg Not used
  */
-static int process_while(astnode *n, void *arg, astnode **next)
+static int process_while(astnode *while_node, void *arg, astnode **next)
 {
     astnode *expr;
     astnode *stmts;
     astnode *list;
-    /* The boolean expression */
-    expr = astnode_get_child(n, 0);
+    expr = astnode_get_child(while_node, 0);
     /* Try to reduce expression to literal */
     expr = reduce_expression(astnode_clone(expr, expr->loc));
     /* Resulting expression must be an integer literal,
@@ -2238,22 +2179,20 @@ static int process_while(astnode *n, void *arg, astnode **next)
     if (astnode_is_type(expr, INTEGER_NODE)) {
         /* Expand body if the expression is true */
         if (expr->integer) {
-            list = astnode_clone(astnode_get_child(n, 1), n->loc);
+            list = astnode_clone(astnode_get_child(while_node, 1), while_node->loc);
             stmts = astnode_remove_children(list);
             astnode_finalize(list);
-            astnode_replace(n, stmts);
-            astnode_add_sibling(stmts, n);  /* Clever huh? */
+            astnode_replace(while_node, stmts);
+            astnode_add_sibling(stmts, while_node);  /* Clever huh? */
             *next = stmts;
         } else {
-            /* Remove WHILE node from AST */
-            astnode_remove(n);
-            astnode_finalize(n);
+            astnode_remove(while_node);
+            astnode_finalize(while_node);
         }
     } else {
-        err(n->loc, "while expression does not evaluate to literal");
-        /* Remove WHILE node from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(while_node->loc, "while expression does not evaluate to literal");
+        astnode_remove(while_node);
+        astnode_finalize(while_node);
     }
     astnode_finalize(expr);
     return 0;
@@ -2266,110 +2205,94 @@ static int process_while(astnode *n, void *arg, astnode **next)
  * @param n Must be a node of type MACRO_DECL_NODE
  * @param arg Not used
  */
-static int enter_macro(astnode *n, void *arg, astnode **next)
+static int enter_macro(astnode *macro_def, void *arg, astnode **next)
 {
-    astnode *id = astnode_get_child(n, 0);  /* Child 0 is macro identifier */
+    astnode *id = astnode_get_child(macro_def, 0);
     assert(astnode_get_type(id) == IDENTIFIER_NODE);
-    if (symtab_enter(id->ident, MACRO_SYMBOL, n, 0) == NULL) {
+    if (symtab_enter(id->ident, MACRO_SYMBOL, macro_def, 0) == NULL) {
         /* ### This could be allowed, you know... */
-        err(n->loc, "duplicate symbol `%s'", id->ident);
+        err(macro_def->loc, "duplicate symbol `%s'", id->ident);
     }
-    /* Remove from AST */
-    astnode_remove(n);
-    // ### n is not finalized???
+    astnode_remove(macro_def);
     return 0;
 }
 
 /**
  * Enters a label into the symbol table.
- * @param n Must be a node of type LABEL_NODE
+ * @param label Must be a node of type LABEL_NODE
  */
-static int enter_label(astnode *n, void *arg, astnode **next)
+static int enter_label(astnode *label, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *addr;
     /* Make sure it's unique first */
-    if (symtab_lookup(n->ident)) {
-        err(n->loc, "duplicate symbol `%s'", n->ident);
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+    if (symtab_lookup(label->ident)) {
+        err(label->loc, "duplicate symbol `%s'", label->ident);
+        astnode_remove(label);
+        astnode_finalize(label);
     } else {
-        /* Enter it! */
-        e = symtab_enter(n->ident, LABEL_SYMBOL, n, (in_dataseg ? DATA_FLAG : 0) | modifiers );
+        e = symtab_enter(label->ident, LABEL_SYMBOL, label, (in_dataseg ? DATA_FLAG : 0) | symbol_modifiers );
         /* Check if hardcoded address */
-        addr = reduce_expression_complete(RHS(n));
+        addr = reduce_expression_complete(RHS(label));
         if (astnode_is_type(addr, INTEGER_NODE)) {
             /* Store it */
             e->address = addr->integer;
             e->flags |= ADDR_FLAG;
         } else if (!astnode_is_type(addr, CURRENT_PC_NODE)) {
-            err(n->loc, "label address does not evaluate to literal");
+            err(label->loc, "label address does not evaluate to literal");
         }
-        /* Increase namespace counter */
         label_count++;
     }
-    /* */
     return 0;
 }
 
 /**
  * Enters a variable declaration in symbol table.
- * @param n Must be a node of type VAR_DECL_NODE
+ * @param var Must be a node of type VAR_DECL_NODE
  */
-static int enter_var(astnode *n, void *arg, astnode **next)
+static int enter_var(astnode *var, void *arg, astnode **next)
 {
-    astnode *id = LHS(n);   /* Variable identifier */
+    astnode *id = LHS(var);
     assert(astnode_get_type(id) == IDENTIFIER_NODE);
-    /* Make sure it's unique first */
     if (symtab_lookup(id->ident)) {
-        err(n->loc, "duplicate symbol `%s'", id->ident);
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(var->loc, "duplicate symbol `%s'", id->ident);
+        astnode_remove(var);
+        astnode_finalize(var);
         return 0;
     } else {
-        /* Validate modifiers */
-        if ((n->modifiers & ZEROPAGE_FLAG) && !in_dataseg) {
-            warn(n->loc, "zeropage modifier has no effect in code segment");
-            n->modifiers &= ~ZEROPAGE_FLAG;
+        if ((var->modifiers & ZEROPAGE_FLAG) && !in_dataseg) {
+            warn(var->loc, "zeropage modifier has no effect in code segment");
+            var->modifiers &= ~ZEROPAGE_FLAG;
         }
-        /* Enter it! */
-        symtab_enter(id->ident, VAR_SYMBOL, astnode_clone(RHS(n), n->loc), (in_dataseg ? DATA_FLAG : 0) | n->modifiers | modifiers);
-        /* */
+        symtab_enter(id->ident, VAR_SYMBOL, astnode_clone(RHS(var), var->loc), (in_dataseg ? DATA_FLAG : 0) | var->modifiers | symbol_modifiers);
         return 1;
     }
 }
 
 /**
  * Enters a procedure declaration in symbol table.
- * @param n Must be a node of type PROC_NODE
+ * @param proc Must be a node of type PROC_NODE
  */
-static int enter_proc(astnode *n, void *arg, astnode **next)
+static int enter_proc(astnode *proc, void *arg, astnode **next)
 {
     astnode *id;
     if (in_dataseg) {
-        err(n->loc, "procedures not allowed in data segment");
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(proc->loc, "procedures not allowed in data segment");
+        astnode_remove(proc);
+        astnode_finalize(proc);
         return 0;
     }
-    id = LHS(n);    /* Procedure identifier */
+    id = LHS(proc);
     assert(astnode_get_type(id) == IDENTIFIER_NODE);
-    /* Make sure it's unique first */
     if (symtab_lookup(id->ident)) {
-        err(n->loc, "duplicate symbol `%s'", id->ident);
-        /* Remove from AST */
-        astnode_remove(n);
-        astnode_finalize(n);
+        err(proc->loc, "duplicate symbol `%s'", id->ident);
+        astnode_remove(proc);
+        astnode_finalize(proc);
         return 0;
     } else {
-        /* Enter it! RHS(n) is the list of procedure statements */
-        symtab_enter(id->ident, PROC_SYMBOL, RHS(n), (in_dataseg ? DATA_FLAG : 0) );
-        /* Increase global namespace counter */
+        /* Enter it! RHS(proc) is the list of procedure statements */
+        symtab_enter(id->ident, PROC_SYMBOL, RHS(proc), (in_dataseg ? DATA_FLAG : 0) );
         label_count++;
-        /* */
         return 1;
     }
 }
@@ -2393,12 +2316,10 @@ static astnode *enter_struc_atomic_field(astnode *c, astnode *offset, ordered_fi
     assert(astnode_get_type(field_id) == IDENTIFIER_NODE);
     field_data = RHS(c);
     reduce_expression(RHS(field_data));
-    /* Validate the declaration -- no data initialized */
     if (astnode_is_type(field_data, DATA_NODE)) {
         err(c->loc, "data initialization not allowed here");
         return(offset);
     }
-    /* Try to enter field in structure's symbol table */
     fe = symtab_enter(
         field_id->ident,
         VAR_SYMBOL,
@@ -2458,7 +2379,6 @@ astnode *enter_struc_union_field(astnode *n, astnode *offset, ordered_field_list
         err(n->loc, "anonymous union expected");
         return(offset);
     }
-    /* Put UNION in symbol table */
     snprintf(id_str, sizeof (id_str), "%d", id++);
     se = symtab_enter(id_str, UNION_SYMBOL, n, 0);
     enter_union_fields(se, n);
@@ -2501,23 +2421,23 @@ astnode *enter_struc_union_field(astnode *n, astnode *offset, ordered_field_list
  * - Creates a symbol table for the structure
  * - Validates and enters all its fields
  * - Calculates offset of each field in the structure, and total size
- * @param n Node of type STRUC_DECL_NODE
+ * @param struc_def Node of type STRUC_DECL_NODE
  */
-static int enter_struc(astnode *n, void *arg, astnode **next)
+static int enter_struc(astnode *struc_def, void *arg, astnode **next)
 {
     ordered_field_list **plist;
     symtab_entry *se;
     astnode *c;
     astnode *offset;
-    astnode *struc_id = LHS(n); /* Child 0 is struc identifier */
-    /* Put STRUC in symbol table */
-    se = symtab_enter(struc_id->ident, STRUC_SYMBOL, n, 0);
+    astnode *struc_id = LHS(struc_def);
+    assert(astnode_is_type(struc_id, IDENTIFIER_NODE));
+    se = symtab_enter(struc_id->ident, STRUC_SYMBOL, struc_def, 0);
     if (se == NULL) {
-        err(n->loc, "duplicate symbol `%s'", struc_id->ident);
+        err(struc_def->loc, "duplicate symbol `%s'", struc_id->ident);
     } else {
         /* Put the fields of the structure in local symbol table */
         se->symtab = symtab_create();
-        offset = astnode_create_integer(0, n->loc); /* offset = 0 */
+        offset = astnode_create_integer(0, struc_def->loc); /* offset = 0 */
         plist = &se->struc.fields;
         for (c = struc_id->next_sibling; c != NULL; c = c->next_sibling) {
             /* Check if it's a field declaration */
@@ -2538,15 +2458,15 @@ static int enter_struc(astnode *n, void *arg, astnode **next)
         symtab_pop();
     }
     /* ### Remove STRUC node from AST */
-//    astnode_remove(n);
-//    astnode_finalize(n);
+//    astnode_remove(struc_def);
+//    astnode_finalize(struc_def);
     return 0;
 }
 
 /**
  * Enters fields of union into its symbol table.
  */
-static void enter_union_fields(symtab_entry *se, astnode *n)
+static void enter_union_fields(symtab_entry *se, astnode *union_def)
 {
     ordered_field_list **plist;
     astnode *c;
@@ -2556,11 +2476,10 @@ static void enter_union_fields(symtab_entry *se, astnode *n)
     symtab_entry *fe;
 
     se->symtab = symtab_create();
-    se->struc.size = astnode_create_integer(0, n->loc);
+    se->struc.size = astnode_create_integer(0, union_def->loc);
     plist = &se->struc.fields;
     /* Process field declarations */
-    for (c = RHS(n); c != NULL; c = c->next_sibling) {
-        /* Make sure it's a field declaration */
+    for (c = RHS(union_def); c != NULL; c = c->next_sibling) {
         if (!astnode_is_type(c, VAR_DECL_NODE)) {
             err(c->loc, "field declaration expected");
             continue;
@@ -2570,7 +2489,6 @@ static void enter_union_fields(symtab_entry *se, astnode *n)
         assert(astnode_get_type(field_id) == IDENTIFIER_NODE);
         field_data = RHS(c);
         reduce_expression(RHS(field_data));
-        /* Validate the declaration -- no data initialized */
         if (astnode_is_type(field_data, DATA_NODE)) {
             err(c->loc, "data initialization not allowed here");
             continue;
@@ -2583,14 +2501,12 @@ static void enter_union_fields(symtab_entry *se, astnode *n)
             field_data->loc
         );
         field_size = reduce_expression(field_size);
-        /* Make sure field size is a constant */
         if (!astnode_is_type(field_size, INTEGER_NODE)) {
             err(c->loc, "union member must be of constant size");
             astnode_finalize(field_size);
             /* Use default size: 1 byte */
             field_size = astnode_create_integer(1, field_data->loc);
         }
-        /* Try to enter field in structure's symbol table */
         fe = symtab_enter(
             field_id->ident,
             VAR_SYMBOL,
@@ -2608,7 +2524,7 @@ static void enter_union_fields(symtab_entry *se, astnode *n)
         (*plist)->next = NULL;
         plist = &((*plist)->next);
         /* Set field offset (0 for all) and size */
-        fe->field.offset = astnode_create_integer(0, n->loc);
+        fe->field.offset = astnode_create_integer(0, union_def->loc);
         fe->field.size = astnode_clone(field_size, field_size->loc);
         /* See if field size of this member is largest so far */
         if (se->struc.size->integer < field_size->integer) {
@@ -2623,29 +2539,28 @@ static void enter_union_fields(symtab_entry *se, astnode *n)
 
 /**
  * Enters union type into symbol table based on AST node.
- * @param n Node of type UNION_DECL_NODE
+ * @param union_def Node of type UNION_DECL_NODE
  */
-static int enter_union(astnode *n, void *arg, astnode **next)
+static int enter_union(astnode *union_def, void *arg, astnode **next)
 {
     symtab_entry *se;
-    astnode *union_id = astnode_get_child(n, 0);    /* Child 0 is union identifier */
-    /* Check for anonymous union */
+    astnode *union_id = astnode_get_child(union_def, 0);
+    assert(astnode_is_type(union_id, IDENTIFIER_NODE));
     if (astnode_is_type(union_id, NULL_NODE)) {
-        err(n->loc, "anonymous union not allowed in global scope");
+        err(union_def->loc, "anonymous union not allowed in global scope");
     } else {
-        /* Put UNION in symbol table */
         assert(astnode_get_type(union_id) == IDENTIFIER_NODE);
-        se = symtab_enter(union_id->ident, UNION_SYMBOL, n, 0);
+        se = symtab_enter(union_id->ident, UNION_SYMBOL, union_def, 0);
         if (se == NULL) {
-            err(n->loc, "duplicate symbol `%s'", union_id->ident);
+            err(union_def->loc, "duplicate symbol `%s'", union_id->ident);
         } else {
             /* Put the fields of the union in local symbol table */
-            enter_union_fields(se, n);
+            enter_union_fields(se, union_def);
         }
     }
     /* ### Remove UNION node from AST */
-//    astnode_remove(n);
-//    astnode_finalize(n);
+//    astnode_remove(union_def);
+//    astnode_finalize(union_def);
     return 0;
 }
 
@@ -2653,18 +2568,17 @@ static int enter_union(astnode *n, void *arg, astnode **next)
  * Enters enumerated type into symbol table based on AST node.
  * @param n Node of type ENUM_DECL_NODE
  */
-static int enter_enum(astnode *n, void *arg, astnode **next)
+static int enter_enum(astnode *enum_def, void *arg, astnode **next)
 {
     astnode *c;
     astnode *id;
     astnode *val;
     symtab_entry *se;
-    astnode *enum_id = astnode_get_child(n, 0); /* Child 0 is enum identifier */
-    /* Enter in global symbol table */
+    astnode *enum_id = astnode_get_child(enum_def, 0);
     assert(astnode_get_type(enum_id) == IDENTIFIER_NODE);
-    se = symtab_enter(enum_id->ident, ENUM_SYMBOL, n, 0);
+    se = symtab_enter(enum_id->ident, ENUM_SYMBOL, enum_def, 0);
     if (se == NULL) {
-        err(n->loc, "duplicate symbol `%s'", enum_id->ident);
+        err(enum_def->loc, "duplicate symbol `%s'", enum_id->ident);
     } else {
         /* Add all the enum symbols to its own symbol table */
         se->symtab = symtab_create();
@@ -2695,8 +2609,8 @@ static int enter_enum(astnode *n, void *arg, astnode **next)
         symtab_pop();
     }
     /* ### Remove ENUM node from AST */
-//    astnode_remove(n);
-//    astnode_finalize(n);
+//    astnode_remove(enum_def);
+//    astnode_finalize(enum_def);
     return 0;
 }
 
@@ -2704,7 +2618,7 @@ static int enter_enum(astnode *n, void *arg, astnode **next)
  * Enters record type into symbol table based on AST node.
  * @param n Node of type RECORD_DECL_NODE
  */
-static int enter_record(astnode *n, void *arg, astnode **next)
+static int enter_record(astnode *record_def, void *arg, astnode **next)
 {
     ordered_field_list **plist;
     astnode *c;
@@ -2714,12 +2628,11 @@ static int enter_record(astnode *n, void *arg, astnode **next)
     int offset;
     symtab_entry *se;
     symtab_entry *fe;
-    astnode *record_id = astnode_get_child(n, 0);   /* Child 0 is record identifier */
+    astnode *record_id = astnode_get_child(record_def, 0);
     assert(astnode_get_type(record_id) == IDENTIFIER_NODE);
-    /* Enter in global symbol table */
-    se = symtab_enter(record_id->ident, RECORD_SYMBOL, n, 0);
+    se = symtab_enter(record_id->ident, RECORD_SYMBOL, record_def, 0);
     if (se == NULL) {
-        err(n->loc, "duplicate symbol `%s'", record_id->ident);
+        err(record_def->loc, "duplicate symbol `%s'", record_id->ident);
     }
     else {
         /* Add all the record fields to record's own symbol table */
@@ -2758,16 +2671,16 @@ static int enter_record(astnode *n, void *arg, astnode **next)
         }
         size = 8 - offset;
         if (size > 8) {
-            err(n->loc, "size of record `%s' (%d) exceeds 8 bits", record_id->ident, size);
+            err(record_def->loc, "size of record `%s' (%d) exceeds 8 bits", record_id->ident, size);
         } else {
             /* Set size of record (in bits) */
-            se->struc.size = astnode_create_integer(size, n->loc);
+            se->struc.size = astnode_create_integer(size, record_def->loc);
         }
         symtab_pop();
     }
     /* ### Remove RECORD node from AST */
-//    astnode_remove(n);
-//    astnode_finalize(n);
+//    astnode_remove(record_def);
+//    astnode_finalize(record_def);
     return 0;
 }
 
@@ -2791,12 +2704,10 @@ static int globalize_local(astnode *n, void *arg, astnode **next)
         /* Make sure it's unique */
         if (symtab_lookup(n->label)) {
             err(n->loc, "duplicate symbol `%s'", n->label);
-            /* Remove from AST */
             astnode_remove(n);
             astnode_finalize(n);
             return 0;
         } else {
-            /* Enter it in symbol table */
             symtab_enter(n->label, LABEL_SYMBOL, n, (in_dataseg ? DATA_FLAG : 0) );
         }
     } else {
@@ -2813,32 +2724,29 @@ static int globalize_local(astnode *n, void *arg, astnode **next)
  * Tags symbols as extrn.
  * @param n A node of type EXTRN_NODE
  */
-static int tag_extrn_symbols(astnode *n, void *arg, astnode **next)
+static int tag_extrn_symbols(astnode *extrn, void *arg, astnode **next)
 {
     astnode *id;
     astnode *type;
     astnode *list;
     symtab_entry *e;
-    /* Get symbol type specifier */
-    type = astnode_get_child(n, 0);
+    type = astnode_get_child(extrn, 0);
     /* Go through the list of identifiers */
-    list = astnode_get_child(n, 1);
+    list = astnode_get_child(extrn, 1);
     for (id=astnode_get_first_child(list); id != NULL; id=astnode_get_next_sibling(id) ) {
-        /* Look up identifier in symbol table */
         e = symtab_lookup(id->ident);
         if (e != NULL) {
             if (!(e->flags & EXTRN_FLAG)) {
                 /* Error, can't import a symbol that's defined locally! */
                 // TODO: this is okay?
-                err(n->loc, "`%s' declared as extrn but is defined locally", id->ident);
+                err(extrn->loc, "`%s' declared as extrn but is defined locally", id->ident);
             }
         }
         else {
             // TODO: store external unit name
             switch (astnode_get_type(type)) {
                 case DATATYPE_NODE:
-                /* Put it in symbol table */
-                symtab_enter(id->ident, VAR_SYMBOL, astnode_create_data(astnode_clone(type, n->loc), NULL, n->loc), EXTRN_FLAG);
+                symtab_enter(id->ident, VAR_SYMBOL, astnode_create_data(astnode_clone(type, extrn->loc), NULL, extrn->loc), EXTRN_FLAG);
                 break;
 
                 case INTEGER_NODE:
@@ -2851,70 +2759,64 @@ static int tag_extrn_symbols(astnode *n, void *arg, astnode **next)
             }
         }
     }
-    /* Remove extrn node from AST */
-    astnode_remove(n);
-    astnode_finalize(n);
-    //
+    astnode_remove(extrn);
+    astnode_finalize(extrn);
     return 0;
 }
 
 /**
  *
  */
-static int process_message(astnode *n, void *arg, astnode **next)
+static int process_message(astnode *message, void *arg, astnode **next)
 {
-    astnode *mesg = reduce_expression_complete(LHS(n));
-    if (astnode_is_type(mesg, STRING_NODE)) {
-        printf("%s\n", mesg->string);
+    astnode *expr = reduce_expression_complete(LHS(message));
+    if (astnode_is_type(expr, STRING_NODE)) {
+        printf("%s\n", expr->string);
+    } else if (astnode_is_type(expr, INTEGER_NODE)) {
+        printf("%d\n", expr->integer);
+    } else {
+        err(expr->loc, "string or integer argument expected");
     }
-    else if (astnode_is_type(mesg, INTEGER_NODE)) {
-        printf("%d\n", mesg->integer);
-    }
-    else {
-        err(mesg->loc, "string or integer argument expected");
-    }
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(message);
+    astnode_finalize(message);
     return 0;
 }
 
 /**
  *
  */
-static int process_warning(astnode *n, void *arg, astnode **next)
+static int process_warning(astnode *warning, void *arg, astnode **next)
 {
-    astnode *mesg = reduce_expression_complete(LHS(n));
-    if (astnode_is_type(mesg, STRING_NODE)) {
-        warn(mesg->loc, mesg->string);
+    astnode *expr = reduce_expression_complete(LHS(warning));
+    if (astnode_is_type(expr, STRING_NODE)) {
+        warn(warning->loc, expr->string);
+    } else {
+        err(warning->loc, "string argument expected");
     }
-    else {
-        err(mesg->loc, "string argument expected");
-    }
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(warning);
+    astnode_finalize(warning);
     return 0;
 }
 
 /**
  *
  */
-static int process_error(astnode *n, void *arg, astnode **next)
+static int process_error(astnode *error, void *arg, astnode **next)
 {
-    astnode *mesg = reduce_expression_complete(LHS(n));
-    if (astnode_is_type(mesg, STRING_NODE)) {
-        err(mesg->loc, mesg->string);
+    astnode *expr = reduce_expression_complete(LHS(error));
+    if (astnode_is_type(expr, STRING_NODE)) {
+        err(error->loc, expr->string);
+    } else {
+        err(expr->loc, "string argument expected");
     }
-    else {
-        err(mesg->loc, "string argument expected");
-    }
-    astnode_remove(n);
-    astnode_finalize(n);
+    astnode_remove(error);
+    astnode_finalize(error);
     return 0;
 }
 
 /**
  * Processes a forward branch declaration.
- * @param n Node of type FORWARD_BRANCH_DECL_NODE
+ * @param forward_branch Node of type FORWARD_BRANCH_DECL_NODE
  * @param arg Not used
  */
 static int process_forward_branch_decl(astnode *n, void *arg, astnode **next)
@@ -3027,10 +2929,8 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
     if (is_field_ref(n)) {
         return 1;   /* Validated by validate_dotref() */
     }
-    /* Look it up in symbol table */
     symtab_entry * e = symtab_lookup(n->ident);
     if (e == NULL) {
-        /* This identifier is unknown */
         /* Maybe it is part of an enumeration */
         symtab_list_type(ENUM_SYMBOL, &list);
         for (i=0; i<list.size; i++) {
@@ -3039,7 +2939,6 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
             e = symtab_lookup(n->ident);
             symtab_pop();
             if (e != NULL) {
-                /* Found it */
                 /* Replace id by SCOPE_NODE */
                 astnode *scope = astnode_create_scope(
                     astnode_create_identifier(enum_def->id, n->loc),
@@ -3052,7 +2951,6 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
             }
         }
         symtab_list_finalize(&list);
-        /* If still not found, error */
         if (e == NULL) {
             strtok(n->ident, "#");  /* Remove globalize junk */
 //            err(n->loc, "unknown symbol `%s'", n->ident);
@@ -3064,7 +2962,6 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
         }
     }
     assert(e);
-    /* Increase reference count */
     e->ref_count++;
     return ret;
 }
@@ -3123,10 +3020,8 @@ static int validate_scoperef(astnode *n, void *arg, astnode **next)
 {
     astnode *symbol;
     astnode *namespace = LHS(n);
-    /* Look up namespace in global symbol table */
     symtab_entry * e = symtab_lookup(namespace->ident);
     if (e == NULL) {
-        /* Error, this identifier is unknown */
         err(n->loc, "unknown namespace `%s'", namespace->ident);
         /* Replace by integer 0 */
         astnode_replace(n, astnode_create_integer(0, n->loc) );
@@ -3145,7 +3040,6 @@ static int validate_scoperef(astnode *n, void *arg, astnode **next)
             symtab_push(e->symtab);
             e = symtab_lookup(symbol->ident);
             if (e == NULL) {
-                /* Error, symbol is not in namespace */
                 err(n->loc, "unknown symbol `%s' in namespace `%s'", symbol->ident, namespace->ident);
                 /* Replace by integer 0 */
                 astnode_replace(n, astnode_create_integer(0, n->loc) );
@@ -3192,7 +3086,6 @@ static void validate_dotref_recursive(astnode *n, astnode *top)
     assert(astnode_get_type(right) == IDENTIFIER_NODE);
     field = symtab_lookup(right->ident);
     if (field == NULL) {
-        /* Error, this symbol is unknown */
         err(n->loc, "`%s' is not a member of `%s'", right->ident, left->ident);
         /* Replace by integer 0 */
         astnode_replace(top, astnode_create_integer(0, top->loc) );
@@ -3253,14 +3146,12 @@ static int validate_dotref(astnode *n, void *arg, astnode **next)
     }
     father = symtab_lookup(left->ident);
     if (father == NULL) {
-        /* Error, this symbol is unknown */
         err(n->loc, "unknown symbol `%s'", left->ident);
         /* Replace by integer 0 */
         astnode_replace(n, astnode_create_integer(0, n->loc) );
         astnode_finalize(n);
         return 0;
     } else {
-        /* Increase reference count */
         father->ref_count++;
         /* Verify the variable's type -- should be user-defined */
         type = LHS(father->def);
@@ -3271,7 +3162,6 @@ static int validate_dotref(astnode *n, void *arg, astnode **next)
             astnode_finalize(n);
             return 0;
         } else {
-            /* Look up variable's type definition and verify it's a structure */
             def = symtab_lookup(LHS(type)->ident);
             if (def == NULL) {
                 err(n->loc, "'%s' is of unknown type (`%s')", left->ident, LHS(type)->ident);
@@ -3374,20 +3264,18 @@ void astproc_first_pass(astnode *root)
 
 /**
  * Tags labels as public.
- * @param n A node of type PUBLIC_NODE
+ * @param public A node of type PUBLIC_NODE
  */
-static int tag_public_symbols(astnode *n, void *arg, astnode **next)
+static int tag_public_symbols(astnode *public, void *arg, astnode **next)
 {
     astnode *id;
     symtab_entry *e;
     /* Go through the list of identifiers */
-    for (id=astnode_get_first_child(n); id != NULL; id = astnode_get_next_sibling(id) ) {
-        /* Look up identifier in symbol table */
+    for (id=astnode_get_first_child(public); id != NULL; id = astnode_get_next_sibling(id) ) {
         e = symtab_lookup(id->ident);
         if (e != NULL) {
-            /* Symbol exists. Set the proper flag unless ambiguous. */
             if (e->flags & EXTRN_FLAG) {
-                err(n->loc, "`%s' already declared extrn", id->ident);
+                err(public->loc, "`%s' already declared extrn", id->ident);
             } else {
                 switch (e->type) {
                     case LABEL_SYMBOL:
@@ -3399,27 +3287,24 @@ static int tag_public_symbols(astnode *n, void *arg, astnode **next)
                     break;
 
                     default:
-                    err(n->loc, "`%s' is of non-exportable type", id->ident);
+                    err(public->loc, "`%s' is of non-exportable type", id->ident);
                     break;
                 }
             }
         } else {
-            /* Warning, can't export a symbol that's not defined. */
-            warn(n->loc, "`%s' declared as public but is not defined", id->ident);
+            warn(public->loc, "`%s' declared as public but is not defined", id->ident);
         }
     }
-    /* Remove PUBLIC_NODE from AST */
-    astnode_remove(n);
-    astnode_finalize(n);
-    //
+    astnode_remove(public);
+    astnode_finalize(public);
     return 0;
 }
 
 /**
  * Sets alignment for a set of (data) labels.
- * @param n A node of type ALIGN_NODE
+ * @param align A node of type ALIGN_NODE
  */
-static int tag_align_symbols(astnode *n, void *arg, astnode **next)
+static int tag_align_symbols(astnode *align, void *arg, astnode **next)
 {
     int pow;
     astnode *id;
@@ -3427,23 +3312,21 @@ static int tag_align_symbols(astnode *n, void *arg, astnode **next)
     astnode *expr;
     symtab_entry *e;
     /* Go through the list of identifiers */
-    idents = LHS(n);
+    idents = LHS(align);
     for (id=astnode_get_first_child(idents); id != NULL; id = astnode_get_next_sibling(id) ) {
-        /* Look up identifier in symbol table */
         e = symtab_lookup(id->ident);
         if (e != NULL) {
-            /* Symbol exists. Set the proper flag unless ambiguous. */
             if (!(e->flags & DATA_FLAG)) {
-                err(n->loc, "cannot align a code symbol (`%s')", id->ident);
+                err(align->loc, "cannot align a code symbol (`%s')", id->ident);
             } else {
                 switch (e->type) {
                     case LABEL_SYMBOL:
                     case VAR_SYMBOL:
-                    expr = reduce_expression(RHS(n));
+                    expr = reduce_expression(RHS(align));
                     if (!astnode_is_type(expr, INTEGER_NODE)) {
-                        err(n->loc, "alignment expression must be an integer literal");
+                        err(align->loc, "alignment expression must be an integer literal");
                     } else if ((expr->integer < 0) || (expr->integer >= 0x10000)) {
-                        err(n->loc, "alignment expression out of range");
+                        err(align->loc, "alignment expression out of range");
                     } else if (expr->integer > 1) {
                         pow = 0;
                         switch (expr->integer) {
@@ -3468,27 +3351,24 @@ static int tag_align_symbols(astnode *n, void *arg, astnode **next)
                             break;
 
                             default:
-                            err(n->loc, "alignment expression must be a power of 2");
+                            err(align->loc, "alignment expression must be a power of 2");
                             break;
                         }
                     }
                     break;
 
                     default:
-                    err(n->loc, "`%s' cannot be aligned", id->ident);
+                    err(align->loc, "`%s' cannot be aligned", id->ident);
                     break;
                 }
             }
         }
         else {
-            /* Warning, can't align a symbol that's not defined. */
-            warn(n->loc, "alignment ignored for undefined symbol `%s'", id->ident);
+            warn(align->loc, "alignment ignored for undefined symbol `%s'", id->ident);
         }
     }
-    /* Remove ALIGN_NODE from AST */
-    astnode_remove(n);
-    astnode_finalize(n);
-    //
+    astnode_remove(align);
+    astnode_finalize(align);
     return 0;
 }
 
@@ -3507,15 +3387,12 @@ void remove_unused_labels()
     symbol_ident_list list;
     symtab_list_type(LABEL_SYMBOL, &list);
     for (i=0; i<list.size; i++) {
-        /* Look up label in symbol table */
         id = list.idents[i];
         symtab_entry * e = symtab_lookup(id);
-        /* If reference count is zero, AND label isn't declared public, remove it. */
         if ((e->ref_count == 0) && ((e->flags & PUBLIC_FLAG) == 0)) {
             n = e->def;
             strtok(n->label, "#");  /* Remove globalize junk */
             warn(n->loc, "`%s' defined but not used", n->label);
-            /* Remove label from AST */
             astnode_remove(n);
             astnode_finalize(n);
             //symtab_remove(n->label); ### FIXME leads to crash sometimes...
@@ -3536,7 +3413,6 @@ static int reduce_user_storage(astnode *n, void *arg, astnode **next)
     symtab_entry *e;
     type = LHS(n);
     if (type->datatype == USER_DATATYPE) {
-        /* Look it up */
         e = symtab_lookup(LHS(type)->ident);
         if (e != NULL) {
             /* Replace by DSB */
@@ -3560,7 +3436,6 @@ static int reduce_user_storage(astnode *n, void *arg, astnode **next)
             return 0;
         } else {
             err(n->loc, "unknown symbol `%s'", LHS(type)->ident);
-            /* Remove from AST */
             astnode_remove(n);
             astnode_finalize(n);
             return 0;
@@ -3600,30 +3475,29 @@ void astproc_second_pass(astnode *root)
 
 /**
  * Translates a single instruction.
- * @param n A node of type INSTRUCTION_NODE
+ * @param instr A node of type INSTRUCTION_NODE
  */
-static int translate_instruction(astnode *n, void *arg, astnode **next)
+static int translate_instruction(astnode *instr, void *arg, astnode **next)
 {
     unsigned char c;
     /* Put the operand in final form */
-    astnode *o = reduce_expression_complete( LHS(n) );
-    assert(o == LHS(n));
+    astnode *o = reduce_expression_complete( LHS(instr) );
+    assert(o == LHS(instr));
     /* Convert (mnemonic, addressing mode) pair to opcode */
-    n->instr.opcode = opcode_get(n->instr.mnemonic, n->instr.mode);
-    /* Test if opcode is invalid */
-    if (n->instr.opcode == 0xFF) {
+    instr->instr.opcode = opcode_get(instr->instr.mnemonic, instr->instr.mode);
+    if (instr->instr.opcode == 0xFF) {
         /* Check for the special cases */
-        if ((n->instr.mnemonic == STX_MNEMONIC) && (n->instr.mode == ABSOLUTE_Y_MODE)) {
+        if ((instr->instr.mnemonic == STX_MNEMONIC) && (instr->instr.mode == ABSOLUTE_Y_MODE)) {
             /* Doesn't have absolute version, "scale down" to zeropage */
-            n->instr.mode = ZEROPAGE_Y_MODE;
-            n->instr.opcode = opcode_get(n->instr.mnemonic, n->instr.mode);
-        } else if ((n->instr.mnemonic == STY_MNEMONIC) && (n->instr.mode == ABSOLUTE_X_MODE)) {
+            instr->instr.mode = ZEROPAGE_Y_MODE;
+            instr->instr.opcode = opcode_get(instr->instr.mnemonic, instr->instr.mode);
+        } else if ((instr->instr.mnemonic == STY_MNEMONIC) && (instr->instr.mode == ABSOLUTE_X_MODE)) {
             /* Doesn't have absolute version, "scale down" to zeropage */
-            n->instr.mode = ZEROPAGE_X_MODE;
-            n->instr.opcode = opcode_get(n->instr.mnemonic, n->instr.mode);
-        } else if (n->instr.mode == ABSOLUTE_MODE) {
+            instr->instr.mode = ZEROPAGE_X_MODE;
+            instr->instr.opcode = opcode_get(instr->instr.mnemonic, instr->instr.mode);
+        } else if (instr->instr.mode == ABSOLUTE_MODE) {
             /* Check for relative addressing (these are parsed as absolute mode) */
-            switch (n->instr.mnemonic) {
+            switch (instr->instr.mnemonic) {
                 case BCC_MNEMONIC:
                 case BCS_MNEMONIC:
                 case BEQ_MNEMONIC:
@@ -3633,30 +3507,30 @@ static int translate_instruction(astnode *n, void *arg, astnode **next)
                 case BVC_MNEMONIC:
                 case BVS_MNEMONIC:
                 /* Fix addressing mode and opcode */
-                n->instr.mode = RELATIVE_MODE;
-                n->instr.opcode = opcode_get(n->instr.mnemonic, n->instr.mode);
+                instr->instr.mode = RELATIVE_MODE;
+                instr->instr.opcode = opcode_get(instr->instr.mnemonic, instr->instr.mode);
                 break;
             }
         }
     }
-    if (n->instr.opcode != 0xFF) {
+    if (instr->instr.opcode != 0xFF) {
         /* If the operand is a constant, see if we can "reduce" from
         absolute mode to zeropage mode */
         if ((astnode_is_type(o, INTEGER_NODE)) &&
         ((unsigned long)o->integer < 256) &&
-        ((c = opcode_zp_equiv(n->instr.opcode)) != 0xFF)) {
+        ((c = opcode_zp_equiv(instr->instr.opcode)) != 0xFF)) {
             /* Switch to the zeromode version */
-            n->instr.opcode = c;
-            switch (n->instr.mode) {
-                case ABSOLUTE_MODE: n->instr.mode = ZEROPAGE_MODE;  break;
-                case ABSOLUTE_X_MODE:   n->instr.mode = ZEROPAGE_X_MODE;break;
-                case ABSOLUTE_Y_MODE:   n->instr.mode = ZEROPAGE_Y_MODE;break;
+            instr->instr.opcode = c;
+            switch (instr->instr.mode) {
+                case ABSOLUTE_MODE: instr->instr.mode = ZEROPAGE_MODE;  break;
+                case ABSOLUTE_X_MODE:   instr->instr.mode = ZEROPAGE_X_MODE; break;
+                case ABSOLUTE_Y_MODE:   instr->instr.mode = ZEROPAGE_Y_MODE; break;
                 default: /* Impossible to get here, right? */ break;
             }
         }
         /* If the operand is a constant, make sure it fits */
         if (astnode_is_type(o, INTEGER_NODE)) {
-            switch (n->instr.mode) {
+            switch (instr->instr.mode) {
                 case IMMEDIATE_MODE:
                 case ZEROPAGE_MODE:
                 case ZEROPAGE_X_MODE:
@@ -3674,7 +3548,7 @@ static int translate_instruction(astnode *n, void *arg, astnode **next)
                 case ABSOLUTE_X_MODE:
                 case ABSOLUTE_Y_MODE:
                 case INDIRECT_MODE:
-                /* Operand must fit in 8 bits */
+                /* Operand must fit in 16 bits */
                 if ((unsigned long)o->integer >= 0x10000) {
                     warn(o->loc, "operand out of range; truncated");
                     o->integer &= 0xFFFF;
@@ -3691,11 +3565,10 @@ static int translate_instruction(astnode *n, void *arg, astnode **next)
         }
         else if (astnode_is_type(o, STRING_NODE)) {
             /* String operand doesn't make sense here */
-            err(n->loc, "invalid operand");
+            err(instr->loc, "invalid operand");
         }
     } else {
-        /* opcode_get() returned 0xFF */
-        err(n->loc, "invalid addressing mode");
+        err(instr->loc, "invalid addressing mode");
     }
     return 0;
 }
@@ -3709,8 +3582,8 @@ static int maybe_merge_data(astnode *n, void *arg, astnode **next)
     astnode *type;
     type = LHS(n);
     /* Only merge if no debugging, otherwise line information is lost. */
-    if (!xasm_args.debug && astnode_is_type(*next, DATA_NODE) &&
-    astnode_equal(type, LHS(*next)) ) {
+    if (!xasm_args.debug && astnode_is_type(*next, DATA_NODE)
+        && astnode_equal(type, LHS(*next)) ) {
         /* Merge ahead */
         temp = *next;
         astnode_finalize( astnode_remove_child_at(temp, 0) );   /* Remove datatype node */
@@ -3753,31 +3626,31 @@ static int maybe_merge_data(astnode *n, void *arg, astnode **next)
 /**
  *
  */
-static int maybe_merge_storage(astnode *n, void *arg, astnode **next)
+static int maybe_merge_storage(astnode *storage, void *arg, astnode **next)
 {
     astnode *temp;
     astnode *new_count;
     astnode *old_count;
-    if (astnode_is_type(*next, STORAGE_NODE) &&
-    astnode_equal(LHS(n), LHS(*next)) ) {
+    if (astnode_is_type(*next, STORAGE_NODE)
+        && astnode_equal(LHS(storage), LHS(*next)) ) {
         /* Merge ahead */
         temp = *next;
         astnode_finalize( astnode_remove_child_at(temp, 0) );   /* Remove datatype node */
-        old_count = RHS(n);
+        old_count = RHS(storage);
         /* Calculate new count */
         new_count = astnode_create_arithmetic(
             PLUS_OPERATOR,
             astnode_remove_child_at(temp, 0),
-            astnode_clone(old_count, n->loc),
-            n->loc
+            astnode_clone(old_count, storage->loc),
+            storage->loc
         );
         new_count = reduce_expression_complete(new_count);
         astnode_replace(old_count, new_count);
         astnode_finalize(old_count);
         astnode_finalize(temp);
-        *next = n;
+        *next = storage;
     } else {
-        reduce_expression_complete(RHS(n));
+        reduce_expression_complete(RHS(storage));
     }
     return 0;
 }
@@ -3785,16 +3658,16 @@ static int maybe_merge_storage(astnode *n, void *arg, astnode **next)
 /**
  * Replaces .proc by its label followed by statements.
  */
-static int flatten_proc(astnode *n, void *arg, astnode **next)
+static int flatten_proc(astnode *proc, void *arg, astnode **next)
 {
-    astnode *id = LHS(n);
-    astnode *list = RHS(n);
+    astnode *id = LHS(proc);
+    astnode *list = RHS(proc);
     astnode_remove(id);
     id->type = LABEL_NODE;
     astnode_insert_child(list, id, 0);
     astnode *stmts = astnode_remove_children(list);
-    astnode_replace(n, stmts);
-    astnode_finalize(n);
+    astnode_replace(proc, stmts);
+    astnode_finalize(proc);
     *next = stmts;
     return 0;
 }
@@ -3802,13 +3675,13 @@ static int flatten_proc(astnode *n, void *arg, astnode **next)
 /**
  *
  */
-static int flatten_var_decl(astnode *n, void *arg, astnode **next)
+static int flatten_var_decl(astnode *var, void *arg, astnode **next)
 {
-    astnode *stmts = LHS(n);
-    astnode_remove_children(n);
+    astnode *stmts = LHS(var);
+    astnode_remove_children(var);
     stmts->type = LABEL_NODE;
-    astnode_replace(n, stmts);
-    astnode_finalize(n);
+    astnode_replace(var, stmts);
+    astnode_finalize(var);
     *next = stmts;
     return 0;
 }
