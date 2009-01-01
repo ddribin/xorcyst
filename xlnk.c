@@ -180,7 +180,7 @@ The XORcyst Linker -- it creates quite a stir\n\
       --usage                Give a short usage message\n\
   -V, --version              Print program version\n\
 \n\
-Report bugs to <dev@null>.\n\
+Report bugs to <kentmhan@gmail.com>.\n\
 ");
     exit(0);
 }

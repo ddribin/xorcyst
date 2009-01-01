@@ -183,7 +183,7 @@ The XORcyst Assembler -- it kicks the 6502's ass\n\
 Mandatory or optional arguments to long options are also mandatory or optional\n\
 for any corresponding short options.\n\
 \n\
-Report bugs to <dev@null>.\n\
+Report bugs to <kentmhan@gmail.com>.\n\
 ");
     exit(0);
 }

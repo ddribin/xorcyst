@@ -9,9 +9,9 @@
 <link rel="next" href="The-Linker.html#The-Linker" title="The Linker">
 <link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
 <!--
-This is the manual for The XORcyst version 1.4.5.
+This is the manual for The XORcyst version 1.5.2.
 
-Copyright (C) 2004, 2005 Kent Hansen.-->
+Copyright (C) 2004, 2005, 2007, 2008, 2009 Kent Hansen.-->
 <meta http-equiv="Content-Style-Type" content="text/css">
 <style type="text/css"><!--
   pre.display { font-family:inherit }
@@ -38,12 +38,6 @@ Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
 <p>The XORcyst assembler takes a <dfn>plaintext file</dfn> containing a sequence of 6502 instructions and assembler
 directives (collectively referred to as assembler statements), and produces from this an <dfn>object file</dfn> (usually referred to as a <dfn>unit</dfn>) that can be fed on to the XORcyst linker.
 
-   <p>The reason for not producing a plain 6502 binary is largely due to the aim of producing position-independent code- and data-segments. Specifically, in The XORcyst universe code and data labels are not meant to be assigned addresses until the final process of linking. Relocation on the 6502 isn't as simple as just adding an offset to an instruction operand; the 6502 has a special set of <dfn>zero-page instructions</dfn> which can be used when addresses fall in the range 0..255, and we want to utilize these whenever possible. So until we know whether, say, a data label will fall in the zero-page range or not, we don't know whether instructions which refer to this label will have a 1-byte or 2-byte operand. Using the non-zero-page (absolute) version of an instruction would, in the general case, ensure that the address will fit, but is too wasteful in size and processor cycles. So instead of hardcoded addresses the object code contains symbolic links which are up to the linker to resolve and translate. The object file can be thought of as a more compact, linker-ready version of the original assembler file.
-
-   <p>Another goal is to relieve the programmer of the burden of having to make sure that all variables in a large, complex program have unique addresses, by shifting as much of this responsibility onto the linker as possible. By postponing the mapping of symbol names to addresses until the link phase, variables can be added and moved to any part of the program without risking that it will interfere with the storage allocation of another part of the program.
-
-   <p>The object file format also enables complex resource sharing between units. An assembler expression can be arbitrarily complex, with references to any number of constants, variables or procedures defined in another unit.
-
 <h3 class="section">3.1 Invoking the assembler (<span class="command">xasm</span>)</h3>
 
 <p>The basic usage is
@@ -65,7 +59,13 @@ If all goes well, this will produce a similarly named file of extension <span cl
 
      <br><dt><code>--output FILE</code><dd>Directs output to the file <code>FILE</code> rather than the default file.
 
+     <br><dt><code>--pure-binary</code><dd>Specifies that the output should be in the form of pure 6502 code. This will only succeed if the input has no external dependencies.
+
      <br><dt><code>--swap-parens</code><dd>Changes the operators used to specify indirection from <code>[ ]</code> to <code>( )</code>. <code>[ ]</code> takes over <code>( )</code>'s role in arithmetic expressions.
+
+     <br><dt><code>--include-path DIR</code><dd>Adds <code>DIR</code> to the set of paths that are searched when a file is included.
+
+     <br><dt><code>--case-insensitive</code><dd>Ignores case of identifiers.
 
      <br><dt><code>--no-warn</code><dd>Suppresses assembler warning messages.
 

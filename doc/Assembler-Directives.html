@@ -9,9 +9,9 @@
 <link rel="next" href="Linker-Script-Commands.html#Linker-Script-Commands" title="Linker Script Commands">
 <link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
 <!--
-This is the manual for The XORcyst version 1.4.5.
+This is the manual for The XORcyst version 1.5.2.
 
-Copyright (C) 2004, 2005 Kent Hansen.-->
+Copyright (C) 2004, 2005, 2007, 2008, 2009 Kent Hansen.-->
 <meta http-equiv="Content-Style-Type" content="text/css">
 <style type="text/css"><!--
   pre.display { font-family:inherit }
@@ -85,6 +85,8 @@ Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
 
      <br><dt><code>enum </code><var>identifier</var><dd>Begins an enum definition
 
+     <br><dt><code>error </code><var>expression</var><dd>Prints an error
+
      <br><dt><code>extrn </code><var>identifier</var> <em>[, </em><var>identifier</var><em>, ...]</em><code> : </code><var>type</var><dd>Flag identifier(s) as external (imported) of type <var>type</var>
 
      <br><dt><var>identifier</var><code> equ </code><var>expression</var><dd>Define equate
@@ -106,6 +108,8 @@ Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
 
      <br><dt><code>message </code><var>expression</var><dd>Prints a message to stdout during assembly
 
+     <br><dt><code>org </code><var>expression</var><dd>Sets the origin address
+
      <br><dt><code>pad </code><var>expression</var><code>  (</code><em>Alias for</em><code> dsb)</code>
 <br><dt><code>proc </code><var>identifier</var><dd>Begins a procedure definition
 
@@ -120,6 +124,8 @@ Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
      <br><dt><code>type </code><var>identifier</var> <em>[</em><var>expression</var><em>, ...]</em><dd>Define data of user-defined type <var>identifier</var>
 
      <br><dt><code>union </code><var>identifier</var><dd>Begins a union definition
+
+     <br><dt><code>warning </code><var>expression</var><dd>Prints a warning
 
      <br><dt><code>while </code><var>expression</var><dd>Begins an anonymous macro to be repeated while <var>expression</var> is true (non-zero)
 

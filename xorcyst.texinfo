@@ -40,7 +40,7 @@
 @copying
 This is the manual for The XORcyst version 1.4.5.
 
-Copyright @copyright{} 2004, 2005 Kent Hansen.
+Copyright @copyright{} 2004, 2005, 2007, 2008, 2009 Kent Hansen.
 @end copying
 
 @titlepage
@@ -78,6 +78,14 @@ Copyright @copyright{} 2004, 2005 Kent Hansen.
 
 @node What's New
 @chapter What's New
+
+@heading Version 1.5.2
+
+More bug fixes.
+
+@heading Version 1.5.0
+
+Added some stuff, fixed some bugs.
 
 @heading Version 1.4.5
 
@@ -320,12 +328,6 @@ The XORcyst is a set of languages and commandline tools for assembling and linki
 The XORcyst assembler takes a @dfn{plaintext file} containing a sequence of 6502 instructions and assembler
 directives (collectively referred to as assembler statements), and produces from this an @dfn{object file} (usually referred to as a @dfn{unit}) that can be fed on to the XORcyst linker.
 
-The reason for not producing a plain 6502 binary is largely due to the aim of producing position-independent code- and data-segments. Specifically, in The XORcyst universe code and data labels are not meant to be assigned addresses until the final process of linking. Relocation on the 6502 isn't as simple as just adding an offset to an instruction operand; the 6502 has a special set of @dfn{zero-page instructions} which can be used when addresses fall in the range 0..255, and we want to utilize these whenever possible. So until we know whether, say, a data label will fall in the zero-page range or not, we don't know whether instructions which refer to this label will have a 1-byte or 2-byte operand. Using the non-zero-page (absolute) version of an instruction would, in the general case, ensure that the address will fit, but is too wasteful in size and processor cycles. So instead of hardcoded addresses the object code contains symbolic links which are up to the linker to resolve and translate. The object file can be thought of as a more compact, linker-ready version of the original assembler file.
-
-Another goal is to relieve the programmer of the burden of having to make sure that all variables in a large, complex program have unique addresses, by shifting as much of this responsibility onto the linker as possible. By postponing the mapping of symbol names to addresses until the link phase, variables can be added and moved to any part of the program without risking that it will interfere with the storage allocation of another part of the program.
-
-The object file format also enables complex resource sharing between units. An assembler expression can be arbitrarily complex, with references to any number of constants, variables or procedures defined in another unit.
-
 @section Invoking the assembler (@command{xasm})
 
 The basic usage is
@@ -351,8 +353,17 @@ Enters the identifier @code{IDENT} into the global symbol table, optionally assi
 @item --output FILE
 Directs output to the file @code{FILE} rather than the default file.
 
+@item --pure-binary
+Specifies that the output should be in the form of pure 6502 code. This will only succeed if the input has no external dependencies.
+
 @item --swap-parens
 Changes the operators used to specify indirection from @code{[ ]} to @code{( )}. @code{[ ]} takes over @code{( )}'s role in arithmetic expressions.
+
+@item --include-path DIR
+Adds @code{DIR} to the set of paths that are searched when a file is included.
+
+@item --case-insensitive
+Ignores case of identifiers.
 
 @item --no-warn
 Suppresses assembler warning messages.
@@ -1238,6 +1249,9 @@ Ends a structure or union definition
 @item enum @var{identifier}
 Begins an enum definition
 
+@item error @var{expression}
+Prints an error
+
 @item extrn @var{identifier} @emph{[, @var{identifier}, ...]} : @var{type}
 Flag identifier(s) as external (imported) of type @var{type}
 
@@ -1270,6 +1284,9 @@ Begins a macro definition
 @item message @var{expression}
 Prints a message to stdout during assembly
 
+@item org @var{expression}
+Sets the origin address
+
 @item pad @var{expression}  (@emph{Alias for} dsb)
 
 @item proc @var{identifier}
@@ -1292,6 +1309,9 @@ Define data of user-defined type @var{identifier}
 
 @item union @var{identifier}
 Begins a union definition
+
+@item warning @var{expression}
+Prints a warning
 
 @item while @var{expression}
 Begins an anonymous macro to be repeated while @var{expression} is true (non-zero)
