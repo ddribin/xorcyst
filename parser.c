@@ -2179,7 +2179,7 @@ yyreduce:
 
   case 47:
 #line 201 "parser.y"
-    { (yyval.node) = astnode_create_label((yyvsp[-3].node)->label, (yyvsp[-2].node), (yyvsp[-1].node), (yyloc)); }
+    { (yyval.node) = astnode_create_label((yyvsp[-3].node)->label, (yyvsp[-2].node), (yyvsp[-1].node), (yyloc)); astnode_finalize((yyvsp[-3].node)); }
     break;
 
   case 48:

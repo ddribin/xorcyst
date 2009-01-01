@@ -198,7 +198,7 @@ message_statement:
     ;
 
 label_statement:
-    _LABEL_ identifier label_addr_part_opt label_type_part_opt line_tail { $$ = astnode_create_label($2->label, $3, $4, @$); }
+    _LABEL_ identifier label_addr_part_opt label_type_part_opt line_tail { $$ = astnode_create_label($2->label, $3, $4, @$); astnode_finalize($2); }
     ;
 
 label_addr_part_opt:
