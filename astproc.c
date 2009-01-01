@@ -393,7 +393,7 @@ static int globalize_macro_expanded_local(astnode *n, void *arg, astnode **next)
         int count;
         /* Make it global by appending the macro expansion counter to the id */
         count = (int)arg;
-        sprintf(str, "#%d", count);
+        snprintf(str, sizeof (str), "#%d", count);
         if (astnode_is_type(n, LOCAL_LABEL_NODE)) {
             /* LOCAL_LABEL_NODE, use label field */
             n->label = realloc(n->label, strlen(n->label)+strlen(str)+1);
@@ -623,7 +623,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* Left side is string and right side is integer.
                 Result is a string. */
                 char str[32];
-                sprintf(str, "%d", rhs->integer);
+                snprintf(str, sizeof (str), "%d", rhs->integer);
                 folded = astnode_create(STRING_NODE, expr->loc);
                 folded->string = (char *)malloc(strlen(lhs->string) + strlen(str) + 1);
                 if (folded->string != NULL) {
@@ -641,7 +641,7 @@ astnode *astproc_fold_constants(astnode *expr)
                 /* Left side is integer and right side is string.
                 Result is a string. */
                 char str[32];
-                sprintf(str, "%d", lhs->integer);
+                snprintf(str, sizeof (str), "%d", lhs->integer);
                 folded = astnode_create(STRING_NODE, expr->loc);
                 folded->string = (char *)malloc(strlen(str) + strlen(rhs->string) + 1);
                 if (folded->string != NULL) {
@@ -2459,7 +2459,7 @@ astnode *enter_struc_union_field(astnode *n, astnode *offset, ordered_field_list
         return(offset);
     }
     /* Put UNION in symbol table */
-    sprintf(id_str, "%d", id++);
+    snprintf(id_str, sizeof (id_str), "%d", id++);
     se = symtab_enter(id_str, UNION_SYMBOL, n, 0);
     enter_union_fields(se, n);
     /* Add to ordered list of fields */
@@ -2781,7 +2781,7 @@ static int globalize_local(astnode *n, void *arg, astnode **next)
 {
     char str[32];
     /* Make it global by appending namespace counter to the id */
-    sprintf(str, "#%d", label_count);
+    snprintf(str, sizeof (str), "#%d", label_count);
     if (astnode_is_type(n, LOCAL_LABEL_NODE)) {
         /* Local label definition, use label field */
         n->label = realloc(n->label, strlen(n->label)+strlen(str)+1);
@@ -2926,7 +2926,7 @@ static int process_forward_branch_decl(astnode *n, void *arg, astnode **next)
     /* Get branch info structure for label (+, ++, ...) */
     forward_branch_info *fwd = &forward_branch[strlen(n->ident)-1];
     /* Morph n to globally unique label */
-    sprintf(str, "#%d", fwd->counter);
+    snprintf(str, sizeof (str), "#%d", fwd->counter);
     n->label = (char *)realloc(n->ident, strlen(n->ident)+strlen(str)+1);
     strcat(n->label, str);
     n->type = LABEL_NODE;
@@ -2956,7 +2956,7 @@ static int process_backward_branch_decl(astnode *n, void *arg, astnode **next)
     backward_branch_info *bwd = &backward_branch[strlen(n->ident)-1];
     bwd->decl = n;
     /* Morph n to globally unique label */
-    sprintf(str, "#%d", bwd->counter);
+    snprintf(str, sizeof (str), "#%d", bwd->counter);
     n->label = (char *)realloc(n->ident, strlen(n->ident)+strlen(str)+1);
     strcat(n->label, str);
     n->type = LABEL_NODE;
