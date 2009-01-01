@@ -205,7 +205,6 @@ parse_arguments (int argc, char **argv)
     program_args.verbose = 0;
     program_args.input_file = NULL;
 
-    /* Parse options. */
     while ((key = getopt_long(argc, argv, "qsvV", long_options, &index)) != -1) {
         switch (key) {
             case 'q': case 's':
@@ -383,7 +382,6 @@ static void maybe_print_location()
     char *str;
     int len;
     if (unit_file != NULL) {
-        /* Print source location */
         len = unit_file[0] + 1;
         str = (char *)malloc(len + 1);
         strncpy(str, (char *)&unit_file[1], len);
@@ -414,13 +412,11 @@ static void err(char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     if (!suppress) {
-        /* Print error message */
         fprintf(stderr, "error: ");
         maybe_print_location();
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         maybe_print_debug_tip();
-        /* Increase total error count */
         err_count++;
     }
     va_end(ap);
@@ -435,13 +431,11 @@ static void warn(char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     if (!suppress) {
-        /* Print warning message */
         fprintf(stderr, "warning: ");
         maybe_print_location();
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         maybe_print_debug_tip();
-        /* Increase total warning count */
         warn_count++;
     }
     va_end(ap);
@@ -491,19 +485,15 @@ static int ram_left()
 static void add_ram_block(int start, int end)
 {
     avail_ram_block *b;
-    /* Allocate a block struct */
     avail_ram_block *new_block = (avail_ram_block *)malloc( sizeof(avail_ram_block) );
     if (new_block != NULL) {
-        /* Set the fields */
         new_block->start = start;
         new_block->end = end;
         new_block->next = NULL;
-        /* Add it to list */
         if (ram_block_head == NULL) {
             /* Start the list */
             ram_block_head = new_block;
-        }
-        else {
+        } else {
             /* Add to end */
             for (b = ram_block_head; b->next != NULL; b = b->next) ;
             b->next = new_block;
@@ -527,19 +517,15 @@ static int alloc_ram(local *l)
         int left;
         int pad;
         avail_ram_block *n;
-        /* Check if zero page block required */
         if (l->flags & LABEL_FLAG_ZEROPAGE) {
             if (b->start >= 0x100) {
                 continue;   /* This block is no good */
             }
         }
-        /* Calculate the # of bytes left in this block */
         left = b->end - b->start;
-        /* See if it's enough */
         if (left < l->size) {
             continue;   /* Not enough, sorry */
         }
-        /* Check if alignment required */
         if (l->flags & LABEL_FLAG_ALIGN) {
             pad = b->start & ((1 << l->align) - 1);
             if (pad != 0) {
@@ -576,13 +562,10 @@ static int alloc_ram(local *l)
                 /* Squeeze out */
                 p->next = b->next;
             }
-            /* Free associated memory */
             SAFE_FREE(b);
         }
-        /* Return with success */
         return 1;
     }
-    /* Couldn't find a block large enough, return with failure */
     return 0;
 }
 
@@ -663,7 +646,6 @@ static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *ar
     if (bytes == NULL) { return; }
     i = 0;
     do {
-        /* Get a command */
         cmd = get_1(bytes, &i);
 
         /* Check if debug command */
@@ -681,7 +663,6 @@ static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *ar
             continue;
         }
 
-        /* Call bytecode handler if one is present */
         if (handlers[cmd-CMD_END] != NULL) {
             handlers[cmd-CMD_END](&bytes[i-1], arg);
         }
@@ -700,7 +681,6 @@ static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *ar
             case CMD_DSB:   i += 2; break;  /* Skip 16-bit expr id */
 
             default:
-            /* Invalid opcode */
             err("invalid bytecode");
             break;
         }
@@ -846,11 +826,11 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
 
                     default:
                     /* Not defined operator for string operation... */
+                    assert(0);
                     break;
                 }
             }
             else {
-                /* Error, operands are incompatible */
                 result->type = -1;
                 err("incompatible operands to `%s' in expression", operator_to_string(e->op_expr.operator) );
             }
@@ -901,9 +881,7 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
                 break;
 
                 case EXTERNAL_EXPRESSION:
-                /* Get the name of the external */
                 s = u->_unit_.externals[e->op_expr.lhs->extrn_id].name;
-                /* Look it up */
                 if ((l = (local *)hashtab_get(label_hash, s)) != NULL) {
                     /* It's a label */
                     result->integer = l->owner->bank_id;
@@ -928,13 +906,11 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
         break;
 
         case INTEGER_EXPRESSION:
-        /* Copy value to result */
         result->type = INTEGER_CONSTANT;
         result->integer = e->integer;
         break;
 
         case STRING_EXPRESSION:
-        /* Copy value to result */
         result->string = (char *)malloc(strlen(e->string) + 1);
         if (result->string != NULL) {
             strcpy(result->string, e->string);
@@ -951,9 +927,7 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             /* It's a data local */
             l = &u->data_locals.entries[e->local_id];
         }
-        /* Test if it's resolved */
         if (l->resolved) {
-            /* Copy address to result */
             result->type = INTEGER_CONSTANT;
             result->integer = l->phys_addr;
         }
@@ -964,14 +938,10 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
         break;
 
         case EXTERNAL_EXPRESSION:
-        /* Get the name of the external */
         s = u->_unit_.externals[e->extrn_id].name;
-        /* Look it up */
         if ((l = (local *)hashtab_get(label_hash, s)) != NULL) {
             /* It's a label */
-            /* Test if it's resolved */
             if (l->resolved) {
-                /* Copy address to result */
                 result->type = INTEGER_CONSTANT;
                 result->integer = l->phys_addr;
             }
@@ -981,8 +951,6 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             }
         }
         else if ((c = (constant *)hashtab_get(constant_hash, s)) != NULL) {
-            /* It's a constant */
-            /* Copy value to result */
             switch (c->type) {
                 case INTEGER_CONSTANT:
                 result->type = INTEGER_CONSTANT;
@@ -999,14 +967,12 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             }
         }
         else {
-            /* Error */
             result->type = -1;
             err("unknown symbol `%s' referenced from %s", s, u->_unit_.name);
         }
         break;
 
         case PC_EXPRESSION:
-        /* Copy current PC to result */
         result->type = INTEGER_CONSTANT;
         result->integer = pc;
         break;
@@ -1021,9 +987,7 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
  */
 static void eval_expression(xunit *u, int exid, constant *result)
 {
-    /* Get the expression with id exid */
     expression *exp = u->_unit_.expressions[exid];
-    /* Evaluate recursively */
     eval_recursive(u, exp, result);
 }
 
@@ -1037,12 +1001,10 @@ static void eval_expression(xunit *u, int exid, constant *result)
 static void inc_pc(int amount, void *arg)
 {
     calc_address_args *aargs;
-    /* Check for 16-bit overflow */
     if ((pc <= 0x10000) && ((pc+amount) > 0x10000)) {
         aargs = (calc_address_args *)arg;
         err("PC went beyond 64K when linking `%s'", aargs->xu->_unit_.name);
     }
-    /* Add! */
     pc += amount;
 }
 
@@ -1108,11 +1070,9 @@ static void inc_pc_dsb(unsigned char *b, void *arg)
         inc_pc( c.integer, arg );
     }
     else if (c.type == STRING_CONSTANT) {
-        /* Error, doesn't make sense here */
         err("unexpected string operand (`%s') to storage directive", c.string);
     }
     else {
-        /* Error, unresolved */
         //err("unresolved symbol");
         assert(0);
     }
@@ -1147,7 +1107,6 @@ static void inc_pc_instr(unsigned char *b, void *arg)
         }
     }
     else if (c.type == STRING_CONSTANT) {
-        /* Error, string operand doesn't make sense here */
         err("invalid instruction operand (string)");
     }
     else {
@@ -1169,12 +1128,9 @@ static void write_bin8(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 8-bit count */
     i = 1;
     count = get_1(b, &i) + 1;
-    /* Write data */
     fwrite(&b[i], 1, count, args->fp);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1186,12 +1142,9 @@ static void write_bin16(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 16-bit count */
     i = 1;
     count = get_2(b, &i) + 1;
-    /* Write data */
     fwrite(&b[i], 1, count, args->fp);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1257,7 +1210,6 @@ static void write_instr(unsigned char *b, void *arg)
             fputc(c.integer >> 8, args->fp);
         }
     }
-    /* Advance PC */
     inc_pc( opcode_length(op), arg );
 }
 
@@ -1308,7 +1260,6 @@ static void write_dx(unsigned char *b, void *arg)
         }
     }
     else if (c.type == STRING_CONSTANT) {
-        /* Write sequence of characters */
         for (i=0; i<strlen(c.string); i++) {
             /* Write low byte */
             fputc(c.string[i], args->fp);
@@ -1346,14 +1297,11 @@ static void write_dsi8(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 8-bit count */
     i = 1;
     count = get_1(b, &i) + 1;
-    /* Write zeroes */
     for (i=0; i<count; i++) {
         fputc(0, args->fp);
     }
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1365,14 +1313,11 @@ static void write_dsi16(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 16-bit count */
     i = 1;
     count = get_2(b, &i) + 1;
-    /* Write zeroes */
     for (i=0; i<count; i++) {
         fputc(0, args->fp);
     }
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1394,11 +1339,9 @@ static void write_dsb(unsigned char *b, void *arg)
     if (c.integer < 0) {
         err("negative count");
     } else if (c.integer > 0) {
-        /* Write zeroes */
         for (i=0; i<c.integer; i++) {
             fputc(0, args->fp);
         }
-        /* Advance PC */
         inc_pc( c.integer, arg );
     }
 }
@@ -1471,13 +1414,10 @@ static void asm_write_bin8(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 8-bit count */
     i = 1;
     count = get_1(b, &i) + 1;
-    /* Write data */
     //    fprintf(args->fp, "; %d byte(s)\n", count);
     print_chunk(args->fp, /*label=*/0, &b[i], count, /*cols=*/16);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1489,13 +1429,10 @@ static void asm_write_bin16(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 16-bit count */
     i = 1;
     count = get_2(b, &i) + 1;
-    /* Write data */
     //    fprintf(args->fp, "; %d byte(s)\n", count);
     print_chunk(args->fp, /*label=*/0, &b[i], count, /*cols=*/16);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1510,7 +1447,6 @@ static void asm_write_label(unsigned char *b, void *arg)
     fprintf(args->fp, "; label");
     flags = get_1(b, &i);
     if (flags & LABEL_FLAG_EXPORT) {
-        /* Read and print the name */
         char *name;
         int len = get_1(b, &i) + 1;
         name = (char *)malloc( len + 1 );
@@ -1612,9 +1548,7 @@ static void asm_write_instr(unsigned char *b, void *arg)
         case INVALID_MODE:
         break;
     }
-    /* Write newline */
     fprintf(args->fp, "\n");
-    /* Advance PC */
     inc_pc( opcode_length(op), arg );
 }
 
@@ -1685,12 +1619,9 @@ static void asm_write_dsi8(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 8-bit count */
     i = 1;
     count = get_1(b, &i) + 1;
-    /* Pad */
     fprintf(args->fp, ".DSB $%X\n", count);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1702,12 +1633,9 @@ static void asm_write_dsi16(unsigned char *b, void *arg)
     int count;
     int i;
     write_binary_args *args = (write_binary_args *)arg;
-    /* Get 16-bit count */
     i = 1;
     count = get_2(b, &i) + 1;
-    /* Pad */
     fprintf(args->fp, ".DSB $%X\n", count);
-    /* Advance PC */
     inc_pc( count, arg );
 }
 
@@ -1730,9 +1658,7 @@ static void asm_write_dsb(unsigned char *b, void *arg)
         err("negative count");
     }
     else if (c.integer > 0) {
-        /* Pad */
         fprintf(args->fp, ".DSB $%X\n", (unsigned)c.integer);
-        /* Advance PC */
         inc_pc( c.integer, arg );
     }
 }
@@ -1854,7 +1780,6 @@ static void print_unit(unit *u)
 static void create_local_array(int size, local_array *la)
 {
     la->size = size;
-    /* Allocate space for entries */
     if (size > 0) {
         la->entries = (local *)malloc(sizeof(local) * size);
     }
@@ -1869,11 +1794,9 @@ static void create_local_array(int size, local_array *la)
 static void finalize_local_array(local_array *la)
 {
     int i;
-    /* Free entry attributes */
     for (i=0; i<la->size; i++) {
         SAFE_FREE(la->entries[i].name);
     }
-    /* Free array itself */
     SAFE_FREE(la->entries);
 }
 
@@ -1893,7 +1816,6 @@ static void count_one_local(unsigned char *b, void *arg)
 {
     /* Argument points to the counter */
     int *count = (int *)arg;
-    /* Increment count */
     (*count)++;
 }
 
@@ -1920,11 +1842,8 @@ static int count_locals(unsigned char *b)
         NULL,   /* CMD_DSI16 */
         NULL    /* CMD_DSB */
     };
-    /* Reset count */
     count = 0;
-    /* Count the locals now */
     bytecode_walk(b, handlers, (void *)&count);
-    /* Return the number of locals counted */
     return count;
 }
 
@@ -1965,11 +1884,9 @@ static void register_one_local(unsigned char *b, void *arg)
         }
         i += len;
     }
-    /* Test align flag */
     if (lptr->flags & LABEL_FLAG_ALIGN) {
         lptr->align = get_1(b, &i);
     }
-    /* Test address flag */
     if (lptr->flags & LABEL_FLAG_ADDR) {
         lptr->phys_addr = get_2(b, &i);
         lptr->resolved = 1;
@@ -2032,15 +1949,12 @@ static void register_locals(unsigned char *b, local_array *la, xunit *xu)
  */
 static void enter_exported_symbol(hashtab *tab, void *key, void *data, unit *u)
 {
-    /* Make sure symbol doesn't already exist */
     if ((hashtab_get(label_hash, key) != NULL)
         || (hashtab_get(constant_hash, key) != NULL) ) {
-        /* Error, duplicate symbol */
         err("duplicate symbol `%s' exported from unit `%s'", (char *)key, u->name);
     }
     else {
         verbose(1, "      %s", (char*)key);
-        /* Enter it */
         hashtab_put(tab, key, data);
     }
 }
@@ -2053,7 +1967,6 @@ static void enter_exported_constants(unit *u)
 {
     int i;
     constant *c;
-    /* Go through all constants in unit */
     for (i=0; i<u->const_count; i++) {
         c = &u->constants[i];
         enter_exported_symbol(constant_hash, (void *)c->name, (void *)c, u);
@@ -2069,7 +1982,6 @@ static void enter_exported_locals(local_array *la, unit *u)
 {
     int i;
     local *l;
-    /* Go through all locals */
     for (i=0; i<la->size; i++) {
         l = &la->entries[i];
         /* If it has a name, it is exported */
@@ -2088,10 +2000,8 @@ static void enter_exported_locals(local_array *la, unit *u)
 static void set_data_address(unsigned char *b, void *arg)
 {
     calc_address_args *args = (calc_address_args *)arg;
-    /* Get the label */
     local *l = &args->xu->data_locals.entries[args->index];
     if (!l->resolved) {
-        /* Set the virtual address */
         l->virt_addr = pc;
         verbose(2, "    %.4X %s", l->virt_addr, l->name ? l->name : "");
     }
@@ -2254,7 +2164,6 @@ static void map_data_to_ram()
             }
         }
         else {
-            /* Error, couldn't allocate */
             err("out of 6502 RAM while allocating unit `%s'", l->owner->_unit_.name);
             return;
         }
@@ -2272,10 +2181,8 @@ static void map_data_to_ram()
 static void set_code_address(unsigned char *b, void *arg)
 {
     calc_address_args *args = (calc_address_args *)arg;
-    /* Get the label */
     local *l = &args->xu->code_locals.entries[args->index];
     if (!l->resolved) {
-        /* Set the physical address to current PC */
         l->phys_addr = pc;
         l->resolved = 1;
         if (program_args.verbose) {
@@ -2331,11 +2238,9 @@ static void scripterr(script *s, script_command *c, char *fmt, ...)
     va_start(ap, fmt);
 
     if (!suppress) {
-        /* Print error message */
         fprintf(stderr, "error: %s:%d: `%s': ", s->name, c->line, script_command_type_to_string(c->type) );
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
-        /* Increase error count */
         err_count++;
     }
     va_end(ap);
@@ -2371,19 +2276,15 @@ static void register_one_ram_block(script *s, script_command *c, void *arg)
     int end;
     char *start_str;
     char *end_str;
-    /* Get arguments */
     require_arg(s, c, "start", start_str);
     require_arg(s, c, "end", end_str);
-    /* Convert to integers */
     start = str_to_int(start_str);
     end = str_to_int(end_str);
-    /* Check that they are sane */
     require_arg_in_range(s, c, "start", start, 0x0000, 0xFFFF);
     require_arg_in_range(s, c, "end", end, 0x0000, 0xFFFF);
     if (end <= start) {
         scripterr(s, c, "`end' is smaller than `start'");
     }
-    /* Add block */
     add_ram_block(start, end);
 }
 
@@ -2418,7 +2319,6 @@ static void register_one_unit(script *s, script_command *c, void *arg)
     char *file;
     int *i;
     xunit *xu;
-    /* Get unit filename */
     require_arg(s, c, "file", file);
     /* arg is pointer to unit index */
     i = (int *)arg;
@@ -2426,23 +2326,22 @@ static void register_one_unit(script *s, script_command *c, void *arg)
     xu = &units[*i];
     /* Read basic unit from file */
     if (unit_read(file, &xu->_unit_) == 0) {
-        /* Something bad happened when trying to read unit */
         scripterr(s, c, "failed to load unit `%s'", file);
         xu->loaded = 0;
         return;
     }
     xu->loaded = 1;
     verbose(1, "  unit `%s' loaded", file);
-    /* Register locals for both segments */
+
     verbose(1, "    registering local symbols...");
     register_locals(xu->_unit_.dataseg.bytes, &xu->data_locals, xu);
     register_locals(xu->_unit_.codeseg.bytes, &xu->code_locals, xu);
-    /* Enter exported symbols into hash tables */
+
     verbose(1, "    registering public symbols...");
     enter_exported_constants(&xu->_unit_);
     enter_exported_locals(&xu->data_locals, &xu->_unit_);
     enter_exported_locals(&xu->code_locals, &xu->_unit_);
-    /* Put unit in hash table */
+
     hashtab_put(unit_hash, file, xu);
     /* Increment unit index */
     (*i)++;
@@ -2478,15 +2377,12 @@ static void set_output(script *s, script_command *c, void *arg)
 {
     char *file;
     FILE **fpp;
-    /* Get the name of new output file */
     require_arg(s, c, "file", file);
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Close current file */
     if (*fpp != NULL) {
         fclose(*fpp);
     }
-    /* Attempt to open new file */
     *fpp = fopen(file, "wb");
     if (*fpp == NULL) {
         scripterr(s, c, "could not open `%s' for writing", file);
@@ -2510,30 +2406,23 @@ static void copy_to_output(script *s, script_command *c, void *arg)
     unsigned char k;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Make sure there is a file to write to */
     if (*fpp == NULL) {
         scripterr(s, c, "no output open");
     }
     else {
-        /* Get the name of file to copy */
         require_arg(s, c, "file", file);
-        /* Attempt to open the file to copy */
         cf = fopen(file, "rb");
         if (cf == NULL) {
             scripterr(s, c, "could not open `%s' for reading", file);
         }
         else {
             verbose(1, "  copying `%s' to output at position %ld...", file, ftell(*fpp) );
-            /* Copy it to output, byte for byte */
             for (k = fgetc(cf); !feof(cf); k = fgetc(cf) ) {
                 fputc(k, *fpp);
             }
-            /* Advance offset */
             bank_offset += ftell(cf);
             pc += ftell(cf);
-            /* Close the copied file */
             fclose(cf);
-            /* Check if exceeded bank size */
             if (bank_offset > bank_size) {
                 scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
             }
@@ -2551,36 +2440,28 @@ static void start_bank(script *s, script_command *c, void *arg)
 {
     char *size_str;
     char *origin_str;
-    /* See if size specified */
     size_str = script_get_command_arg(c, "size");
     if (size_str != NULL) {
-        /* Set new bank size */
         bank_size = str_to_int(size_str);
-        /* Sanity check */
         if (bank_size <= 0) {
             scripterr(s, c, "invalid size");
         }
     }
     else {
         /* Use bank size of previous bank if there was one */
-        /* Otherwise issue error */
         if (bank_size == 0x7FFFFFFF) {
             scripterr(s, c, "no bank size set");
         }
     }
-    /* See if origin specified */
     origin_str = script_get_command_arg(c, "origin");
     if (origin_str != NULL) {
-        /* Set new bank origin */
         bank_origin = str_to_int(origin_str);
-        /* Sanity check */
         require_arg_in_range(s, c, "origin", bank_origin, 0x0000, 0xFFFF);
     }
     else {
         /* Use old bank origin */
     }
     bank_id++;
-    /* Reset bank offset and PC */
     bank_offset = 0;
     pc = bank_origin;
 }
@@ -2598,21 +2479,15 @@ static void write_unit(script *s, script_command *c, void *arg)
     char *file;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Make sure there is a file to write to */
     if (*fpp == NULL) {
         scripterr(s, c, "no output open");
     }
     else {
-        /* Get the name of the unit */
         require_arg(s, c, "file", file);
-        /* Look it up */
         xu = (xunit *)hashtab_get(unit_hash, file);
-        /* Write it */
         verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
         write_as_binary(*fpp, xu);
-        /* Advance offset */
         bank_offset += xu->code_size;
-        /* Check if exceeded bank size */
         if (bank_offset > bank_size) {
             scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
         }
@@ -2637,19 +2512,16 @@ static void write_pad(script *s, script_command *c, void *arg)
     char *size_str;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Make sure there is a file to write to */
     if (*fpp == NULL) {
         scripterr(s, c, "no output open");
     }
     else {
         if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
             offset = str_to_int(offset_str);
-            /* Calculate number of zeroes to write */
             count = offset - bank_offset;
         }
         else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
             origin = str_to_int(origin_str);
-            /* Calculate number of zeroes to write */
             count = origin - pc;
         }
         else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
@@ -2659,7 +2531,6 @@ static void write_pad(script *s, script_command *c, void *arg)
             scripterr(s, c, "missing argument");
             count = 0;
         }
-        /* Sanity check */
         if (count < 0) {
             scripterr(s, c, "cannot pad backwards");
             count = 0;
@@ -2667,14 +2538,11 @@ static void write_pad(script *s, script_command *c, void *arg)
         else if (count > 0) {
             verbose(1, "  padding %d bytes...", count);
         }
-        /* Write zeroes */
         for (i=0; i<count; i++) {
             fputc(0, *fpp);
         }
-        /* Advance offset */
         bank_offset += count;
         pc += count;
-        /* Check if exceeded bank size */
         if (bank_offset > bank_size) {
             scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
         }
@@ -2691,12 +2559,10 @@ static void maybe_pad_bank(script *s, script_command *c, FILE *fp)
 {
     int i;
     if ( (bank_size != 0x7FFFFFFF) && (bank_offset < bank_size) ) {
-        /* Make sure there is a file to write to */
         if (fp == NULL) {
             scripterr(s, c, "no output open");
         }
         else {
-            /* Pad until bank size */
             for (i=bank_offset; i<bank_size; i++) {
                 fputc(0, fp);
             }
@@ -2715,9 +2581,7 @@ static void write_bank(script *s, script_command *c, void *arg)
     FILE **fpp;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Pad bank if necessary */
     maybe_pad_bank(s, c, *fpp);
-    /* Start new bank */
     start_bank(s, c, arg);
 }
 
@@ -2777,9 +2641,7 @@ static void asm_copy_to_output(script *s, script_command *c, void *arg)
     FILE *cf;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Get the name of file to copy */
     require_arg(s, c, "file", file);
-    /* Attempt to open the file to copy */
     cf = fopen(file, "rb");
     if (cf == NULL) {
         scripterr(s, c, "could not open `%s' for reading", file);
@@ -2792,12 +2654,9 @@ static void asm_copy_to_output(script *s, script_command *c, void *arg)
             count = fread(buf, 1, 1024, cf);
         }
         fprintf(*fpp, "; end %s\n", file);
-        /* Advance offset */
         bank_offset += ftell(cf);
         pc += ftell(cf);
-        /* Close the copied file */
         fclose(cf);
-        /* Check if exceeded bank size */
         if (bank_offset > bank_size) {
             scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
         }
@@ -2830,16 +2689,11 @@ static void asm_write_unit(script *s, script_command *c, void *arg)
     char *file;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    /* Get the name of the unit */
     require_arg(s, c, "file", file);
-    /* Look it up */
     xu = (xunit *)hashtab_get(unit_hash, file);
-    /* Write it */
     verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
     write_as_assembly(*fpp, xu);
-    /* Advance offset */
     bank_offset += xu->code_size;
-    /* Check if exceeded bank size */
     if (bank_offset > bank_size) {
         scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
     }
@@ -2864,11 +2718,9 @@ static void asm_write_pad(script *s, script_command *c, void *arg)
     fpp = (FILE **)arg;
     if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
         offset = str_to_int(offset_str);
-        /* Calculate number of zeroes to write */
         count = offset - bank_offset;
     } else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
         origin = str_to_int(origin_str);
-        /* Calculate number of zeroes to write */
         count = origin - pc;
     } else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
         count = str_to_int(size_str);
@@ -2876,19 +2728,15 @@ static void asm_write_pad(script *s, script_command *c, void *arg)
         scripterr(s, c, "missing argument");
         count = 0;
     }
-    /* Sanity check */
     if (count < 0) {
         scripterr(s, c, "cannot pad backwards");
         count = 0;
     } else if (count > 0) {
         verbose(1, "  padding %d bytes...", count);
     }
-    /* Pad! */
     fprintf(*fpp, ".DSB $%X\n", count);
-    /* Advance offset */
     bank_offset += count;
     pc += count;
-    /* Check if exceeded bank size */
     if (bank_offset > bank_size) {
         scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
     }
@@ -2916,9 +2764,7 @@ static void asm_maybe_pad_bank(script *s, script_command *c, FILE *fp)
 static void asm_write_bank(script *s, script_command *c, void *arg)
 {
     FILE **fpp = (FILE **)arg;
-    /* Pad bank if necessary */
     asm_maybe_pad_bank(s, c, *fpp);
-    /* Start new bank */
     asm_start_bank(s, c, arg);
 }
 
@@ -2960,22 +2806,16 @@ static void inc_offset_copy(script *s, script_command *c, void *arg)
 {
     char *file;
     FILE *fp;
-    /* Get the name of the file */
     require_arg(s, c, "file", file);
-    /* Attempt to it */
     fp = fopen(file, "rb");
     if (fp == NULL) {
         scripterr(s, c, "could not open `%s' for reading", file);
     }
     else {
-        /* Seek to end */
         fseek(fp, 0, SEEK_END);
-        /* Advance offset */
         bank_offset += ftell(fp);
         pc += ftell(fp);
-        /* Close the file */
         fclose(fp);
-        /* Check if exceeded bank size */
         if (bank_offset > bank_size) {
             scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
         }
@@ -2994,11 +2834,8 @@ static void set_unit_origin(script *s, script_command *c, void *arg)
     char *file;
     char *origin_str;
     int origin;
-    /* Get the unit filename */
     require_arg(s, c, "file", file);
-    /* Look it up */
     xu = (xunit *)hashtab_get(unit_hash, file);
-    /* Check if origin specified */
     origin_str = script_get_command_arg(c, "origin");
     if (origin_str != NULL) {
         origin = str_to_int(origin_str);
@@ -3013,9 +2850,7 @@ static void set_unit_origin(script *s, script_command *c, void *arg)
     xu->bank_id = bank_id;
     /* Now we can calculate the physical code addresses of the unit. */
     calc_code_addresses(xu);
-    /* Print info if verbose mode */
     verbose(1, "  unit `%s' relocated to %.4X", xu->_unit_.name, xu->code_origin);
-    /* Increase bank offset */
     bank_offset += xu->code_size;
 }
 
@@ -3035,31 +2870,25 @@ static void inc_offset_pad(script *s, script_command *c, void *arg)
     char *size_str;
     if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
         offset = str_to_int(offset_str);
-        /* Calculate number of zeroes to write */
         count = offset - bank_offset;
     }
     else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
         origin = str_to_int(origin_str);
-        /* Calculate number of zeroes to write */
         count = origin - pc;
     }
     else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
         count = str_to_int(size_str);
     }
     else {
-        /* Error */
         scripterr(s, c, "missing argument");
         count = 0;
     }
-    /* Sanity check */
     if (count < 0) {
         scripterr(s, c, "cannot pad %d bytes backwards", -count);
         count = 0;
     }
-    /* Advance offset */
     bank_offset += count;
     pc += count;
-    /* Check if exceeded bank size */
     if (bank_offset > bank_size) {
         scripterr(s, c, "bank size (%d) exceeded by %d bytes", bank_size, bank_offset - bank_size);
     }
@@ -3116,43 +2945,34 @@ int main(int argc, char **argv)
     int i;
     script sc;
 
-    /* Parse our arguments. */
     parse_arguments(argc, argv);
 
     suppress = 0;
-    /* Reset error and warning count */
     err_count = 0;
     warn_count = 0;
 
-    /* Parse the linker script */
     verbose(1, "parsing linker script...");
     if (script_parse(program_args.input_file, &sc) == 0) {
         /* Something bad happened when parsing script, halt */
         return(1);
     }
 
-    /* Process all ram commands */
     verbose(1, "registering RAM blocks...");
     register_ram_blocks(&sc);
 
-    /* Create hash tables to hold symbols */
     constant_hash = hashtab_create(23, HASHTAB_STRKEYHSH, HASHTAB_STRKEYCMP);
     label_hash = hashtab_create(23, HASHTAB_STRKEYHSH, HASHTAB_STRKEYCMP);
     unit_hash = hashtab_create(11, HASHTAB_STRKEYHSH, HASHTAB_STRKEYCMP);
 
-    /* Count units. One unit per link command. */
     unit_count = script_count_command_type(&sc, LINK_COMMAND);
-    /* Allocate array of xunits */
     if (unit_count > 0) {
         units = (xunit *)malloc( sizeof(xunit) * unit_count );
     }
     else {
         units = NULL;
     }
-    /* Process link commands */
     verbose(1, "loading units...");
     register_units(&sc);
-    /* Make sure all units were loaded */
     if (err_count != 0) {
         // TODO
         assert(0);
@@ -3160,7 +2980,6 @@ int main(int argc, char **argv)
 
     /* Only continue with processing if no unresolved symbols */
     if (err_count == 0) {
-        /* Calculate 0-relative addresses of data labels */
         verbose(1, "calculating data addresses...");
         for (i=0; i<unit_count; i++) {
             calc_data_addresses(&units[i]);
@@ -3169,12 +2988,10 @@ int main(int argc, char **argv)
         /* TODO: Count references: go through all instructions, find EXTRN and LOCAL operands in expressions */
         /* TODO: Find modes of access for each DATA label (i.e. label MUST be allocated in zero page) */
 
-        /* Map all data labels to 6502 RAM locations */
         verbose(1, "mapping data to RAM...");
         map_data_to_ram();
         maybe_print_ram_statistics();
 
-        /* Only continue with processing if all data labels were mapped */
         if (err_count == 0) {
             verbose(1, "relocating code...");
             suppress = 1;
@@ -3182,7 +2999,6 @@ int main(int argc, char **argv)
             suppress = 0;
             relocate_units(&sc);
 
-            /* Only continue with processing if all code labels were mapped */
             if (err_count == 0) {
                 verbose(1, "generating output...");
                 generate_binary_output(&sc);
@@ -3192,10 +3008,8 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Cleanup */
     verbose(1, "cleaning up...");
 
-    /* Finalize units */
     for (i=0; i<unit_count; i++) {
         if (units[i].loaded) {
             finalize_local_array( &units[i].data_locals );
@@ -3203,15 +3017,11 @@ int main(int argc, char **argv)
             unit_finalize( &units[i]._unit_ );
         }
     }
-    /* Finalize hash tables */
     hashtab_finalize(label_hash);
     hashtab_finalize(constant_hash);
     hashtab_finalize(unit_hash);
-    /* Finalize RAM blocks */
     finalize_ram_blocks();
-    /* Finalize the script */
     script_finalize(&sc);
 
-    /* All done. */
     return (err_count == 0) ? 0 : 1;
 }
