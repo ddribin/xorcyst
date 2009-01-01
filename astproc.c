@@ -3099,7 +3099,11 @@ static int validate_index(astnode *n, void *arg, astnode **next)
             return 0;
         } else {
             // TODO: bounds check
-            reduce_index(n);
+            astnode *reduced = reduce_index(n);
+            if (reduced != n) {
+                *next = reduced;
+                return 0;
+            }
         }
     } else {
         err(n->loc, "unknown symbol `%s'", id->ident);
