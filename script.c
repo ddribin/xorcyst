@@ -226,7 +226,7 @@ static void err(char *filename, int line, char *fmt, ...)
     va_start(ap, fmt);
 
     /* Print error message w/ location info */
-    fprintf(stderr, "error: %s:%d: ", filename, line);
+    fprintf(stderr, "%s:%d: error: ", filename, line);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
 

@@ -412,8 +412,8 @@ static void err(char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     if (!suppress) {
-        fprintf(stderr, "error: ");
         maybe_print_location();
+        fprintf(stderr, "error: ");
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         maybe_print_debug_tip();
@@ -431,8 +431,8 @@ static void warn(char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     if (!suppress) {
-        fprintf(stderr, "warning: ");
         maybe_print_location();
+        fprintf(stderr, "warning: ");
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         maybe_print_debug_tip();

@@ -213,9 +213,9 @@ static void err(location loc, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
 
-    fprintf(stderr, "error: %s:", loc.file);
+    fprintf(stderr, "%s:", loc.file);
     LOCATION_PRINT(stderr, loc);
-    fprintf(stderr, ": ");
+    fprintf(stderr, ": error: ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
 
@@ -234,9 +234,9 @@ static void warn(location loc, const char *fmt, ...)
     va_list ap;
     if (!xasm_args.no_warn) {
         va_start(ap, fmt);
-        fprintf(stderr, "warning: %s:", loc.file);
+        fprintf(stderr, "%s:", loc.file);
         LOCATION_PRINT(stderr, loc);
-        fprintf(stderr, ": ");
+        fprintf(stderr, ": warning: ");
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         va_end(ap);

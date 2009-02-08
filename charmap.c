@@ -68,7 +68,7 @@ static void maperr(char *filename, int line, char *fmt, ...)
     va_start(ap, fmt);
 
     /* Print error message */
-    fprintf(stderr, "error: %s:%d: ", filename, line);
+    fprintf(stderr, "%s:%d: error: ", filename, line);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
 

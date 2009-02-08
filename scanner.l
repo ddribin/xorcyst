@@ -495,17 +495,19 @@ const char *yy_current_filename()
  * @param s Error message
  */
 void yyerror(const char *s) {
+    extern int yynerrs;
     int i;
     /* Print line of form: file:pos:message */
     fprintf(stderr, "%s:", yy_current_filename());
     LOCATION_PRINT(stderr, yylloc);
-    fprintf(stderr, ": %s\n", s);
+    fprintf(stderr, ": error: %s\n", s);
     /* Print include-trace */
     for (i=file_stack_ptr-1; i>=0; i--) {
         fprintf(stderr, "(%s:", file_stack[i].name);
         LOCATION_PRINT(stderr, file_stack[i].loc);
         fprintf(stderr, ")\n");
     }
+    ++yynerrs;
 }
 
 /**
