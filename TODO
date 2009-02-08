@@ -1,3 +1,4 @@
+- don't crash if .extrn is not referenced
 - .undef
 - a way to define temporary variables for a proc (on the stack)?
 - types must be defined before they are used
@@ -21,3 +22,5 @@
 - a way to specify fixed-point numbers?
 - .ifdef inside struct/union
 - defined() function, so you can do .if defined(FOO) && (FOO == 3)
+- don't write any output if there are unresolved externals while linking
+
