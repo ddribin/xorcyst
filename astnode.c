@@ -323,7 +323,7 @@ void astnode_print(const astnode *n, int level)
     /* Indent so it looks pretty */
     indent(level);
     /* Print the node type */
-    printf(astnode_type_to_string(astnode_get_type(n)));
+    printf("%s", astnode_type_to_string(astnode_get_type(n)));
     /* Print attributes for those that have */
     switch (astnode_get_type(n)) {
         case INTEGER_NODE:  printf("(%d)", n->integer); break;
