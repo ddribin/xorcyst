@@ -63,7 +63,7 @@ typedef struct tag_xasm_constant xasm_constant;
  */
 struct tag_xasm_external
 {
-    unsigned char unit;
+    unsigned char unit; /* Unit to import from (0=any unit) (currently not used) */
     char *name;
     struct tag_xasm_unit *from;  /* Unit exported from */
 };
@@ -149,5 +149,6 @@ typedef struct tag_xasm_unit xasm_unit;
 
 int xasm_unit_read(char *, xasm_unit *);
 void xasm_unit_finalize(xasm_unit *);
+const char *xasm_operator_to_string(int op);
 
 #endif  /* !UNIT_H */

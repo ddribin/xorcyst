@@ -703,40 +703,6 @@ static void finalize_constant(xasm_constant *c)
 }
 
 /**
- * Gets string representation of an operator (OP_*, see objdef.h).
- * @param op Operator
- * @return String representation of operator
- */
-static const char *operator_to_string(int op)
-{
-    switch (op) {
-        case XASM_OP_PLUS:   return "+";
-        case XASM_OP_MINUS:  return "-";
-        case XASM_OP_MUL:    return "*";
-        case XASM_OP_DIV:    return "/";
-        case XASM_OP_MOD:    return "%";
-        case XASM_OP_SHL:    return "<<";
-        case XASM_OP_SHR:    return ">>";
-        case XASM_OP_AND:    return "&";
-        case XASM_OP_OR: return "|";
-        case XASM_OP_XOR:    return "^";
-        case XASM_OP_EQ: return "==";
-        case XASM_OP_NE: return "!=";
-        case XASM_OP_LT: return "<";
-        case XASM_OP_GT: return ">";
-        case XASM_OP_LE: return "<=";
-        case XASM_OP_GE: return ">=";
-        case XASM_OP_NOT:    return "!";
-        case XASM_OP_NEG:    return "~";
-        case XASM_OP_LO: return "<";
-        case XASM_OP_HI: return ">";
-        case XASM_OP_UMINUS: return "-";
-        case XASM_OP_BANK:   return "^";
-    }
-    return "";
-}
-
-/**
  * Evaluates an expression recursively.
  * The result will either be a integer or string literal, indicating successful
  * evaluation; or an invalid type indicating that a symbol could not be translated
@@ -833,7 +799,7 @@ static void eval_recursive(xunit *u, xasm_expression *e, xasm_constant *result)
             }
             else {
                 result->type = -1;
-                err("incompatible operands to `%s' in expression", operator_to_string(e->op_expr.operator) );
+                err("incompatible operands to `%s' in expression", xasm_operator_to_string(e->op_expr.operator) );
             }
             /* Discard the operands */
             finalize_constant(&lhs_result);
@@ -866,7 +832,7 @@ static void eval_recursive(xunit *u, xasm_expression *e, xasm_constant *result)
             }
             else {
                 /* Error, invalid operand */
-                err("incompatible operand to `%s' in expression", operator_to_string(e->op_expr.operator) );
+                err("incompatible operand to `%s' in expression", xasm_operator_to_string(e->op_expr.operator) );
                 result->type = -1;
             }
             /* Discard the operand */

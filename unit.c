@@ -430,3 +430,37 @@ void xasm_unit_finalize(xasm_unit *u)
     finalize_segment(&u->dataseg);
     finalize_segment(&u->codeseg);
 }
+
+/**
+ * Gets string representation of an operator (OP_*, see objdef.h).
+ * @param op Operator
+ * @return String representation of operator
+ */
+const char *xasm_operator_to_string(int op)
+{
+    switch (op) {
+        case XASM_OP_PLUS:   return "+";
+        case XASM_OP_MINUS:  return "-";
+        case XASM_OP_MUL:    return "*";
+        case XASM_OP_DIV:    return "/";
+        case XASM_OP_MOD:    return "%";
+        case XASM_OP_SHL:    return "<<";
+        case XASM_OP_SHR:    return ">>";
+        case XASM_OP_AND:    return "&";
+        case XASM_OP_OR: return "|";
+        case XASM_OP_XOR:    return "^";
+        case XASM_OP_EQ: return "==";
+        case XASM_OP_NE: return "!=";
+        case XASM_OP_LT: return "<";
+        case XASM_OP_GT: return ">";
+        case XASM_OP_LE: return "<=";
+        case XASM_OP_GE: return ">=";
+        case XASM_OP_NOT:    return "!";
+        case XASM_OP_NEG:    return "~";
+        case XASM_OP_LO: return "<";
+        case XASM_OP_HI: return ">";
+        case XASM_OP_UMINUS: return "-";
+        case XASM_OP_BANK:   return "^";
+    }
+    return "";
+}
