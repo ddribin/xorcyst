@@ -40,70 +40,70 @@
 #define OBJDEF_H
 
 /* "It's a kind of magic" */
-#define A_MAGIC 0xFACE
+#define XASM_MAGIC 0xFACE
 
 /* Version number; major in high nibble, minor in low nibble */
-#define A_VERSION 0x14
+#define XASM_OBJ_VERSION 0x14
 
 /* Possible kinds of datatypes/symbols/etc */
-#define INT_8   0x01
-#define INT_16  0x02
-#define INT_24  0x03
-#define INT_32  0x04
-#define STR_8   0x05
-#define STR_16  0x06
-#define EXTRN   0x07
-#define LOCAL   0x08
-#define PC  0x09
+#define XASM_INT_8   0x01
+#define XASM_INT_16  0x02
+#define XASM_INT_24  0x03
+#define XASM_INT_32  0x04
+#define XASM_STR_8   0x05
+#define XASM_STR_16  0x06
+#define XASM_EXTRN   0x07
+#define XASM_LOCAL   0x08
+#define XASM_PC  0x09
 
 /* Expression operators */
-#define OP_PLUS     0x10
-#define OP_MINUS    0x11
-#define OP_MUL      0x12
-#define OP_DIV      0x13
-#define OP_MOD      0x14
-#define OP_SHL      0x15
-#define OP_SHR      0x16
-#define OP_AND      0x17
-#define OP_OR       0x18
-#define OP_XOR      0x19
-#define OP_EQ       0x1A
-#define OP_NE       0x1B
-#define OP_LT       0x1C
-#define OP_GT       0x1D
-#define OP_LE       0x1E
-#define OP_GE       0x1F
-#define OP_NOT      0x20
-#define OP_NEG      0x21
-#define OP_LO       0x22
-#define OP_HI       0x23
-#define OP_UMINUS   0x24
-#define OP_BANK     0x25
+#define XASM_OP_PLUS     0x10
+#define XASM_OP_MINUS    0x11
+#define XASM_OP_MUL      0x12
+#define XASM_OP_DIV      0x13
+#define XASM_OP_MOD      0x14
+#define XASM_OP_SHL      0x15
+#define XASM_OP_SHR      0x16
+#define XASM_OP_AND      0x17
+#define XASM_OP_OR       0x18
+#define XASM_OP_XOR      0x19
+#define XASM_OP_EQ       0x1A
+#define XASM_OP_NE       0x1B
+#define XASM_OP_LT       0x1C
+#define XASM_OP_GT       0x1D
+#define XASM_OP_LE       0x1E
+#define XASM_OP_GE       0x1F
+#define XASM_OP_NOT      0x20
+#define XASM_OP_NEG      0x21
+#define XASM_OP_LO       0x22
+#define XASM_OP_HI       0x23
+#define XASM_OP_UMINUS   0x24
+#define XASM_OP_BANK     0x25
 
 /* Bytecode commands */
-#define CMD_FILE    0xEE    /* Operands: 8-bit count, string (filename) */
-#define CMD_LINE8   0xEF    /* Operands: 8-bit line number */
-#define CMD_LINE16  0xF0    /* Operands: 16-bit line number */
-#define CMD_LINE24  0xF1    /* Operands: 24-bit line number */
-#define CMD_LINE_INC    0xF2    /* Operands: None */
-#define CMD_END     0xF3    /* Operands: None */
-#define CMD_BIN8    0xF4    /* Operands: 8-bit count, string of bytes */
-#define CMD_BIN16   0xF5    /* Operands: 16-bit count, string of bytes */
-#define CMD_LABEL   0xF6    /* Operands: export flag byte, name (if export flag set) */
-#define CMD_INSTR   0xF7    /* Operands: 6502 opcode, 16-bit expression ID */
-#define CMD_DB      0xF8    /* Operands: 16-bit expression ID */
-#define CMD_DW      0xF9    /* Operands: 16-bit expression ID */
-#define CMD_DD      0xFA    /* Operands: 16-bit expression ID */
-#define CMD_DSI8    0xFB    /* Operands: 8-bit count */
-#define CMD_DSI16   0xFC    /* Operands: 16-bit count */
-#define CMD_DSB     0xFD    /* Operands: 16-bit expression ID */
-#define CMD_RSV1    0xFE    /* Reserved 1 */
-#define CMD_RSV2    0xFF    /* Reserved 2 */
+#define XASM_CMD_FILE    0xEE    /* Operands: 8-bit count, string (filename) */
+#define XASM_CMD_LINE8   0xEF    /* Operands: 8-bit line number */
+#define XASM_CMD_LINE16  0xF0    /* Operands: 16-bit line number */
+#define XASM_CMD_LINE24  0xF1    /* Operands: 24-bit line number */
+#define XASM_CMD_LINE_INC    0xF2    /* Operands: None */
+#define XASM_CMD_END     0xF3    /* Operands: None */
+#define XASM_CMD_BIN8    0xF4    /* Operands: 8-bit count, string of bytes */
+#define XASM_CMD_BIN16   0xF5    /* Operands: 16-bit count, string of bytes */
+#define XASM_CMD_LABEL   0xF6    /* Operands: export flag byte, name (if export flag set) */
+#define XASM_CMD_INSTR   0xF7    /* Operands: 6502 opcode, 16-bit expression ID */
+#define XASM_CMD_DB      0xF8    /* Operands: 16-bit expression ID */
+#define XASM_CMD_DW      0xF9    /* Operands: 16-bit expression ID */
+#define XASM_CMD_DD      0xFA    /* Operands: 16-bit expression ID */
+#define XASM_CMD_DSI8    0xFB    /* Operands: 8-bit count */
+#define XASM_CMD_DSI16   0xFC    /* Operands: 16-bit count */
+#define XASM_CMD_DSB     0xFD    /* Operands: 16-bit expression ID */
+#define XASM_CMD_RSV1    0xFE    /* Reserved 1 */
+#define XASM_CMD_RSV2    0xFF    /* Reserved 2 */
 
 /* Bitmasks for CMD_LABEL flag byte */
-#define LABEL_FLAG_EXPORT   1
-#define LABEL_FLAG_ZEROPAGE 2
-#define LABEL_FLAG_ALIGN    4
-#define LABEL_FLAG_ADDR     8
+#define XASM_LABEL_FLAG_EXPORT   1
+#define XASM_LABEL_FLAG_ZEROPAGE 2
+#define XASM_LABEL_FLAG_ALIGN    4
+#define XASM_LABEL_FLAG_ADDR     8
 
 #endif  /* !OBJDEF_H */

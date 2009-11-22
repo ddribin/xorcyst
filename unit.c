@@ -104,18 +104,18 @@ static char *get_str_16(FILE *fp)
  * @param u Unit in which constant is loaded
  * @param i Index of constant in unit's constant array
  */
-static void get_const(FILE *fp, unit *u, int i)
+static void get_const(FILE *fp, xasm_unit *u, int i)
 {
-    constant *cnst = &u->constants[i];
+    xasm_constant *cnst = &u->constants[i];
     cnst->name = get_str_8(fp);
     cnst->type = get_1(fp);
     switch (cnst->type) {
-        case INT_8: cnst->integer = get_1(fp);  cnst->type = INTEGER_CONSTANT;  break;
-        case INT_16:    cnst->integer = get_2(fp);  cnst->type = INTEGER_CONSTANT;  break;
-        case INT_24:    cnst->integer = get_3(fp);  cnst->type = INTEGER_CONSTANT;  break;
-        case INT_32:    cnst->integer = get_4(fp);  cnst->type = INTEGER_CONSTANT;  break;
-        case STR_8: cnst->string = get_str_8(fp);   cnst->type = STRING_CONSTANT;   break;
-        case STR_16:    cnst->string = get_str_16(fp);  cnst->type = STRING_CONSTANT;   break;
+        case XASM_INT_8: cnst->integer = get_1(fp);  cnst->type = XASM_INTEGER_CONSTANT;  break;
+        case XASM_INT_16:    cnst->integer = get_2(fp);  cnst->type = XASM_INTEGER_CONSTANT;  break;
+        case XASM_INT_24:    cnst->integer = get_3(fp);  cnst->type = XASM_INTEGER_CONSTANT;  break;
+        case XASM_INT_32:    cnst->integer = get_4(fp);  cnst->type = XASM_INTEGER_CONSTANT;  break;
+        case XASM_STR_8: cnst->string = get_str_8(fp);   cnst->type = XASM_STRING_CONSTANT;   break;
+        case XASM_STR_16:    cnst->string = get_str_16(fp);  cnst->type = XASM_STRING_CONSTANT;   break;
 
         default:
         fprintf(stderr, "%s(0x%lx): get_const(): bad constant type (%.2X)\n", u->name, ftell(fp), cnst->type);
@@ -129,12 +129,12 @@ static void get_const(FILE *fp, unit *u, int i)
  * @param fp File handle
  * @param u Unit whose constants array will be populated
  */
-static void get_constants(FILE *fp, unit *u)
+static void get_constants(FILE *fp, xasm_unit *u)
 {
     int i;
     int count = get_2(fp);
     if (count > 0) {
-        u->constants = (constant *)malloc(sizeof(constant) * count);
+        u->constants = (xasm_constant *)malloc(sizeof(xasm_constant) * count);
     } else {
         u->constants = NULL;
     }
@@ -150,9 +150,9 @@ static void get_constants(FILE *fp, unit *u)
  * @param u Unit
  * @param i External index
  */
-static void get_ext(FILE *fp, unit *u, int i)
+static void get_ext(FILE *fp, xasm_unit *u, int i)
 {
-    external *ext = &u->externals[i];
+    xasm_external *ext = &u->externals[i];
     ext->unit = get_1(fp);
     ext->name = get_str_8(fp);
     ext->from = u;
@@ -163,13 +163,13 @@ static void get_ext(FILE *fp, unit *u, int i)
  * @param fp File handle
  * @param u Unit whose externals array will be populated
  */
-static void get_externals(FILE *fp, unit *u)
+static void get_externals(FILE *fp, xasm_unit *u)
 {
     int i;
     int count;
     count = get_2(fp);
     if (count > 0) {
-        u->externals = (external *)malloc(sizeof(external) * count);
+        u->externals = (xasm_external *)malloc(sizeof(xasm_external) * count);
     } else {
         u->externals = NULL;
     }
@@ -185,63 +185,63 @@ static void get_externals(FILE *fp, unit *u)
  * @param dest Pointer to pointer where expression should be stored
  * @param u Owner unit
  */
-static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
+static void get_expr_recursive(FILE *fp, xasm_expression **dest, xasm_unit *u)
 {
     unsigned char type;
-    expression *exp = (expression *)malloc( sizeof(expression) );
+    xasm_expression *exp = (xasm_expression *)malloc( sizeof(xasm_expression) );
     if (exp != NULL) {
         type = get_1(fp);
         switch (type) {
-            case INT_8: exp->integer = get_1(fp);   exp->type = INTEGER_EXPRESSION; break;
-            case INT_16:    exp->integer = get_2(fp);   exp->type = INTEGER_EXPRESSION; break;
-            case INT_24:    exp->integer = get_3(fp);   exp->type = INTEGER_EXPRESSION; break;
-            case INT_32:    exp->integer = get_4(fp);   exp->type = INTEGER_EXPRESSION; break;
-            case STR_8: exp->string = get_str_8(fp);    exp->type = STRING_EXPRESSION;  break;
-            case STR_16:    exp->string = get_str_16(fp);   exp->type = STRING_EXPRESSION;  break;
+            case XASM_INT_8: exp->integer = get_1(fp);   exp->type = XASM_INTEGER_EXPRESSION; break;
+            case XASM_INT_16:    exp->integer = get_2(fp);   exp->type = XASM_INTEGER_EXPRESSION; break;
+            case XASM_INT_24:    exp->integer = get_3(fp);   exp->type = XASM_INTEGER_EXPRESSION; break;
+            case XASM_INT_32:    exp->integer = get_4(fp);   exp->type = XASM_INTEGER_EXPRESSION; break;
+            case XASM_STR_8: exp->string = get_str_8(fp);    exp->type = XASM_STRING_EXPRESSION;  break;
+            case XASM_STR_16:    exp->string = get_str_16(fp);   exp->type = XASM_STRING_EXPRESSION;  break;
 
-            case LOCAL: exp->local_id = get_2(fp);  exp->type = LOCAL_EXPRESSION;   break;
-            case EXTRN: exp->extrn_id = get_2(fp);  exp->type = EXTERNAL_EXPRESSION;break;
+            case XASM_LOCAL: exp->local_id = get_2(fp);  exp->type = XASM_LOCAL_EXPRESSION;   break;
+            case XASM_EXTRN: exp->extrn_id = get_2(fp);  exp->type = XASM_EXTERNAL_EXPRESSION;break;
 
-            case PC:    ;               exp->type = PC_EXPRESSION;  break;
+            case XASM_PC:    ;               exp->type = XASM_PC_EXPRESSION;  break;
 
-            case OP_PLUS:
-            case OP_MINUS:
-            case OP_MUL:
-            case OP_DIV:
-            case OP_MOD:
-            case OP_SHL:
-            case OP_SHR:
-            case OP_AND:
-            case OP_OR:
-            case OP_XOR:
-            case OP_EQ:
-            case OP_NE:
-            case OP_LT:
-            case OP_GT:
-            case OP_LE:
-            case OP_GE:
+            case XASM_OP_PLUS:
+            case XASM_OP_MINUS:
+            case XASM_OP_MUL:
+            case XASM_OP_DIV:
+            case XASM_OP_MOD:
+            case XASM_OP_SHL:
+            case XASM_OP_SHR:
+            case XASM_OP_AND:
+            case XASM_OP_OR:
+            case XASM_OP_XOR:
+            case XASM_OP_EQ:
+            case XASM_OP_NE:
+            case XASM_OP_LT:
+            case XASM_OP_GT:
+            case XASM_OP_LE:
+            case XASM_OP_GE:
             get_expr_recursive(fp, &exp->op_expr.lhs, u);
             get_expr_recursive(fp, &exp->op_expr.rhs, u);
             exp->op_expr.operator = type;
-            exp->type = OPERATOR_EXPRESSION;
+            exp->type = XASM_OPERATOR_EXPRESSION;
             break;
 
-            case OP_NOT:
-            case OP_NEG:
-            case OP_LO:
-            case OP_HI:
-            case OP_UMINUS:
-            case OP_BANK:
+            case XASM_OP_NOT:
+            case XASM_OP_NEG:
+            case XASM_OP_LO:
+            case XASM_OP_HI:
+            case XASM_OP_UMINUS:
+            case XASM_OP_BANK:
             get_expr_recursive(fp, &exp->op_expr.lhs, u);
             exp->op_expr.rhs = NULL;
             exp->op_expr.operator = type;
-            exp->type = OPERATOR_EXPRESSION;
+            exp->type = XASM_OPERATOR_EXPRESSION;
             break;
 
             default:
             fprintf(stderr, "%s(0x%lx): get_expr(): invalid expression type (%.2X)\n", u->name, ftell(fp), type);
             exp->integer = 0;
-            exp->type = INTEGER_EXPRESSION;
+            exp->type = XASM_INTEGER_EXPRESSION;
             break;
         }
     }
@@ -254,13 +254,13 @@ static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
  * @param fp File handle
  * @param u Unit whose expressions array to populate
  */
-static void get_expressions(FILE *fp, unit *u)
+static void get_expressions(FILE *fp, xasm_unit *u)
 {
     int i;
     int count;
     count = get_2(fp);
     if (count > 0) {
-        u->expressions = (expression **)malloc(sizeof(expression *) * count);
+        u->expressions = (xasm_expression **)malloc(sizeof(xasm_expression *) * count);
     } else {
         u->expressions = NULL;
     }
@@ -275,7 +275,7 @@ static void get_expressions(FILE *fp, unit *u)
  * @param fp File handle
  * @param seg Where to store segment
  */
-static void get_segment(FILE *fp, segment *seg)
+static void get_segment(FILE *fp, xasm_segment *seg)
 {
     seg->size = get_3(fp);
     if (seg->size > 0) {
@@ -295,7 +295,7 @@ static void get_segment(FILE *fp, segment *seg)
  * @param filename Name of the unit
  * @param u Pointer to struct to fill in
  */
-int unit_read(char *filename, unit *u)
+int xasm_unit_read(char *filename, xasm_unit *u)
 {
     FILE *fp;
     int count, i;
@@ -316,13 +316,13 @@ int unit_read(char *filename, unit *u)
     }
 
     magic = get_2(fp);
-    if (magic != A_MAGIC) {
+    if (magic != XASM_MAGIC) {
         /* Error, bad magic number */
         return 0;
     }
 
     version = get_1(fp);
-    if (version != A_VERSION) {
+    if (version != XASM_OBJ_VERSION) {
         /* Error, bad version */
         return 0;
     }
@@ -353,9 +353,9 @@ int unit_read(char *filename, unit *u)
  * Finalizes a constant.
  * @param c Constant to finalize
  */
-static void finalize_constant(constant *c)
+static void finalize_constant(xasm_constant *c)
 {
-    if (c->type == STRING_CONSTANT) {
+    if (c->type == XASM_STRING_CONSTANT) {
         SAFE_FREE(c->string);
     }
     SAFE_FREE(c->name);
@@ -365,7 +365,7 @@ static void finalize_constant(constant *c)
  * Finalizes an external.
  * @param e External to finalize
  */
-static void finalize_external(external *e)
+static void finalize_external(xasm_external *e)
 {
     SAFE_FREE(e->name);
 }
@@ -374,15 +374,15 @@ static void finalize_external(external *e)
  * Finalizes an expression.
  * @param e Expression to finalize
  */
-static void finalize_expression(expression *e)
+static void finalize_expression(xasm_expression *e)
 {
     if (e == NULL) { return; }
     switch (e->type) {
-        case STRING_EXPRESSION:
+        case XASM_STRING_EXPRESSION:
         SAFE_FREE(e->string);
         break;
 
-        case OPERATOR_EXPRESSION:
+        case XASM_OPERATOR_EXPRESSION:
         finalize_expression(e->op_expr.lhs);
         finalize_expression(e->op_expr.rhs);
         break;
@@ -398,7 +398,7 @@ static void finalize_expression(expression *e)
  * Finalizes a bytecode segment.
  * @param s Segment to finalize
  */
-static void finalize_segment(segment *s)
+static void finalize_segment(xasm_segment *s)
 {
     SAFE_FREE(s->bytes);
 }
@@ -409,7 +409,7 @@ static void finalize_segment(segment *s)
  * Finalizes a unit.
  * @param u Unit to finalize
  */
-void unit_finalize(unit *u)
+void xasm_unit_finalize(xasm_unit *u)
 {
     int i;
     for (i=0; i<u->const_count; i++) {

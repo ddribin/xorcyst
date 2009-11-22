@@ -141,13 +141,13 @@ static void buf_flush(FILE *f)
     if (buf_pos > 0) {
         if (buf_pos <= 0x100) {
             /* Use 8-bit form. */
-            put_1(f, CMD_BIN8);
+            put_1(f, XASM_CMD_BIN8);
             put_1(f, buf_pos - 1);
             put_bytes(f, buf, buf_pos);
         }
         else if (buf_pos <= 0x10000) {
             /* Use 16-bit form. */
-            put_1(f, CMD_BIN16);
+            put_1(f, XASM_CMD_BIN16);
             put_2(f, buf_pos - 1);
             put_bytes(f, buf, buf_pos);
         }
@@ -183,28 +183,28 @@ static void buf_append_n(unsigned char *data, int size)
 static unsigned char operator_to_bytecode(arithmetic_operator op)
 {
     switch (op) {
-        case PLUS_OPERATOR: return OP_PLUS;
-        case MINUS_OPERATOR:    return OP_MINUS;
-        case MUL_OPERATOR:  return OP_MUL;
-        case DIV_OPERATOR:  return OP_DIV;
-        case MOD_OPERATOR:  return OP_MOD;
-        case AND_OPERATOR:  return OP_AND;
-        case OR_OPERATOR:   return OP_OR;
-        case XOR_OPERATOR:  return OP_XOR;
-        case SHL_OPERATOR:  return OP_SHL;
-        case SHR_OPERATOR:  return OP_SHR;
-        case LT_OPERATOR:   return OP_LT;
-        case GT_OPERATOR:   return OP_GT;
-        case EQ_OPERATOR:   return OP_EQ;
-        case NE_OPERATOR:   return OP_NE;
-        case LE_OPERATOR:   return OP_LE;
-        case GE_OPERATOR:   return OP_GE;
-        case NEG_OPERATOR:  return OP_NEG;
-        case NOT_OPERATOR:  return OP_NOT;
-        case LO_OPERATOR:   return OP_LO;
-        case HI_OPERATOR:   return OP_HI;
-        case UMINUS_OPERATOR:   return OP_UMINUS;
-        case BANK_OPERATOR: return OP_BANK;
+        case PLUS_OPERATOR: return XASM_OP_PLUS;
+        case MINUS_OPERATOR:    return XASM_OP_MINUS;
+        case MUL_OPERATOR:  return XASM_OP_MUL;
+        case DIV_OPERATOR:  return XASM_OP_DIV;
+        case MOD_OPERATOR:  return XASM_OP_MOD;
+        case AND_OPERATOR:  return XASM_OP_AND;
+        case OR_OPERATOR:   return XASM_OP_OR;
+        case XOR_OPERATOR:  return XASM_OP_XOR;
+        case SHL_OPERATOR:  return XASM_OP_SHL;
+        case SHR_OPERATOR:  return XASM_OP_SHR;
+        case LT_OPERATOR:   return XASM_OP_LT;
+        case GT_OPERATOR:   return XASM_OP_GT;
+        case EQ_OPERATOR:   return XASM_OP_EQ;
+        case NE_OPERATOR:   return XASM_OP_NE;
+        case LE_OPERATOR:   return XASM_OP_LE;
+        case GE_OPERATOR:   return XASM_OP_GE;
+        case NEG_OPERATOR:  return XASM_OP_NEG;
+        case NOT_OPERATOR:  return XASM_OP_NOT;
+        case LO_OPERATOR:   return XASM_OP_LO;
+        case HI_OPERATOR:   return XASM_OP_HI;
+        case UMINUS_OPERATOR:   return XASM_OP_UMINUS;
+        case BANK_OPERATOR: return XASM_OP_BANK;
 
         default:
         fprintf(stderr, "operator_to_bytecode(): bad operator\n");
@@ -268,19 +268,19 @@ static void put_expr_recursive(FILE *fp, const astnode *expr)
         case INTEGER_NODE:
         v = (unsigned long)expr->integer;
         if (v < 0x100) {
-            /* Write type */    put_1(fp, INT_8);
+            /* Write type */    put_1(fp, XASM_INT_8);
             /* Write value */   put_1(fp, v);
         }
         else if (v < 0x10000) {
-            /* Write type */    put_1(fp, INT_16);
+            /* Write type */    put_1(fp, XASM_INT_16);
             /* Write value */   put_2(fp, v);
         }
         else if (v < 0x1000000) {
-            /* Write type */    put_1(fp, INT_24);
+            /* Write type */    put_1(fp, XASM_INT_24);
             /* Write value */   put_3(fp, v);
         }
         else {
-            /* Write type */    put_1(fp, INT_32);
+            /* Write type */    put_1(fp, XASM_INT_32);
             /* Write value */   put_4(fp, v);
         }
         break;
@@ -288,11 +288,11 @@ static void put_expr_recursive(FILE *fp, const astnode *expr)
         case STRING_NODE:
         s = expr->string;
         if (strlen(s) <= 0x100) {
-            /* Write type */    put_1(fp, STR_8);
+            /* Write type */    put_1(fp, XASM_STR_8);
             /* Write string */  put_str_8(fp, s);
         }
         else {
-            /* Write type */    put_1(fp, STR_16);
+            /* Write type */    put_1(fp, XASM_STR_16);
             /* Write string */  put_str_16(fp, s);
         }
         break;
@@ -301,7 +301,7 @@ static void put_expr_recursive(FILE *fp, const astnode *expr)
         /* Look it up */
         e = symtab_lookup(expr->ident);
         /* Write type */
-        put_1(fp, (e->flags & EXTRN_FLAG) ? EXTRN : LOCAL);
+        put_1(fp, (e->flags & EXTRN_FLAG) ? XASM_EXTRN : XASM_LOCAL);
         /* Write ID */
         put_2(fp, e->tag);
         break;
@@ -316,7 +316,7 @@ static void put_expr_recursive(FILE *fp, const astnode *expr)
         break;
 
         case CURRENT_PC_NODE:
-        put_1(fp, PC);
+        put_1(fp, XASM_PC);
         break;
 
         default:
@@ -389,24 +389,24 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
     if (xasm_args.debug && !locations_are_equal(loc, &n->loc) ) {
         buf_flush(fp);
         if (strcmp(loc->file, n->loc.file) != 0) {
-            put_1(fp, CMD_FILE);
+            put_1(fp, XASM_CMD_FILE);
             put_str_8(fp, n->loc.file);
         }
         if (loc->first_line != n->loc.first_line) {
             line = n->loc.first_line;
             if (line == loc->first_line + 1) {
-                put_1(fp, CMD_LINE_INC);
+                put_1(fp, XASM_CMD_LINE_INC);
             } else {
                 if (line < 256) {
-                    put_1(fp, CMD_LINE8);
+                    put_1(fp, XASM_CMD_LINE8);
                     put_1(fp, line);
                 }
                 else if (line < 65536) {
-                    put_1(fp, CMD_LINE16);
+                    put_1(fp, XASM_CMD_LINE16);
                     put_2(fp, line);
                 }
                 else {
-                    put_1(fp, CMD_LINE24);
+                    put_1(fp, XASM_CMD_LINE24);
                     put_3(fp, line);
                 }
             }
@@ -419,7 +419,7 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
         case LABEL_NODE:
         buf_flush(fp);
         /* Write command */
-        put_1(fp, CMD_LABEL);
+        put_1(fp, XASM_CMD_LABEL);
         /* Look it up in symbol table */
         e = symtab_lookup(n->label);
         assert(e != 0);
@@ -427,10 +427,10 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
         e->tag = tag++;
         /* Write flag byte */
         flags = 0;
-        flags |= (e->flags & PUBLIC_FLAG) ? LABEL_FLAG_EXPORT : 0;
-        flags |= (e->flags & ZEROPAGE_FLAG) ? LABEL_FLAG_ZEROPAGE : 0;
-        flags |= (e->flags & ALIGN_FLAG) ? LABEL_FLAG_ALIGN : 0;
-        flags |= (e->flags & ADDR_FLAG) ? LABEL_FLAG_ADDR : 0;
+        flags |= (e->flags & PUBLIC_FLAG) ? XASM_LABEL_FLAG_EXPORT : 0;
+        flags |= (e->flags & ZEROPAGE_FLAG) ? XASM_LABEL_FLAG_ZEROPAGE : 0;
+        flags |= (e->flags & ALIGN_FLAG) ? XASM_LABEL_FLAG_ALIGN : 0;
+        flags |= (e->flags & ADDR_FLAG) ? XASM_LABEL_FLAG_ADDR : 0;
         put_1(fp, flags);
         /* If exported, write name also */
         if (e->flags & PUBLIC_FLAG) {
@@ -472,7 +472,7 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
                 /* Flush binary buffer to file */
                 buf_flush(fp);
                 /* Output 4-byte sequence: CMD_INSTR [opcode] [expr-id] */
-                put_1(fp, CMD_INSTR);
+                put_1(fp, XASM_CMD_INSTR);
                 put_1(fp, n->instr.opcode);
                 put_2(fp, register_expression(expr));
             }
@@ -521,9 +521,9 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
                 buf_flush(fp);
                 /* Output 3-byte sequence: [type-cmd] [expr-id] */
                 switch (type->datatype) {
-                    case BYTE_DATATYPE: put_1(fp, CMD_DB);  break;
-                    case WORD_DATATYPE: put_1(fp, CMD_DW);  break;
-                    case DWORD_DATATYPE:    put_1(fp, CMD_DD);  break;
+                    case BYTE_DATATYPE: put_1(fp, XASM_CMD_DB);  break;
+                    case WORD_DATATYPE: put_1(fp, XASM_CMD_DW);  break;
+                    case DWORD_DATATYPE:    put_1(fp, XASM_CMD_DD);  break;
                     default:
                     /* Nada */
                     break;
@@ -547,20 +547,20 @@ static void put_statement(FILE *fp, const astnode *n, location *loc)
             /* Select bytecode depending on whether count fits in 8 bits or not */
             if (len <= 0x100) {
                 /* Write command */
-                put_1(fp, CMD_DSI8);
+                put_1(fp, XASM_CMD_DSI8);
                 /* Write count */
                 put_1(fp, len-1);
             }
             else {
                 /* Write command */
-                put_1(fp, CMD_DSI16);
+                put_1(fp, XASM_CMD_DSI16);
                 /* Write count */
                 put_2(fp, len-1);
             }
         }
         else {
             /* Use the unresolved form. */
-            put_1(fp, CMD_DSB);
+            put_1(fp, XASM_CMD_DSB);
             /* Write expression ID */
             put_2(fp, register_expression(expr));
         }
@@ -625,19 +625,19 @@ static void put_public_constants(FILE *fp)
                 case INTEGER_NODE:
                 v = (unsigned long)expr->integer;
                 if (v < 0x100) {
-                    /* Write type */    put_1(fp, INT_8);
+                    /* Write type */    put_1(fp, XASM_INT_8);
                     /* Write value */   put_1(fp, v);
                 }
                 else if (v < 0x10000) {
-                    /* Write type */    put_1(fp, INT_16);
+                    /* Write type */    put_1(fp, XASM_INT_16);
                     /* Write value */   put_2(fp, v);
                 }
                 else if (v < 0x1000000) {
-                    /* Write type */    put_1(fp, INT_24);
+                    /* Write type */    put_1(fp, XASM_INT_24);
                     /* Write value */   put_3(fp, v);
                 }
                 else {
-                    /* Write type */    put_1(fp, INT_32);
+                    /* Write type */    put_1(fp, XASM_INT_32);
                     /* Write value */   put_4(fp, v);
                 }
                 break;
@@ -645,11 +645,11 @@ static void put_public_constants(FILE *fp)
                 case STRING_NODE:
                 s = expr->string;
                 if (strlen(s) <= 0x100) {
-                    /* Write type */    put_1(fp, STR_8);
+                    /* Write type */    put_1(fp, XASM_STR_8);
                     /* Write value */   put_str_8(fp, s);
                 }
                 else if (strlen(s) <= 0x10000) {
-                    /* Write type */    put_1(fp, STR_16);
+                    /* Write type */    put_1(fp, XASM_STR_16);
                     /* Write value */   put_str_16(fp, s);
                 }
                 else {
@@ -752,7 +752,7 @@ static void put_segment(FILE *fp, const astnode *root, int targetseg)
         }
     }
     buf_flush(fp);
-    put_1(fp, CMD_END);
+    put_1(fp, XASM_CMD_END);
     end = ftell(fp);
     /* Backpatch size */
     fgetpos(fp, &end_pos);  /* First save the current (end) position */
@@ -795,9 +795,9 @@ void codegen_write(const astnode *root, const char *filename)
     buf_file = fp;
 
     /* Write magic number */
-    put_2(fp, A_MAGIC);
+    put_2(fp, XASM_MAGIC);
     /* Write version (upper nibble=major, lower nibble=minor) */
-    put_1(fp, A_VERSION);
+    put_1(fp, XASM_OBJ_VERSION);
 
     /* Write exported constants. */
     put_public_constants(fp);

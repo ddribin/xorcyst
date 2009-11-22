@@ -284,7 +284,7 @@ typedef struct tag_local_array local_array;
  */
 struct tag_xunit
 {
-    unit _unit_;    /* NB!!! "Superclass", must be first field for casting to work */
+    xasm_unit _unit_;    /* NB!!! "Superclass", must be first field for casting to work */
     local_array data_locals;
     local_array code_locals;
     int bank_id;
@@ -517,7 +517,7 @@ static int alloc_ram(local *l)
         int left;
         int pad;
         avail_ram_block *n;
-        if (l->flags & LABEL_FLAG_ZEROPAGE) {
+        if (l->flags & XASM_LABEL_FLAG_ZEROPAGE) {
             if (b->start >= 0x100) {
                 continue;   /* This block is no good */
             }
@@ -526,7 +526,7 @@ static int alloc_ram(local *l)
         if (left < l->size) {
             continue;   /* Not enough, sorry */
         }
-        if (l->flags & LABEL_FLAG_ALIGN) {
+        if (l->flags & XASM_LABEL_FLAG_ALIGN) {
             pad = b->start & ((1 << l->align) - 1);
             if (pad != 0) {
                 /* This block doesn't match the alignment */
@@ -621,9 +621,9 @@ static int label_cmd_args_size(unsigned char *bytes)
 {
     int size = 1;   /* Smallest possible: flag byte */
     int flags = bytes[0];
-    if (flags & LABEL_FLAG_EXPORT) { size += bytes[1] + 1 + 1; }    /* Length byte + string */
-    if (flags & LABEL_FLAG_ALIGN) { size += 1; }            /* Alignment */
-    if (flags & LABEL_FLAG_ADDR) { size += 2; }         /* Address */
+    if (flags & XASM_LABEL_FLAG_EXPORT) { size += bytes[1] + 1 + 1; }    /* Length byte + string */
+    if (flags & XASM_LABEL_FLAG_ALIGN) { size += 1; }            /* Alignment */
+    if (flags & XASM_LABEL_FLAG_ADDR) { size += 2; }         /* Address */
     return size;
 }
 
@@ -649,42 +649,42 @@ static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *ar
         cmd = get_1(bytes, &i);
 
         /* Check if debug command */
-        if (cmd < CMD_END) {
+        if (cmd < XASM_CMD_END) {
             switch (cmd) {
-                case CMD_FILE:
+                case XASM_CMD_FILE:
                 unit_file = &bytes[i];
                 i += get_1(bytes, &i) + 1;  /* Skip count and array of bytes */
                 break;
-                case CMD_LINE8:  unit_line = get_1(bytes, &i);  break;
-                case CMD_LINE16: unit_line = get_2(bytes, &i);  break;
-                case CMD_LINE24: unit_line = get_3(bytes, &i);  break;
-                case CMD_LINE_INC: unit_line++; break;
+                case XASM_CMD_LINE8:  unit_line = get_1(bytes, &i);  break;
+                case XASM_CMD_LINE16: unit_line = get_2(bytes, &i);  break;
+                case XASM_CMD_LINE24: unit_line = get_3(bytes, &i);  break;
+                case XASM_CMD_LINE_INC: unit_line++; break;
             }
             continue;
         }
 
-        if (handlers[cmd-CMD_END] != NULL) {
-            handlers[cmd-CMD_END](&bytes[i-1], arg);
+        if (handlers[cmd-XASM_CMD_END] != NULL) {
+            handlers[cmd-XASM_CMD_END](&bytes[i-1], arg);
         }
         /* Skip any bytecode arguments */
         switch (cmd) {
-            case CMD_END:   break;
-            case CMD_BIN8:  i += get_1(bytes, &i) + 1;  break;  /* Skip count and array of bytes */
-            case CMD_BIN16: i += get_2(bytes, &i) + 1;  break;  /* Skip count and array of bytes */
-            case CMD_LABEL: i += label_cmd_args_size(&bytes[i]); break; /* Skip flag byte and possibly name and alignment */
-            case CMD_INSTR: i += 3; break;  /* Skip 6502 opcode and 16-bit expr id */
-            case CMD_DB:    i += 2; break;  /* Skip 16-bit expr id */
-            case CMD_DW:    i += 2; break;  /* Skip 16-bit expr id */
-            case CMD_DD:    i += 2; break;  /* Skip 16-bit expr id */
-            case CMD_DSI8:  i += 1; break;  /* Skip 8-bit count */
-            case CMD_DSI16: i += 2; break;  /* Skip 16-bit count */
-            case CMD_DSB:   i += 2; break;  /* Skip 16-bit expr id */
+            case XASM_CMD_END:   break;
+            case XASM_CMD_BIN8:  i += get_1(bytes, &i) + 1;  break;  /* Skip count and array of bytes */
+            case XASM_CMD_BIN16: i += get_2(bytes, &i) + 1;  break;  /* Skip count and array of bytes */
+            case XASM_CMD_LABEL: i += label_cmd_args_size(&bytes[i]); break; /* Skip flag byte and possibly name and alignment */
+            case XASM_CMD_INSTR: i += 3; break;  /* Skip 6502 opcode and 16-bit expr id */
+            case XASM_CMD_DB:    i += 2; break;  /* Skip 16-bit expr id */
+            case XASM_CMD_DW:    i += 2; break;  /* Skip 16-bit expr id */
+            case XASM_CMD_DD:    i += 2; break;  /* Skip 16-bit expr id */
+            case XASM_CMD_DSI8:  i += 1; break;  /* Skip 8-bit count */
+            case XASM_CMD_DSI16: i += 2; break;  /* Skip 16-bit count */
+            case XASM_CMD_DSB:   i += 2; break;  /* Skip 16-bit expr id */
 
             default:
             err("invalid bytecode");
             break;
         }
-    } while (cmd != CMD_END);
+    } while (cmd != XASM_CMD_END);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -694,9 +694,10 @@ static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *ar
  * Finalizes a constant.
  * @param c Constant to finalize
  */
-static void finalize_constant(constant *c)
+/* ### Merge with finalize_constant() in unit.c? */
+static void finalize_constant(xasm_constant *c)
 {
-    if (c->type == STRING_CONSTANT) {
+    if (c->type == XASM_STRING_CONSTANT) {
         SAFE_FREE(c->string);
     }
 }
@@ -709,28 +710,28 @@ static void finalize_constant(constant *c)
 static const char *operator_to_string(int op)
 {
     switch (op) {
-        case OP_PLUS:   return "+";
-        case OP_MINUS:  return "-";
-        case OP_MUL:    return "*";
-        case OP_DIV:    return "/";
-        case OP_MOD:    return "%";
-        case OP_SHL:    return "<<";
-        case OP_SHR:    return ">>";
-        case OP_AND:    return "&";
-        case OP_OR: return "|";
-        case OP_XOR:    return "^";
-        case OP_EQ: return "==";
-        case OP_NE: return "!=";
-        case OP_LT: return "<";
-        case OP_GT: return ">";
-        case OP_LE: return "<=";
-        case OP_GE: return ">=";
-        case OP_NOT:    return "!";
-        case OP_NEG:    return "~";
-        case OP_LO: return "<";
-        case OP_HI: return ">";
-        case OP_UMINUS: return "-";
-        case OP_BANK:   return "^";
+        case XASM_OP_PLUS:   return "+";
+        case XASM_OP_MINUS:  return "-";
+        case XASM_OP_MUL:    return "*";
+        case XASM_OP_DIV:    return "/";
+        case XASM_OP_MOD:    return "%";
+        case XASM_OP_SHL:    return "<<";
+        case XASM_OP_SHR:    return ">>";
+        case XASM_OP_AND:    return "&";
+        case XASM_OP_OR: return "|";
+        case XASM_OP_XOR:    return "^";
+        case XASM_OP_EQ: return "==";
+        case XASM_OP_NE: return "!=";
+        case XASM_OP_LT: return "<";
+        case XASM_OP_GT: return ">";
+        case XASM_OP_LE: return "<=";
+        case XASM_OP_GE: return ">=";
+        case XASM_OP_NOT:    return "!";
+        case XASM_OP_NEG:    return "~";
+        case XASM_OP_LO: return "<";
+        case XASM_OP_HI: return ">";
+        case XASM_OP_UMINUS: return "-";
+        case XASM_OP_BANK:   return "^";
     }
     return "";
 }
@@ -745,32 +746,32 @@ static const char *operator_to_string(int op)
  * @param e The expression to evaluate
  * @param result Pointer to resulting value
  */
-static void eval_recursive(xunit *u, expression *e, constant *result)
+static void eval_recursive(xunit *u, xasm_expression *e, xasm_constant *result)
 {
     char *s;
     local *l;
-    constant *c;
-    constant lhs_result, rhs_result;
+    xasm_constant *c;
+    xasm_constant lhs_result, rhs_result;
     switch (e->type) {
-        case OPERATOR_EXPRESSION:
+        case XASM_OPERATOR_EXPRESSION:
         switch (e->op_expr.operator) {
             /* Binary operators */
-            case OP_PLUS:
-            case OP_MINUS:
-            case OP_MUL:
-            case OP_DIV:
-            case OP_MOD:
-            case OP_SHL:
-            case OP_SHR:
-            case OP_AND:
-            case OP_OR:
-            case OP_XOR:
-            case OP_EQ:
-            case OP_NE:
-            case OP_LT:
-            case OP_GT:
-            case OP_LE:
-            case OP_GE:
+            case XASM_OP_PLUS:
+            case XASM_OP_MINUS:
+            case XASM_OP_MUL:
+            case XASM_OP_DIV:
+            case XASM_OP_MOD:
+            case XASM_OP_SHL:
+            case XASM_OP_SHR:
+            case XASM_OP_AND:
+            case XASM_OP_OR:
+            case XASM_OP_XOR:
+            case XASM_OP_EQ:
+            case XASM_OP_NE:
+            case XASM_OP_LT:
+            case XASM_OP_GT:
+            case XASM_OP_LE:
+            case XASM_OP_GE:
             /* Evaluate both sides */
             eval_recursive(u, e->op_expr.lhs, &lhs_result);
             eval_recursive(u, e->op_expr.rhs, &rhs_result);
@@ -779,50 +780,50 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
                 result->type = -1;
             }
             /* If both sides are integer, then result is integer. */
-            else if ((lhs_result.type == INTEGER_CONSTANT) &&
-            (rhs_result.type == INTEGER_CONSTANT)) {
-                result->type = INTEGER_CONSTANT;
+            else if ((lhs_result.type == XASM_INTEGER_CONSTANT) &&
+            (rhs_result.type == XASM_INTEGER_CONSTANT)) {
+                result->type = XASM_INTEGER_CONSTANT;
                 /* Perform the proper operation to obtain result. */
                 switch (e->op_expr.operator) {
-                    case OP_PLUS:   result->integer = lhs_result.integer + rhs_result.integer;  break;
-                    case OP_MINUS:  result->integer = lhs_result.integer - rhs_result.integer;  break;
-                    case OP_MUL:    result->integer = lhs_result.integer * rhs_result.integer;  break;
-                    case OP_DIV:    result->integer = lhs_result.integer / rhs_result.integer;  break;
-                    case OP_MOD:    result->integer = lhs_result.integer % rhs_result.integer;  break;
-                    case OP_SHL:    result->integer = lhs_result.integer << rhs_result.integer; break;
-                    case OP_SHR:    result->integer = lhs_result.integer >> rhs_result.integer; break;
-                    case OP_AND:    result->integer = lhs_result.integer & rhs_result.integer;  break;
-                    case OP_OR: result->integer = lhs_result.integer | rhs_result.integer;  break;
-                    case OP_XOR:    result->integer = lhs_result.integer ^ rhs_result.integer;  break;
-                    case OP_EQ: result->integer = lhs_result.integer == rhs_result.integer; break;
-                    case OP_NE: result->integer = lhs_result.integer != rhs_result.integer; break;
-                    case OP_LT: result->integer = lhs_result.integer < rhs_result.integer;  break;
-                    case OP_GT: result->integer = lhs_result.integer > rhs_result.integer;  break;
-                    case OP_LE: result->integer = lhs_result.integer <= rhs_result.integer; break;
-                    case OP_GE: result->integer = lhs_result.integer >= rhs_result.integer; break;
+                    case XASM_OP_PLUS:   result->integer = lhs_result.integer + rhs_result.integer;  break;
+                    case XASM_OP_MINUS:  result->integer = lhs_result.integer - rhs_result.integer;  break;
+                    case XASM_OP_MUL:    result->integer = lhs_result.integer * rhs_result.integer;  break;
+                    case XASM_OP_DIV:    result->integer = lhs_result.integer / rhs_result.integer;  break;
+                    case XASM_OP_MOD:    result->integer = lhs_result.integer % rhs_result.integer;  break;
+                    case XASM_OP_SHL:    result->integer = lhs_result.integer << rhs_result.integer; break;
+                    case XASM_OP_SHR:    result->integer = lhs_result.integer >> rhs_result.integer; break;
+                    case XASM_OP_AND:    result->integer = lhs_result.integer & rhs_result.integer;  break;
+                    case XASM_OP_OR: result->integer = lhs_result.integer | rhs_result.integer;  break;
+                    case XASM_OP_XOR:    result->integer = lhs_result.integer ^ rhs_result.integer;  break;
+                    case XASM_OP_EQ: result->integer = lhs_result.integer == rhs_result.integer; break;
+                    case XASM_OP_NE: result->integer = lhs_result.integer != rhs_result.integer; break;
+                    case XASM_OP_LT: result->integer = lhs_result.integer < rhs_result.integer;  break;
+                    case XASM_OP_GT: result->integer = lhs_result.integer > rhs_result.integer;  break;
+                    case XASM_OP_LE: result->integer = lhs_result.integer <= rhs_result.integer; break;
+                    case XASM_OP_GE: result->integer = lhs_result.integer >= rhs_result.integer; break;
                 }
             }
             /* If both sides are string... */
-            else if ((lhs_result.type == STRING_CONSTANT) &&
-            (rhs_result.type == STRING_CONSTANT)) {
+            else if ((lhs_result.type == XASM_STRING_CONSTANT) &&
+            (rhs_result.type == XASM_STRING_CONSTANT)) {
                 switch (e->op_expr.operator) {
-                    case OP_PLUS:
+                    case XASM_OP_PLUS:
                     /* Concatenate */
                     result->string = (char *)malloc(strlen(lhs_result.string)+strlen(rhs_result.string)+1);
                     if (result->string != NULL) {
                         strcpy(result->string, lhs_result.string);
                         strcat(result->string, rhs_result.string);
-                        result->type = STRING_CONSTANT;
+                        result->type = XASM_STRING_CONSTANT;
                     }
                     break;
 
                     /* String comparison: using strcmp() */
-                    case OP_EQ: result->integer = strcmp(lhs_result.string, rhs_result.string) == 0;    break;
-                    case OP_NE: result->integer = strcmp(lhs_result.string, rhs_result.string) != 0;    break;
-                    case OP_LT: result->integer = strcmp(lhs_result.string, rhs_result.string) < 0; break;
-                    case OP_GT: result->integer = strcmp(lhs_result.string, rhs_result.string) > 0; break;
-                    case OP_LE: result->integer = strcmp(lhs_result.string, rhs_result.string) <= 0;    break;
-                    case OP_GE: result->integer = strcmp(lhs_result.string, rhs_result.string) >= 0;    break;
+                    case XASM_OP_EQ: result->integer = strcmp(lhs_result.string, rhs_result.string) == 0;    break;
+                    case XASM_OP_NE: result->integer = strcmp(lhs_result.string, rhs_result.string) != 0;    break;
+                    case XASM_OP_LT: result->integer = strcmp(lhs_result.string, rhs_result.string) < 0; break;
+                    case XASM_OP_GT: result->integer = strcmp(lhs_result.string, rhs_result.string) > 0; break;
+                    case XASM_OP_LE: result->integer = strcmp(lhs_result.string, rhs_result.string) <= 0;    break;
+                    case XASM_OP_GE: result->integer = strcmp(lhs_result.string, rhs_result.string) >= 0;    break;
 
                     default:
                     /* Not defined operator for string operation... */
@@ -840,11 +841,11 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             break;  /* Binary operator */
 
             /* Unary operators */
-            case OP_NOT:
-            case OP_NEG:
-            case OP_LO:
-            case OP_HI:
-            case OP_UMINUS:
+            case XASM_OP_NOT:
+            case XASM_OP_NEG:
+            case XASM_OP_LO:
+            case XASM_OP_HI:
+            case XASM_OP_UMINUS:
             /* Evaluate the single operand */
             eval_recursive(u, e->op_expr.lhs, &lhs_result);
             /* If operand is unresolved then result is unresolved. */
@@ -852,15 +853,15 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
                 result->type = -1;
             }
             /* If operand is integer then result is integer. */
-            else if (lhs_result.type == INTEGER_CONSTANT) {
-                result->type = INTEGER_CONSTANT;
+            else if (lhs_result.type == XASM_INTEGER_CONSTANT) {
+                result->type = XASM_INTEGER_CONSTANT;
                 /* Perform the proper operation to obtain result. */
                 switch (e->op_expr.operator) {
-                    case OP_NOT:    result->integer = !lhs_result.integer;      break;
-                    case OP_NEG:    result->integer = ~lhs_result.integer;      break;
-                    case OP_LO: result->integer = lhs_result.integer & 0xFF;    break;
-                    case OP_HI: result->integer = (lhs_result.integer >> 8) & 0xFF; break;
-                    case OP_UMINUS: result->integer = -lhs_result.integer;      break;
+                    case XASM_OP_NOT:    result->integer = !lhs_result.integer;      break;
+                    case XASM_OP_NEG:    result->integer = ~lhs_result.integer;      break;
+                    case XASM_OP_LO: result->integer = lhs_result.integer & 0xFF;    break;
+                    case XASM_OP_HI: result->integer = (lhs_result.integer >> 8) & 0xFF; break;
+                    case XASM_OP_UMINUS: result->integer = -lhs_result.integer;      break;
                 }
             }
             else {
@@ -872,25 +873,25 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             finalize_constant(&lhs_result);
             break;  /* Unary operator */
 
-            case OP_BANK:
+            case XASM_OP_BANK:
             switch (e->op_expr.lhs->type) {
-                case LOCAL_EXPRESSION:
+                case XASM_LOCAL_EXPRESSION:
                 /* Simple, it must be in the same (current) bank */
                 result->integer = bank_id;
-                result->type = INTEGER_CONSTANT;
+                result->type = XASM_INTEGER_CONSTANT;
                 break;
 
-                case EXTERNAL_EXPRESSION:
+                case XASM_EXTERNAL_EXPRESSION:
                 s = u->_unit_.externals[e->op_expr.lhs->extrn_id].name;
                 if ((l = (local *)hashtab_get(label_hash, s)) != NULL) {
                     /* It's a label */
                     result->integer = l->owner->bank_id;
-                    result->type = INTEGER_CONSTANT;
+                    result->type = XASM_INTEGER_CONSTANT;
                 }
-                else if ((c = (constant *)hashtab_get(constant_hash, s)) != NULL) {
+                else if ((c = (xasm_constant *)hashtab_get(constant_hash, s)) != NULL) {
                     /* It's a constant */
                     result->integer = ((xunit *)c->unit)->bank_id;
-                    result->type = INTEGER_CONSTANT;
+                    result->type = XASM_INTEGER_CONSTANT;
                 }
                 else {
                     result->type = -1;
@@ -905,20 +906,20 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
         }
         break;
 
-        case INTEGER_EXPRESSION:
-        result->type = INTEGER_CONSTANT;
+        case XASM_INTEGER_EXPRESSION:
+        result->type = XASM_INTEGER_CONSTANT;
         result->integer = e->integer;
         break;
 
-        case STRING_EXPRESSION:
+        case XASM_STRING_EXPRESSION:
         result->string = (char *)malloc(strlen(e->string) + 1);
         if (result->string != NULL) {
             strcpy(result->string, e->string);
-            result->type = STRING_CONSTANT;
+            result->type = XASM_STRING_CONSTANT;
         }
         break;
 
-        case LOCAL_EXPRESSION:
+        case XASM_LOCAL_EXPRESSION:
         if (e->local_id >= u->data_locals.size) {
             /* It's a code local */
             l = &u->code_locals.entries[e->local_id - u->data_locals.size];
@@ -928,7 +929,7 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
             l = &u->data_locals.entries[e->local_id];
         }
         if (l->resolved) {
-            result->type = INTEGER_CONSTANT;
+            result->type = XASM_INTEGER_CONSTANT;
             result->integer = l->phys_addr;
         }
         else {
@@ -937,12 +938,12 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
         }
         break;
 
-        case EXTERNAL_EXPRESSION:
+        case XASM_EXTERNAL_EXPRESSION:
         s = u->_unit_.externals[e->extrn_id].name;
         if ((l = (local *)hashtab_get(label_hash, s)) != NULL) {
             /* It's a label */
             if (l->resolved) {
-                result->type = INTEGER_CONSTANT;
+                result->type = XASM_INTEGER_CONSTANT;
                 result->integer = l->phys_addr;
             }
             else {
@@ -950,18 +951,18 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
                 result->type = -1;
             }
         }
-        else if ((c = (constant *)hashtab_get(constant_hash, s)) != NULL) {
+        else if ((c = (xasm_constant *)hashtab_get(constant_hash, s)) != NULL) {
             switch (c->type) {
-                case INTEGER_CONSTANT:
-                result->type = INTEGER_CONSTANT;
+                case XASM_INTEGER_CONSTANT:
+                result->type = XASM_INTEGER_CONSTANT;
                 result->integer = c->integer;
                 break;
 
-                case STRING_CONSTANT:
+                case XASM_STRING_CONSTANT:
                 result->string = (char *)malloc(strlen(c->string) + 1);
                 if (result->string != NULL) {
                     strcpy(result->string, c->string);
-                    result->type = STRING_CONSTANT;
+                    result->type = XASM_STRING_CONSTANT;
                 }
                 break;
             }
@@ -972,8 +973,8 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
         }
         break;
 
-        case PC_EXPRESSION:
-        result->type = INTEGER_CONSTANT;
+        case XASM_PC_EXPRESSION:
+        result->type = XASM_INTEGER_CONSTANT;
         result->integer = pc;
         break;
     }
@@ -985,9 +986,9 @@ static void eval_recursive(xunit *u, expression *e, constant *result)
  * @param exid The unique ID of the expression
  * @param result Where to store the result of the evaluation
  */
-static void eval_expression(xunit *u, int exid, constant *result)
+static void eval_expression(xunit *u, int exid, xasm_constant *result)
 {
-    expression *exp = u->_unit_.expressions[exid];
+    xasm_expression *exp = u->_unit_.expressions[exid];
     eval_recursive(u, exp, result);
 }
 
@@ -1055,7 +1056,7 @@ static void inc_pc_4(unsigned char *b, void *arg)
  */
 static void inc_pc_dsb(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     int exid;
     calc_address_args *args = (calc_address_args *)arg;
     int i = 1;
@@ -1064,12 +1065,12 @@ static void inc_pc_dsb(unsigned char *b, void *arg)
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
     /* Handle the result */
-    if (c.type == INTEGER_CONSTANT) {
+    if (c.type == XASM_INTEGER_CONSTANT) {
         /* An array of bytes will be located here */
         /* Advance PC appropriately */
         inc_pc( c.integer, arg );
     }
-    else if (c.type == STRING_CONSTANT) {
+    else if (c.type == XASM_STRING_CONSTANT) {
         err("unexpected string operand (`%s') to storage directive", c.string);
     }
     else {
@@ -1085,7 +1086,7 @@ static void inc_pc_dsb(unsigned char *b, void *arg)
  */
 static void inc_pc_instr(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     unsigned char op, t;
     int exid;
     calc_address_args *args = (calc_address_args *)arg;
@@ -1097,7 +1098,7 @@ static void inc_pc_instr(unsigned char *b, void *arg)
     /* Evaluate it */
     eval_expression(args->xu, exid, &c);
     /* Handle the result */
-    if (c.type == INTEGER_CONSTANT) {
+    if (c.type == XASM_INTEGER_CONSTANT) {
         /* See if it can be reduced to ZP instruction */
         if ((c.integer < 0x100) &&
         ((t = opcode_zp_equiv(op)) != 0xFF)) {
@@ -1106,7 +1107,7 @@ static void inc_pc_instr(unsigned char *b, void *arg)
             b[1] = t;
         }
     }
-    else if (c.type == STRING_CONSTANT) {
+    else if (c.type == XASM_STRING_CONSTANT) {
         err("invalid instruction operand (string)");
     }
     else {
@@ -1153,7 +1154,7 @@ static void write_bin16(unsigned char *b, void *arg)
  */
 static void write_instr(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     unsigned char op;
     int i;
     int exid;
@@ -1166,7 +1167,7 @@ static void write_instr(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-    assert(c.type == INTEGER_CONSTANT);
+    assert(c.type == XASM_INTEGER_CONSTANT);
     /* Write the opcode */
     fputc(op, args->fp);
     if (opcode_length(op) == 2) {
@@ -1218,7 +1219,7 @@ static void write_instr(unsigned char *b, void *arg)
  */
 static void write_dx(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     int i;
     int exid;
     write_binary_args *args = (write_binary_args *)arg;
@@ -1228,25 +1229,25 @@ static void write_dx(unsigned char *b, void *arg)
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
 
-    if (c.type == INTEGER_CONSTANT) {
+    if (c.type == XASM_INTEGER_CONSTANT) {
         /* Write low byte */
         fputc(c.integer, args->fp);
         /* If 2+ bytes, write high ones */
         switch (b[0]) {
-            case CMD_DB:
+            case XASM_CMD_DB:
             if (c.integer > 0xFF) {
                 warn("`.DB' operand $%X out of range; truncated", c.integer);
             }
             break;
 
-            case CMD_DW:
+            case XASM_CMD_DW:
             fputc(c.integer >> 8, args->fp);
             if (c.integer > 0xFFFF) {
                 warn("`.DW' operand $%X out of range; truncated", c.integer);
             }
             break;
 
-            case CMD_DD:
+            case XASM_CMD_DD:
             fputc(c.integer >> 8, args->fp);
             fputc(c.integer >> 16, args->fp);
             fputc(c.integer >> 24, args->fp);
@@ -1254,22 +1255,22 @@ static void write_dx(unsigned char *b, void *arg)
         }
         /* Advance PC */
         switch (b[0]) {
-            case CMD_DB:    inc_pc( 1, arg );   break;
-            case CMD_DW:    inc_pc( 2, arg );   break;
-            case CMD_DD:    inc_pc( 4, arg );   break;
+            case XASM_CMD_DB:    inc_pc( 1, arg );   break;
+            case XASM_CMD_DW:    inc_pc( 2, arg );   break;
+            case XASM_CMD_DD:    inc_pc( 4, arg );   break;
         }
     }
-    else if (c.type == STRING_CONSTANT) {
+    else if (c.type == XASM_STRING_CONSTANT) {
         for (i=0; i<strlen(c.string); i++) {
             /* Write low byte */
             fputc(c.string[i], args->fp);
             /* If 2+ bytes, write high ones */
             switch (b[0]) {
-                case CMD_DW:
+                case XASM_CMD_DW:
                 fputc(0, args->fp);
                 break;
 
-                case CMD_DD:
+                case XASM_CMD_DD:
                 fputc(0, args->fp);
                 fputc(0, args->fp);
                 fputc(0, args->fp);
@@ -1277,9 +1278,9 @@ static void write_dx(unsigned char *b, void *arg)
             }
             /* Advance PC */
             switch (b[0]) {
-                case CMD_DB:    inc_pc( 1, arg );   break;
-                case CMD_DW:    inc_pc( 2, arg );   break;
-                case CMD_DD:    inc_pc( 4, arg );   break;
+                case XASM_CMD_DB:    inc_pc( 1, arg );   break;
+                case XASM_CMD_DW:    inc_pc( 2, arg );   break;
+                case XASM_CMD_DD:    inc_pc( 4, arg );   break;
             }
         }
     } else {
@@ -1326,7 +1327,7 @@ static void write_dsi16(unsigned char *b, void *arg)
  */
 static void write_dsb(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     int i;
     int exid;
     write_binary_args *args = (write_binary_args *)arg;
@@ -1335,7 +1336,7 @@ static void write_dsb(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-    assert(c.type == INTEGER_CONSTANT);
+    assert(c.type == XASM_INTEGER_CONSTANT);
     if (c.integer < 0) {
         err("negative count");
     } else if (c.integer > 0) {
@@ -1446,7 +1447,7 @@ static void asm_write_label(unsigned char *b, void *arg)
     write_binary_args *args = (write_binary_args *)arg;
     fprintf(args->fp, "; label");
     flags = get_1(b, &i);
-    if (flags & LABEL_FLAG_EXPORT) {
+    if (flags & XASM_LABEL_FLAG_EXPORT) {
         char *name;
         int len = get_1(b, &i) + 1;
         name = (char *)malloc( len + 1 );
@@ -1467,7 +1468,7 @@ static void asm_write_label(unsigned char *b, void *arg)
  */
 static void asm_write_instr(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     unsigned char op;
     addressing_mode mode;
     int i;
@@ -1483,7 +1484,7 @@ static void asm_write_instr(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-    assert(c.type == INTEGER_CONSTANT);
+    assert(c.type == XASM_INTEGER_CONSTANT);
     /* Write the opcode */
     fprintf(args->fp, "%s", opcode_to_string(op));
     switch (mode) {
@@ -1557,7 +1558,7 @@ static void asm_write_instr(unsigned char *b, void *arg)
  */
 static void asm_write_dx(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     int i;
     int exid;
     write_binary_args *args = (write_binary_args *)arg;
@@ -1566,43 +1567,43 @@ static void asm_write_dx(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-    if (c.type == INTEGER_CONSTANT) {
+    if (c.type == XASM_INTEGER_CONSTANT) {
         switch (b[0]) {
-            case CMD_DB:
+            case XASM_CMD_DB:
             fprintf(args->fp, ".DB $%.2X", (unsigned)c.integer);
             break;
-            case CMD_DW:
+            case XASM_CMD_DW:
        	    fprintf(args->fp, ".DW $%.4X", (unsigned)c.integer);
             break;
-            case CMD_DD:
+            case XASM_CMD_DD:
        	    fprintf(args->fp, ".DD $%.8X", (unsigned)c.integer);
             break;
         }
         /* Advance PC */
         switch (b[0]) {
-            case CMD_DB:    inc_pc( 1, arg );   break;
-            case CMD_DW:    inc_pc( 2, arg );   break;
-            case CMD_DD:    inc_pc( 4, arg );   break;
+            case XASM_CMD_DB:    inc_pc( 1, arg );   break;
+            case XASM_CMD_DW:    inc_pc( 2, arg );   break;
+            case XASM_CMD_DD:    inc_pc( 4, arg );   break;
         }
-    } else if (c.type == STRING_CONSTANT) {
+    } else if (c.type == XASM_STRING_CONSTANT) {
         int count = strlen(c.string);
         switch (b[0]) {
-            case CMD_DB:
+            case XASM_CMD_DB:
             fprintf(args->fp, ".DB");
             break;
-            case CMD_DW:
+            case XASM_CMD_DW:
             fprintf(args->fp, ".DW");
             break;
-            case CMD_DD:
+            case XASM_CMD_DD:
             fprintf(args->fp, ".DD");
             break;
         }
         fprintf(args->fp, " \"%s\"", c.string);
         /* Advance PC */
         switch (b[0]) {
-            case CMD_DB:    inc_pc( count * 1, arg );   break;
-            case CMD_DW:    inc_pc( count * 2, arg );   break;
-            case CMD_DD:    inc_pc( count * 4, arg );   break;
+            case XASM_CMD_DB:    inc_pc( count * 1, arg );   break;
+            case XASM_CMD_DW:    inc_pc( count * 2, arg );   break;
+            case XASM_CMD_DD:    inc_pc( count * 4, arg );   break;
         }
     } else {
         assert(0);
@@ -1644,7 +1645,7 @@ static void asm_write_dsi16(unsigned char *b, void *arg)
  */
 static void asm_write_dsb(unsigned char *b, void *arg)
 {
-    constant c;
+    xasm_constant c;
     int i;
     int exid;
     write_binary_args *args = (write_binary_args *)arg;
@@ -1653,7 +1654,7 @@ static void asm_write_dsb(unsigned char *b, void *arg)
     exid = get_2(b, &i);
     /* Evaluate expression */
     eval_expression(args->xu, exid, &c);
-    assert(c.type == INTEGER_CONSTANT);
+    assert(c.type == XASM_INTEGER_CONSTANT);
     if (c.integer < 0) {
         err("negative count");
     }
@@ -1712,22 +1713,22 @@ static void write_as_assembly(FILE *fp, xunit *u)
 static const char *bytecode_to_string(unsigned char cmd)
 {
     switch (cmd) {
-        case CMD_FILE:  return "CMD_FILE";
-        case CMD_LINE8: return "CMD_LINE8";
-        case CMD_LINE16:return "CMD_LINE16";
-        case CMD_LINE24:return "CMD_LINE24";
-        case CMD_LINE_INC:  return "CMD_LINE_INC";
-        case CMD_END:   return "CMD_END";
-        case CMD_BIN8:  return "CMD_BIN8";
-        case CMD_BIN16: return "CMD_BIN16";
-        case CMD_LABEL: return "CMD_LABEL";
-        case CMD_INSTR: return "CMD_INSTR";
-        case CMD_DB:    return "CMD_DB";
-        case CMD_DW:    return "CMD_DW";
-        case CMD_DD:    return "CMD_DD";
-        case CMD_DSI8:  return "CMD_DSI8";
-        case CMD_DSI16: return "CMD_DSI16";
-        case CMD_DSB:   return "CMD_DSB";
+        case XASM_CMD_FILE:  return "CMD_FILE";
+        case XASM_CMD_LINE8: return "CMD_LINE8";
+        case XASM_CMD_LINE16:return "CMD_LINE16";
+        case XASM_CMD_LINE24:return "CMD_LINE24";
+        case XASM_CMD_LINE_INC:  return "CMD_LINE_INC";
+        case XASM_CMD_END:   return "CMD_END";
+        case XASM_CMD_BIN8:  return "CMD_BIN8";
+        case XASM_CMD_BIN16: return "CMD_BIN16";
+        case XASM_CMD_LABEL: return "CMD_LABEL";
+        case XASM_CMD_INSTR: return "CMD_INSTR";
+        case XASM_CMD_DB:    return "CMD_DB";
+        case XASM_CMD_DW:    return "CMD_DW";
+        case XASM_CMD_DD:    return "CMD_DD";
+        case XASM_CMD_DSI8:  return "CMD_DSI8";
+        case XASM_CMD_DSI16: return "CMD_DSI16";
+        case XASM_CMD_DSB:   return "CMD_DSB";
     }
     return "bytecode_to_string: invalid bytecode";
 }
@@ -1761,7 +1762,7 @@ static void print_bytecodes(unsigned char *bytes)
  * Prints a unit.
  * @param u Unit
  */
-static void print_unit(unit *u)
+static void print_unit(xasm_unit *u)
 {
     print_bytecodes(u->dataseg.bytes);
     print_bytecodes(u->codeseg.bytes);
@@ -1871,7 +1872,7 @@ static void register_one_local(unsigned char *b, void *arg)
     /* Get flag byte */
     lptr->flags = get_1(b, &i);
     /* Test export flag */
-    if (lptr->flags & LABEL_FLAG_EXPORT) {
+    if (lptr->flags & XASM_LABEL_FLAG_EXPORT) {
         /* Get the length of the name */
         len = get_1(b, &i) + 1;
         /* Allocate space for name */
@@ -1884,10 +1885,10 @@ static void register_one_local(unsigned char *b, void *arg)
         }
         i += len;
     }
-    if (lptr->flags & LABEL_FLAG_ALIGN) {
+    if (lptr->flags & XASM_LABEL_FLAG_ALIGN) {
         lptr->align = get_1(b, &i);
     }
-    if (lptr->flags & LABEL_FLAG_ADDR) {
+    if (lptr->flags & XASM_LABEL_FLAG_ADDR) {
         lptr->phys_addr = get_2(b, &i);
         lptr->resolved = 1;
     }
@@ -1947,7 +1948,7 @@ static void register_locals(unsigned char *b, local_array *la, xunit *xu)
  * @param data Data
  * @param u Owner unit
  */
-static void enter_exported_symbol(hashtab *tab, void *key, void *data, unit *u)
+static void enter_exported_symbol(hashtab *tab, void *key, void *data, xasm_unit *u)
 {
     if ((hashtab_get(label_hash, key) != NULL)
         || (hashtab_get(constant_hash, key) != NULL) ) {
@@ -1963,10 +1964,10 @@ static void enter_exported_symbol(hashtab *tab, void *key, void *data, unit *u)
  * Enters all constants in a unit into the proper hash table.
  * @param u Unit whose constants to enter
  */
-static void enter_exported_constants(unit *u)
+static void enter_exported_constants(xasm_unit *u)
 {
     int i;
-    constant *c;
+    xasm_constant *c;
     for (i=0; i<u->const_count; i++) {
         c = &u->constants[i];
         enter_exported_symbol(constant_hash, (void *)c->name, (void *)c, u);
@@ -1978,7 +1979,7 @@ static void enter_exported_constants(unit *u)
  * @param la Array of locals
  * @param u Owner unit
  */
-static void enter_exported_locals(local_array *la, unit *u)
+static void enter_exported_locals(local_array *la, xasm_unit *u)
 {
     int i;
     local *l;
@@ -2048,7 +2049,7 @@ static void calc_data_addresses(xunit *u)
 /*--------------------------------------------------------------------------*/
 
 /* Constructs 32-bit sort key for local. */
-#define SORT_KEY(l) (unsigned long)((((l)->flags & LABEL_FLAG_ZEROPAGE) << 30) | ((l)->align << 24) | (0x10000-(l)->size))
+#define SORT_KEY(l) (unsigned long)((((l)->flags & XASM_LABEL_FLAG_ZEROPAGE) << 30) | ((l)->align << 24) | (0x10000-(l)->size))
 
 /**
  * Array is sorted from high to low value.
@@ -2327,7 +2328,7 @@ static void register_one_unit(script *s, script_command *c, void *arg)
     /* Get pointer to xunit to fill in */
     xu = &units[*i];
     /* Read basic unit from file */
-    if (unit_read(file, &xu->_unit_) == 0) {
+    if (xasm_unit_read(file, &xu->_unit_) == 0) {
         scripterr(s, c, "failed to load unit `%s'", file);
         xu->loaded = 0;
         return;
@@ -3016,7 +3017,7 @@ int main(int argc, char **argv)
         if (units[i].loaded) {
             finalize_local_array( &units[i].data_locals );
             finalize_local_array( &units[i].code_locals );
-            unit_finalize( &units[i]._unit_ );
+            xasm_unit_finalize( &units[i]._unit_ );
         }
     }
     hashtab_finalize(label_hash);
