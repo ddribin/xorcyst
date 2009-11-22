@@ -73,32 +73,23 @@ static unsigned int get_4(FILE *fp)
 static char *get_str_8(FILE *fp)
 {
     char *s;
-    /* Read length */
     int len = get_1(fp) + 1;
-    /* Allocate space for string */
     s = (char *)malloc(len + 1);
     if (s != NULL) {
-        /* Read string from file */
         fread(s, 1, len, fp);
-        /* 0-terminate string */
         s[len] = '\0';
     }
-    /* Return the new string */
     return s;
 }
 /* Reads a string prepended by 16-bit length */
 static char *get_str_16(FILE *fp)
 {
     char *s;
-    /* Read length */
     int len = get_2(fp) + 1;
-    /* Allocate space for string */
     s = (char *)malloc(len + 1);
     if (s != NULL) {
-        /* Read string from file */
         fread(s, 1, len, fp);
     }
-    /* Return the new string */
     return s;
 }
 #define get_bytes_8(f) (unsigned char *)get_str_8(f)
@@ -115,11 +106,8 @@ static char *get_str_16(FILE *fp)
 static void get_const(FILE *fp, unit *u, int i)
 {
     constant *cnst = &u->constants[i];
-    /* Read name */
     cnst->name = get_str_8(fp);
-    /* Read type */
     cnst->type = get_1(fp);
-    /* Read value */
     switch (cnst->type) {
         case INT_8: cnst->integer = get_1(fp);  cnst->type = INTEGER_CONSTANT;  break;
         case INT_16:    cnst->integer = get_2(fp);  cnst->type = INTEGER_CONSTANT;  break;
@@ -129,11 +117,9 @@ static void get_const(FILE *fp, unit *u, int i)
         case STR_16:    cnst->string = get_str_16(fp);  cnst->type = STRING_CONSTANT;   break;
 
         default:
-        /* Error, invalid type */
         fprintf(stderr, "%s(0x%lx): get_const(): bad constant type (%.2X)\n", u->name, ftell(fp), cnst->type);
         break;
     }
-    /* Set owner */
     cnst->unit = u;
 }
 
@@ -145,20 +131,15 @@ static void get_const(FILE *fp, unit *u, int i)
 static void get_constants(FILE *fp, unit *u)
 {
     int i;
-    /* Read the number of constants */
     int count = get_2(fp);
-    /* Allocate the list */
     if (count > 0) {
         u->constants = (constant *)malloc(sizeof(constant) * count);
-    }
-    else {
+    } else {
         u->constants = NULL;
     }
-    /* Read constants */
     for (i=0; i<count; i++) {
         get_const(fp, u, i);
     }
-    /* Set count field */
     u->const_count = count;
 }
 
@@ -171,11 +152,8 @@ static void get_constants(FILE *fp, unit *u)
 static void get_ext(FILE *fp, unit *u, int i)
 {
     external *ext = &u->externals[i];
-    /* Read unit # */
     ext->unit = get_1(fp);
-    /* Read name */
     ext->name = get_str_8(fp);
-    /* Set owner */
     ext->from = u;
 }
 
@@ -188,20 +166,15 @@ static void get_externals(FILE *fp, unit *u)
 {
     int i;
     int count;
-    /* Read the number of imported symbols */
     count = get_2(fp);
-    /* Allocate the list */
     if (count > 0) {
         u->externals = (external *)malloc(sizeof(external) * count);
-    }
-    else {
+    } else {
         u->externals = NULL;
     }
-    /* Read imported symbols */
     for (i=0; i<count; i++) {
         get_ext(fp, u, i);
     }
-    /* Set count field */
     u->ext_count = count;
 }
 
@@ -214,14 +187,10 @@ static void get_externals(FILE *fp, unit *u)
 static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
 {
     unsigned char type;
-    /* Allocate space for expression */
     expression *exp = (expression *)malloc( sizeof(expression) );
     if (exp != NULL) {
-        /* Read expression type */
         type = get_1(fp);
-        /* Read the value */
         switch (type) {
-            /* Literals */
             case INT_8: exp->integer = get_1(fp);   exp->type = INTEGER_EXPRESSION; break;
             case INT_16:    exp->integer = get_2(fp);   exp->type = INTEGER_EXPRESSION; break;
             case INT_24:    exp->integer = get_3(fp);   exp->type = INTEGER_EXPRESSION; break;
@@ -229,14 +198,11 @@ static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
             case STR_8: exp->string = get_str_8(fp);    exp->type = STRING_EXPRESSION;  break;
             case STR_16:    exp->string = get_str_16(fp);   exp->type = STRING_EXPRESSION;  break;
 
-            /* Identifiers */
             case LOCAL: exp->local_id = get_2(fp);  exp->type = LOCAL_EXPRESSION;   break;
             case EXTRN: exp->extrn_id = get_2(fp);  exp->type = EXTERNAL_EXPRESSION;break;
 
-            /* Current address */
             case PC:    ;               exp->type = PC_EXPRESSION;  break;
 
-            /* Arithmetic, binary */
             case OP_PLUS:
             case OP_MINUS:
             case OP_MUL:
@@ -259,7 +225,6 @@ static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
             exp->type = OPERATOR_EXPRESSION;
             break;
 
-            /* Arithmetic, unary */
             case OP_NOT:
             case OP_NEG:
             case OP_LO:
@@ -279,9 +244,7 @@ static void get_expr_recursive(FILE *fp, expression **dest, unit *u)
             break;
         }
     }
-    /* Set owner */
     exp->unit = u;
-    /* Set result pointer */
     *dest = exp;
 }
 
@@ -294,20 +257,15 @@ static void get_expressions(FILE *fp, unit *u)
 {
     int i;
     int count;
-    /* Read the number of expressions */
     count = get_2(fp);
-    /* Allocate the list */
     if (count > 0) {
         u->expressions = (expression **)malloc(sizeof(expression *) * count);
-    }
-    else {
+    } else {
         u->expressions = NULL;
     }
-    /* Read expressions */
     for (i=0; i<count; i++) {
         get_expr_recursive(fp, &u->expressions[i], u);
     }
-    /* Store count */
     u->expr_count = count;
 }
 
@@ -318,18 +276,13 @@ static void get_expressions(FILE *fp, unit *u)
  */
 static void get_segment(FILE *fp, segment *seg)
 {
-    /* Read size */
     seg->size = get_3(fp);
-    /* Allocate space */
     if (seg->size > 0) {
-        /* Allocate mem for bytecodes */
         seg->bytes = (unsigned char *)malloc(seg->size);
         if (seg->bytes != NULL) {
-            /* Read contents */
             fread(seg->bytes, 1, seg->size, fp);
         }
-    }
-    else {
+    } else {
         seg->bytes = NULL;
     }
 }
@@ -348,12 +301,9 @@ int unit_read(char *filename, unit *u)
     unsigned short magic;
     unsigned char version;
 
-    /* Store name */
     u->name = filename;
-    /* Attempt to open file */
     fp = fopen(filename, "rb");
     if (fp == NULL) {
-        /* Error, couldn't open it */
         u->const_count = 0;
         u->ext_count = 0;
         u->expr_count = 0;
@@ -363,38 +313,33 @@ int unit_read(char *filename, unit *u)
         u->codeseg.bytes = NULL;
         return 0;
     }
-    /* Read magic number */
+
     magic = get_2(fp);
-    /* Verify magic number */
     if (magic != A_MAGIC) {
         /* Error, bad magic number */
         return 0;
     }
-    /* Read version */
+
     version = get_1(fp);
-    /* Verify version: should be 1.0 */
     if (version != A_VERSION) {
         /* Error, bad version */
         return 0;
     }
-    /* Read exported constants */
+
     get_constants(fp, u);
+
     /* Read # of units explicitly imported from */
     count = get_1(fp);
     /* Read unit names */
     for (i=0; i<count; i++) {
         get_str_8(fp);
     }
-    /* Read imported symbols */
+
     get_externals(fp, u);
-    /* Read dataseg */
     get_segment(fp, &u->dataseg);
-    /* Read codeseg */
     get_segment(fp, &u->codeseg);
-    /* Read expressions */
     get_expressions(fp, u);
 
-    /* Close the file */
     fclose(fp);
 
     /* Success */
@@ -466,22 +411,21 @@ static void finalize_segment(segment *s)
 void unit_finalize(unit *u)
 {
     int i;
-    /* Finalize the constants */
     for (i=0; i<u->const_count; i++) {
         finalize_constant(&u->constants[i]);
     }
     SAFE_FREE(u->constants);
-    /* Finalize the externals */
+
     for (i=0; i<u->ext_count; i++) {
         finalize_external(&u->externals[i]);
     }
     SAFE_FREE(u->externals);
-    /* Finalize expressions */
+
     for (i=0; i<u->expr_count; i++) {
         finalize_expression(u->expressions[i]);
     }
     SAFE_FREE(u->expressions);
-    /* Finalize bytecode segments */
+
     finalize_segment(&u->dataseg);
     finalize_segment(&u->codeseg);
 }
