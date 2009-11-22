@@ -627,9 +627,6 @@ static int label_cmd_args_size(const unsigned char *bytes)
     return size;
 }
 
-/** Signature for procedure to process a bytecode */
-typedef void (*bytecodeproc)(const unsigned char *, void *);
-
 /**
  * Walks an array of bytecodes, calling corresponding bytecode handlers
  * along the way.
@@ -637,7 +634,7 @@ typedef void (*bytecodeproc)(const unsigned char *, void *);
  * @param handlers Array of bytecode handlers (entries can be NULL)
  * @param arg Argument passed to bytecode handler, can be anything
  */
-static void bytecode_walk(const unsigned char *bytes, bytecodeproc *handlers, void *arg)
+static void bytecode_walk(const unsigned char *bytes, xasm_bytecodeproc *handlers, void *arg)
 {
     int i;
     unsigned char cmd;
@@ -1322,7 +1319,7 @@ static void write_as_binary(FILE *fp, xunit *u)
 {
     write_binary_args args;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,       /* CMD_END */
         write_bin8, /* CMD_BIN8 */
@@ -1639,7 +1636,7 @@ static void write_as_assembly(FILE *fp, xunit *u)
 {
     write_binary_args args;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,       /* CMD_END */
         asm_write_bin8, /* CMD_BIN8 */
@@ -1715,7 +1712,7 @@ static void print_it(const unsigned char *b, void *arg)
  */
 static void print_bytecodes(const unsigned char *bytes)
 {
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         print_it,print_it,print_it,print_it,print_it,
         print_it,print_it,print_it,print_it,print_it,
@@ -1795,7 +1792,7 @@ static int count_locals(const unsigned char *b)
 {
     int count;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,   /* CMD_END */
         NULL,   /* CMD_BIN8 */
@@ -1880,7 +1877,7 @@ static void register_locals(const unsigned char *b, local_array *la, xunit *xu)
     local *lptr;
     local **lpptr;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,   /* CMD_END */
         NULL,   /* CMD_BIN8 */
@@ -1986,7 +1983,7 @@ static void calc_data_addresses(xunit *u)
 {
     calc_address_args args;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,       /* CMD_END */
         NULL,       /* CMD_BIN8 */
@@ -2173,7 +2170,7 @@ static void calc_code_addresses(xunit *u)
 {
     calc_address_args args;
     /* Table of callback functions for our purpose. */
-    bytecodeproc handlers[] =
+    static xasm_bytecodeproc handlers[] =
     {
         NULL,       /* CMD_END */
         inc_pc_count8,  /* CMD_BIN8 */

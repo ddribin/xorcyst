@@ -144,6 +144,9 @@ struct tag_xasm_unit {
 
 typedef struct tag_xasm_unit xasm_unit;
 
+/** Signature for procedure to process a bytecode */
+typedef void (*xasm_bytecodeproc)(const unsigned char *, void *);
+
 /*---------------------------------------------------------------------------*/
 /* Function prototypes. */
 
