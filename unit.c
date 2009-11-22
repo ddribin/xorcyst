@@ -295,7 +295,7 @@ static void get_segment(FILE *fp, xasm_segment *seg)
  * @param filename Name of the unit
  * @param u Pointer to struct to fill in
  */
-int xasm_unit_read(char *filename, xasm_unit *u)
+int xasm_unit_read(const char *filename, xasm_unit *u)
 {
     FILE *fp;
     int count, i;

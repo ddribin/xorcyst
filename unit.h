@@ -131,7 +131,7 @@ typedef struct tag_xasm_segment xasm_segment;
  * Describes a unit.
  */
 struct tag_xasm_unit {
-    char *name;     /* Name of unit */
+    const char *name;     /* Name of unit */
     xasm_constant *constants;    /* Array of exported constants */
     int const_count;    /* Number of exported constants */
     xasm_external *externals;    /* Array of imported symbols */
@@ -147,7 +147,7 @@ typedef struct tag_xasm_unit xasm_unit;
 /*---------------------------------------------------------------------------*/
 /* Function prototypes. */
 
-int xasm_unit_read(char *, xasm_unit *);
+int xasm_unit_read(const char *, xasm_unit *);
 void xasm_unit_finalize(xasm_unit *);
 const char *xasm_operator_to_string(int op);
 

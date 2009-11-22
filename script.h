@@ -27,81 +27,81 @@
  *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef SCRIPT_H
-#define SCRIPT_H
+#ifndef XLNK_SCRIPT_H
+#define XLNK_SCRIPT_H
 
 /**
  * The possible kinds of command.
  */
-enum tag_command_type {
-    RAM_COMMAND=0,
-    OUTPUT_COMMAND,
-    COPY_COMMAND,
-    BANK_COMMAND,
-    LINK_COMMAND,
-    OPTIONS_COMMAND,
-    PAD_COMMAND,
-    BAD_COMMAND
+enum tag_xlnk_command_type {
+    XLNK_RAM_COMMAND=0,
+    XLNK_OUTPUT_COMMAND,
+    XLNK_COPY_COMMAND,
+    XLNK_BANK_COMMAND,
+    XLNK_LINK_COMMAND,
+    XLNK_OPTIONS_COMMAND,
+    XLNK_PAD_COMMAND,
+    XLNK_BAD_COMMAND
 };
 
-typedef enum tag_command_type command_type;
+typedef enum tag_xlnk_command_type xlnk_command_type;
 
 /**
  * A list of command arguments
  */
-struct tag_command_arg
+struct tag_xlnk_command_arg
 {
     char *key;
     char *value;
-    struct tag_command_arg *next;
+    struct tag_xlnk_command_arg *next;
 };
 
-typedef struct tag_command_arg command_arg;
+typedef struct tag_xlnk_command_arg xlnk_command_arg;
 
 /**
  * A command
  */
-struct tag_script_command {
-    command_type type;
-    command_arg *first_arg;
+struct tag_xlnk_script_command {
+    xlnk_command_type type;
+    xlnk_command_arg *first_arg;
     int line;
-    struct tag_script_command *next;
+    struct tag_xlnk_script_command *next;
 };
 
-typedef struct tag_script_command script_command;
+typedef struct tag_xlnk_script_command xlnk_script_command;
 
 /**
  * A script
  */
-struct tag_script {
-    char *name;
-    script_command *first_command;
+struct tag_xlnk_script {
+    const char *name;
+    xlnk_script_command *first_command;
 };
 
-typedef struct tag_script script;
+typedef struct tag_xlnk_script xlnk_script;
 
 /** Signature for procedure to process a script command */
-typedef void (*script_commandproc)(script *, script_command *, void *);
+typedef void (*xlnk_script_commandproc)(xlnk_script *, xlnk_script_command *, void *);
 
 /**
  * Structure that represents a mapping from script command type to processor function.
  */
-struct tag_script_commandprocmap {
-    command_type type;
-    script_commandproc proc;
+struct tag_xlnk_script_commandprocmap {
+    xlnk_command_type type;
+    xlnk_script_commandproc proc;
 };
 
-typedef struct tag_script_commandprocmap script_commandprocmap;
+typedef struct tag_xlnk_script_commandprocmap xlnk_script_commandprocmap;
 
 /* Function prototypes */
 
-int script_parse(char *, script *);
-void script_finalize(script *);
-int script_length(script *);
-script_command *script_get_command(script *, int);
-void script_walk(script *, script_commandprocmap *, void *);
-char *script_get_command_arg(script_command *, char *);
-char *script_command_type_to_string(command_type);
-int script_count_command_type(script *, command_type);
+int xlnk_script_parse(const char *, xlnk_script *);
+void xlnk_script_finalize(xlnk_script *);
+int xlnk_script_length(xlnk_script *);
+xlnk_script_command *xlnk_script_get_command(xlnk_script *, int);
+void xlnk_script_walk(xlnk_script *, xlnk_script_commandprocmap *, void *);
+const char *xlnk_script_get_command_arg(xlnk_script_command *, const char *);
+const char *xlnk_script_command_type_to_string(xlnk_command_type);
+int xlnk_script_count_command_type(xlnk_script *, xlnk_command_type);
 
-#endif  /* !SCRIPT_H */
+#endif  /* !XLNK_SCRIPT_H */

@@ -62,7 +62,7 @@
  * @param line Line of file
  * @param fmt printf-style format string
  */
-static void maperr(char *filename, int line, char *fmt, ...)
+static void maperr(const char *filename, int line, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -82,7 +82,7 @@ static void maperr(char *filename, int line, char *fmt, ...)
  * @param s String with whitespace (possibly)
  * @param i Start index in string, will be incremented beyond whitespace
  */
-static void eat_ws(char *s, int *i)
+static void eat_ws(const char *s, int *i)
 {
     while (IS_SPACE(s[*i])) (*i)++;
 }
@@ -93,7 +93,7 @@ static void eat_ws(char *s, int *i)
  * @param i Pointer to index of first character of key in s
  * @param d Where to store the parsed key
  */
-static int get_key(char *s, int *i, unsigned char *d)
+static int get_key(const char *s, int *i, unsigned char *d)
 {
     char key;
     /* Read first character */
@@ -126,7 +126,7 @@ static int get_key(char *s, int *i, unsigned char *d)
  * Parses a value.
  * @param s Pointer to first character of value
  */
-static unsigned char get_value(char *s)
+static unsigned char get_value(const char *s)
 {
     if (s[0] == '$') {
         return strtol(&s[1], NULL, 16);
@@ -143,7 +143,7 @@ static unsigned char get_value(char *s)
  * @param map 256-byte buffer where parsed map shall be stored
  * @return 0 if fail, 1 if OK
  */
-int charmap_parse(char *filename, unsigned char *map)
+int charmap_parse(const char *filename, unsigned char *map)
 {
     int lineno;
     FILE *fp;

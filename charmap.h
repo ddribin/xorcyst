@@ -30,6 +30,6 @@
 #ifndef CHARMAP_H
 #define CHARMAP_H
 
-int charmap_parse(char *, unsigned char *);
+int charmap_parse(const char *, unsigned char *);
 
 #endif  /* !CHARMAP_H */

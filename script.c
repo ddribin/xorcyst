@@ -50,8 +50,8 @@
 
 /** Describes a mapping from string to command type */
 struct tag_string_to_command_type_mapping {
-    char *string;
-    command_type type;
+    const char *string;
+    xlnk_command_type type;
 };
 
 typedef struct tag_string_to_command_type_mapping string_to_command_type_mapping;
@@ -61,17 +61,17 @@ typedef struct tag_string_to_command_type_mapping string_to_command_type_mapping
  * @param s String representation of command
  * @return The corresponding command
  */
-static command_type string_to_command_type(char *s) {
+static xlnk_command_type string_to_command_type(const char *s) {
     int i;
     /* Table of mappings */
     static string_to_command_type_mapping map[] = {
-        { "ram", RAM_COMMAND },
-        { "output", OUTPUT_COMMAND },
-        { "copy", COPY_COMMAND },
-        { "bank", BANK_COMMAND },
-        { "link", LINK_COMMAND },
-        { "options", OPTIONS_COMMAND },
-        { "pad", PAD_COMMAND},
+        { "ram", XLNK_RAM_COMMAND },
+        { "output", XLNK_OUTPUT_COMMAND },
+        { "copy", XLNK_COPY_COMMAND },
+        { "bank", XLNK_BANK_COMMAND },
+        { "link", XLNK_LINK_COMMAND },
+        { "options", XLNK_OPTIONS_COMMAND },
+        { "pad", XLNK_PAD_COMMAND},
         { NULL, -1}
     };
     /* Try all the mappings */
@@ -82,13 +82,13 @@ static command_type string_to_command_type(char *s) {
         }
     }
     /* Not in map table */
-    return BAD_COMMAND;
+    return XLNK_BAD_COMMAND;
 }
 
 /** Describes the arguments that a command should acknowledge */
 struct tag_valid_command_args
 {
-    command_type type;
+    xlnk_command_type type;
     char **args;
 };
 
@@ -97,7 +97,7 @@ typedef struct tag_valid_command_args valid_command_args;
 /**
  * Tests if the given command argument name is valid.
  */
-static int is_valid_command_arg(command_type type, const char *candidate_arg)
+static int is_valid_command_arg(xlnk_command_type type, const char *candidate_arg)
 {
     int i;
     int j;
@@ -111,12 +111,12 @@ static int is_valid_command_arg(command_type type, const char *candidate_arg)
     static char *pad_args[] =   { "size", "origin", "offset", NULL };
     /* Table of valid args */
     static valid_command_args ok_args[] = {
-        { RAM_COMMAND,      ram_args },
-        { OUTPUT_COMMAND,   output_args },
-        { COPY_COMMAND,     copy_args },
-        { BANK_COMMAND,     bank_args },
-        { LINK_COMMAND,     link_args },
-        { PAD_COMMAND,      pad_args }
+        { XLNK_RAM_COMMAND,      ram_args },
+        { XLNK_OUTPUT_COMMAND,   output_args },
+        { XLNK_COPY_COMMAND,     copy_args },
+        { XLNK_BANK_COMMAND,     bank_args },
+        { XLNK_LINK_COMMAND,     link_args },
+        { XLNK_PAD_COMMAND,      pad_args }
     };
     /* Find arg array for command */
     for (i=0; ok_args[i].type != -1; i++) {
@@ -146,7 +146,7 @@ static int is_valid_command_arg(command_type type, const char *candidate_arg)
  * @param s String with whitespace (possibly)
  * @param i Start index in string, will be incremented beyond whitespace
  */
-static void eat_ws(char *s, int *i)
+static void eat_ws(const char *s, int *i)
 {
     while (IS_SPACE(s[*i])) (*i)++;
 }
@@ -154,7 +154,7 @@ static void eat_ws(char *s, int *i)
 /**
  * Tests if a character is in a set of delimiters.
  */
-static int is_delim(unsigned char c, char *delim)
+static int is_delim(unsigned char c, const char *delim)
 {
     int i;
     /* Compare to all delimiters */
@@ -172,7 +172,7 @@ static int is_delim(unsigned char c, char *delim)
  * @param delim Set of delimiters which may mark end of token
  * @param dest Where to store the grabbed token
  */
-static void get_token(char *s, int *i, char *delim, char *dest)
+static void get_token(const char *s, int *i, char *delim, char *dest)
 {
     unsigned char c;
     int j = 0;
@@ -220,7 +220,7 @@ static void get_token(char *s, int *i, char *delim, char *dest)
  * @param line Line of file
  * @param fmt printf-style format string
  */
-static void err(char *filename, int line, char *fmt, ...)
+static void err(const char *filename, int line, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -240,9 +240,9 @@ static void err(char *filename, int line, char *fmt, ...)
  * @param cmd Command
  * @param arg Argument to add
  */
-static void add_arg(script_command *cmd, command_arg *arg)
+static void add_arg(xlnk_script_command *cmd, xlnk_command_arg *arg)
 {
-    command_arg *a;
+    xlnk_command_arg *a;
     if (cmd->first_arg == NULL) {
         /* Start list */
         cmd->first_arg = arg;
@@ -260,9 +260,9 @@ static void add_arg(script_command *cmd, command_arg *arg)
  * @param sc Script
  * @param cmd Command to add
  */
-static void add_command(script *sc, script_command *cmd)
+static void add_command(xlnk_script *sc, xlnk_script_command *cmd)
 {
-    script_command *c;
+    xlnk_script_command *c;
     if (sc->first_command == NULL) {
         /* Start list */
         sc->first_command = cmd;
@@ -279,10 +279,10 @@ static void add_command(script *sc, script_command *cmd)
  * Finalizes a script command.
  * @param cmd Command
  */
-static void finalize_command(script_command *cmd)
+static void finalize_command(xlnk_script_command *cmd)
 {
-    command_arg *a;
-    command_arg *t;
+    xlnk_command_arg *a;
+    xlnk_command_arg *t;
     /* Finalize all arguments */
     for(a = cmd->first_arg; a != NULL; a = t) {
         t = a->next;
@@ -298,7 +298,7 @@ static void finalize_command(script_command *cmd)
  * @param type The command type
  * @param map A mapping from command types to processor functions
  */
-static script_commandproc command_type_to_proc(command_type type, script_commandprocmap *map)
+static xlnk_script_commandproc command_type_to_proc(xlnk_command_type type, xlnk_script_commandprocmap *map)
 {
     for (; map->proc != NULL; map += 1) {
         if (map->type == type) {
@@ -316,12 +316,12 @@ static script_commandproc command_type_to_proc(command_type type, script_command
  * @param sc Destination script
  * @return 0 if fail, 1 if OK
  */
-int script_parse(char *filename, script *sc)
+int xlnk_script_parse(const char *filename, xlnk_script *sc)
 {
     FILE *fp;
-    command_arg *arg;
-    script_command *cmd;
-    command_type type;
+    xlnk_command_arg *arg;
+    xlnk_script_command *cmd;
+    xlnk_command_type type;
     int i;
     char line[1024];
     char cmdname[256];
@@ -355,13 +355,13 @@ int script_parse(char *filename, script *sc)
         else {
             /* Convert from string to command type */
             type = string_to_command_type(cmdname);
-            if (type == BAD_COMMAND) {
+            if (type == XLNK_BAD_COMMAND) {
                 err(filename, lineno, "unknown command `%s'", cmdname);
                 continue;
             }
             else {
                 /* Allocate space for command */
-                cmd = (script_command *)malloc( sizeof(script_command) );
+                cmd = (xlnk_script_command *)malloc( sizeof(xlnk_script_command) );
                 if (cmd != NULL) {
                     /* Set the type */
                     cmd->type = type;
@@ -425,7 +425,7 @@ int script_parse(char *filename, script *sc)
             // Check if the argument name is valid for this command */
             if (is_valid_command_arg(cmd->type, argname) ) {
                 /* Create argument struct */
-                arg = (command_arg *)malloc( sizeof(command_arg) );
+                arg = (xlnk_command_arg *)malloc( sizeof(xlnk_command_arg) );
                 if (arg != NULL) {
                     arg->key = (char *)malloc( strlen(argname)+1 );
                     arg->value = (char *)malloc( strlen(argvalue)+1 );
@@ -455,10 +455,10 @@ int script_parse(char *filename, script *sc)
  * Finalizes a script.
  * @param sc Script
  */
-void script_finalize(script *sc)
+void xlnk_script_finalize(xlnk_script *sc)
 {
-    script_command *c;
-    script_command *t;
+    xlnk_script_command *c;
+    xlnk_script_command *t;
     if (sc == NULL) { return; }
     for(c = sc->first_command; c != NULL; c = t) {
         t = c->next;
@@ -471,9 +471,9 @@ void script_finalize(script *sc)
  * @param sc Script
  * @return Number of commands in script
  */
-int script_length(script *sc)
+int xlnk_script_length(xlnk_script *sc)
 {
-    script_command *c;
+    xlnk_script_command *c;
     int i;
     if (sc == NULL) { return 0; }
     for (i=0, c=sc->first_command; c != NULL; i++, c = c->next) ;
@@ -485,9 +485,9 @@ int script_length(script *sc)
  * @param sc Script
  * @param index Command index
  */
-script_command *script_get_command(script *sc, int index)
+xlnk_script_command *xlnk_script_get_command(xlnk_script *sc, int index)
 {
-    script_command *c;
+    xlnk_script_command *c;
     int i;
     if (sc == NULL) { return NULL; }
     for (i=0, c=sc->first_command; (c != NULL) && (i != index); i++, c = c->next) ;
@@ -499,10 +499,10 @@ script_command *script_get_command(script *sc, int index)
  * @param sc Script
  * @param map Map from command to processor function
  */
-void script_walk(script *sc, script_commandprocmap *map, void *arg)
+void xlnk_script_walk(xlnk_script *sc, xlnk_script_commandprocmap *map, void *arg)
 {
-    script_command *c;
-    script_commandproc p;
+    xlnk_script_command *c;
+    xlnk_script_commandproc p;
     if (sc == NULL) { return; }
     /* Walk all the commands */
     for (c=sc->first_command; c != NULL; c = c->next) {
@@ -519,9 +519,9 @@ void script_walk(script *sc, script_commandprocmap *map, void *arg)
  * @param c Command
  * @param key Key (argument name)
  */
-char *script_get_command_arg(script_command *c, char *key)
+const char *xlnk_script_get_command_arg(xlnk_script_command *c, const char *key)
 {
-    command_arg *a;
+    xlnk_command_arg *a;
     if (c == NULL) { return NULL; }
     /* Go through all args */
     for (a = c->first_arg; a != NULL; a = a->next) {
@@ -538,16 +538,16 @@ char *script_get_command_arg(script_command *c, char *key)
  * Gets the string representation of a command type.
  * @param type Command type
  */
-char *script_command_type_to_string(command_type type)
+const char *xlnk_script_command_type_to_string(xlnk_command_type type)
 {
     switch (type) {
-        case RAM_COMMAND:   return "ram";
-        case OUTPUT_COMMAND:    return "output";
-        case COPY_COMMAND:  return "copy";
-        case BANK_COMMAND:  return "bank";
-        case LINK_COMMAND:  return "link";
-        case OPTIONS_COMMAND:   return "options";
-        case PAD_COMMAND:   return "pad";
+        case XLNK_RAM_COMMAND:   return "ram";
+        case XLNK_OUTPUT_COMMAND:    return "output";
+        case XLNK_COPY_COMMAND:  return "copy";
+        case XLNK_BANK_COMMAND:  return "bank";
+        case XLNK_LINK_COMMAND:  return "link";
+        case XLNK_OPTIONS_COMMAND:   return "options";
+        case XLNK_PAD_COMMAND:   return "pad";
         default:
         /* Invalid command */
         break;
@@ -560,9 +560,9 @@ char *script_command_type_to_string(command_type type)
  * @param sc Script
  * @param type Command type
  */
-int script_count_command_type(script *sc, command_type type)
+int xlnk_script_count_command_type(xlnk_script *sc, xlnk_command_type type)
 {
-    script_command *c;
+    xlnk_script_command *c;
     int count;
     if (sc == NULL) { return 0; }
     for (count=0, c=sc->first_command; c != NULL; c = c->next) {

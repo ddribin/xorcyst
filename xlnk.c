@@ -119,7 +119,7 @@
  * @param s String
  * @return Integer
  */
-static int str_to_int(char *s)
+static int str_to_int(const char *s)
 {
     if (s[0] == '$') {
         return strtol(&s[1], NULL, 16);
@@ -2201,13 +2201,13 @@ static void calc_code_addresses(xunit *u)
 /**
  * Issues a script error.
  */
-static void scripterr(script *s, script_command *c, char *fmt, ...)
+static void scripterr(xlnk_script *s, xlnk_script_command *c, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
 
     if (!suppress) {
-        fprintf(stderr, "error: %s:%d: `%s': ", s->name, c->line, script_command_type_to_string(c->type) );
+        fprintf(stderr, "error: %s:%d: `%s': ", s->name, c->line, xlnk_script_command_type_to_string(c->type) );
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
         err_count++;
@@ -2216,7 +2216,7 @@ static void scripterr(script *s, script_command *c, char *fmt, ...)
 }
 
 #define require_arg(s, c, a, d) { \
-    d = script_get_command_arg(c, a); \
+    d = xlnk_script_get_command_arg(c, a); \
     if (d == NULL) { \
         scripterr(s, c, "missing argument `%s'", a); \
         return; \
@@ -2239,12 +2239,12 @@ static void scripterr(script *s, script_command *c, char *fmt, ...)
  * @param c Command of type RAM_COMMAND
  * @param arg Not used
  */
-static void register_one_ram_block(script *s, script_command *c, void *arg)
+static void register_one_ram_block(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     int start;
     int end;
-    char *start_str;
-    char *end_str;
+    const char *start_str;
+    const char *end_str;
     require_arg(s, c, "start", start_str);
     require_arg(s, c, "end", end_str);
     start = str_to_int(start_str);
@@ -2261,15 +2261,15 @@ static void register_one_ram_block(script *s, script_command *c, void *arg)
  * Registers RAM blocks based on 'ram' commands in a script.
  * @param sc Linker script
  */
-static void register_ram_blocks(script *sc)
+static void register_ram_blocks(xlnk_script *sc)
 {
     /* Table of mappings for our purpose */
-    static script_commandprocmap map[] = {
-        { RAM_COMMAND, register_one_ram_block },
-        { BAD_COMMAND, NULL }
+    static xlnk_script_commandprocmap map[] = {
+        { XLNK_RAM_COMMAND, register_one_ram_block },
+        { XLNK_BAD_COMMAND, NULL }
     };
     /* Do the walk */
-    script_walk(sc, map, NULL);
+    xlnk_script_walk(sc, map, NULL);
     /* Calculate total RAM size */
     total_ram = ram_left();
 }
@@ -2283,9 +2283,9 @@ static void register_ram_blocks(script *sc)
  * @param c Command of type LINK_COMMAND
  * @param arg Pointer to unit index
  */
-static void register_one_unit(script *s, script_command *c, void *arg)
+static void register_one_unit(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *file;
+    const char *file;
     int *i;
     xunit *xu;
     require_arg(s, c, "file", file);
@@ -2311,7 +2311,7 @@ static void register_one_unit(script *s, script_command *c, void *arg)
     enter_exported_locals(&xu->data_locals, &xu->_unit_);
     enter_exported_locals(&xu->code_locals, &xu->_unit_);
 
-    hashtab_put(unit_hash, file, xu);
+    hashtab_put(unit_hash, (void*)file, xu);
     /* Increment unit index */
     (*i)++;
 }
@@ -2320,16 +2320,16 @@ static void register_one_unit(script *s, script_command *c, void *arg)
  * Registers units based on 'link' commands in script.
  * @param sc Linker script
  */
-static void register_units(script *sc)
+static void register_units(xlnk_script *sc)
 {
     /* Table of mappings for our purpose */
-    static script_commandprocmap map[] = {
-        { LINK_COMMAND, register_one_unit },
-        { BAD_COMMAND, NULL }
+    static xlnk_script_commandprocmap map[] = {
+        { XLNK_LINK_COMMAND, register_one_unit },
+        { XLNK_BAD_COMMAND, NULL }
     };
     int i = 0;
     /* Do the walk */
-    script_walk(sc, map, (void *)&i);
+    xlnk_script_walk(sc, map, (void *)&i);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -2342,9 +2342,9 @@ script commands. */
  * @param c Command of type OUTPUT_COMMAND
  * @param arg Pointer to file handle
  */
-static void set_output(script *s, script_command *c, void *arg)
+static void set_output(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *file;
+    const char *file;
     FILE **fpp;
     require_arg(s, c, "file", file);
     /* Arg is pointer to file handle pointer */
@@ -2367,9 +2367,9 @@ static void set_output(script *s, script_command *c, void *arg)
  * @param c Command of type COPY_COMMAND
  * @param arg Pointer to file handle
  */
-static void copy_to_output(script *s, script_command *c, void *arg)
+static void copy_to_output(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *file;
+    const char *file;
     FILE **fpp;
     FILE *cf;
     unsigned char k;
@@ -2405,11 +2405,11 @@ static void copy_to_output(script *s, script_command *c, void *arg)
  * @param c Command of type BANK_COMMAND
  * @param arg Pointer to file handle
  */
-static void start_bank(script *s, script_command *c, void *arg)
+static void start_bank(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *size_str;
-    char *origin_str;
-    size_str = script_get_command_arg(c, "size");
+    const char *size_str;
+    const char *origin_str;
+    size_str = xlnk_script_get_command_arg(c, "size");
     if (size_str != NULL) {
         bank_size = str_to_int(size_str);
         if (bank_size <= 0) {
@@ -2422,7 +2422,7 @@ static void start_bank(script *s, script_command *c, void *arg)
             scripterr(s, c, "no bank size set");
         }
     }
-    origin_str = script_get_command_arg(c, "origin");
+    origin_str = xlnk_script_get_command_arg(c, "origin");
     if (origin_str != NULL) {
         bank_origin = str_to_int(origin_str);
         require_arg_in_range(s, c, "origin", bank_origin, 0x0000, 0xFFFF);
@@ -2441,11 +2441,11 @@ static void start_bank(script *s, script_command *c, void *arg)
  * @param c Command of type LINK_COMMAND
  * @param arg Pointer to file handle
  */
-static void write_unit(script *s, script_command *c, void *arg)
+static void write_unit(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp;
     xunit *xu;
-    char *file;
+    const char *file;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
     if (*fpp == NULL) {
@@ -2453,7 +2453,7 @@ static void write_unit(script *s, script_command *c, void *arg)
     }
     else {
         require_arg(s, c, "file", file);
-        xu = (xunit *)hashtab_get(unit_hash, file);
+        xu = (xunit *)hashtab_get(unit_hash, (void*)file);
         verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
         write_as_binary(*fpp, xu);
         bank_offset += xu->code_size;
@@ -2469,31 +2469,31 @@ static void write_unit(script *s, script_command *c, void *arg)
  * @param c Command of type PAD_COMMAND
  * @param arg Pointer to file handle
  */
-static void write_pad(script *s, script_command *c, void *arg)
+static void write_pad(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp;
     int i;
     int count;
     int offset;
     int origin;
-    char *offset_str;
-    char *origin_str;
-    char *size_str;
+    const char *offset_str;
+    const char *origin_str;
+    const char *size_str;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
     if (*fpp == NULL) {
         scripterr(s, c, "no output open");
     }
     else {
-        if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
+        if ((offset_str = xlnk_script_get_command_arg(c, "offset")) != NULL) {
             offset = str_to_int(offset_str);
             count = offset - bank_offset;
         }
-        else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
+        else if ((origin_str = xlnk_script_get_command_arg(c, "origin")) != NULL) {
             origin = str_to_int(origin_str);
             count = origin - pc;
         }
-        else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
+        else if ((size_str = xlnk_script_get_command_arg(c, "size")) != NULL) {
             count = str_to_int(size_str);
         }
         else {
@@ -2524,7 +2524,7 @@ static void write_pad(script *s, script_command *c, void *arg)
  * @param c Command of type BANK_COMMAND
  * @param fp File handle
  */
-static void maybe_pad_bank(script *s, script_command *c, FILE *fp)
+static void maybe_pad_bank(xlnk_script *s, xlnk_script_command *c, FILE *fp)
 {
     int i;
     if ( (bank_size != 0x7FFFFFFF) && (bank_offset < bank_size) ) {
@@ -2545,7 +2545,7 @@ static void maybe_pad_bank(script *s, script_command *c, FILE *fp)
  * @param c Command of type BANK_COMMAND
  * @param arg Pointer to file handle
  */
-static void write_bank(script *s, script_command *c, void *arg)
+static void write_bank(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp;
     /* Arg is pointer to file handle pointer */
@@ -2558,17 +2558,17 @@ static void write_bank(script *s, script_command *c, void *arg)
  * Generates the final binary output from the linker.
  * @param sc Linker script
  */
-static void generate_binary_output(script *sc)
+static void generate_binary_output(xlnk_script *sc)
 {
     FILE *fp = NULL;
     /* Table of mappings for our purpose */
-    static script_commandprocmap map[] = {
-        { OUTPUT_COMMAND, set_output },
-        { COPY_COMMAND, copy_to_output },
-        { BANK_COMMAND, write_bank },
-        { LINK_COMMAND, write_unit },
-        { PAD_COMMAND, write_pad },
-        { BAD_COMMAND, NULL }
+    static xlnk_script_commandprocmap map[] = {
+        { XLNK_OUTPUT_COMMAND, set_output },
+        { XLNK_COPY_COMMAND, copy_to_output },
+        { XLNK_BANK_COMMAND, write_bank },
+        { XLNK_LINK_COMMAND, write_unit },
+        { XLNK_PAD_COMMAND, write_pad },
+        { XLNK_BAD_COMMAND, NULL }
     };
     /* Reset offsets */
     bank_size = 0x7FFFFFFF;
@@ -2577,7 +2577,7 @@ static void generate_binary_output(script *sc)
     bank_id = -1;
     pc = 0;
     /* Do the walk */
-    script_walk(sc, map, (void *)&fp);
+    xlnk_script_walk(sc, map, (void *)&fp);
     /* Pad last bank if necessary */
     maybe_pad_bank(sc, sc->first_command, fp);
 }
@@ -2592,7 +2592,7 @@ script commands. */
  * @param c Command of type OUTPUT_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_set_output(script *s, script_command *c, void *arg)
+static void asm_set_output(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     /* No-op when generating assembly. */
 }
@@ -2603,9 +2603,9 @@ static void asm_set_output(script *s, script_command *c, void *arg)
  * @param c Command of type COPY_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_copy_to_output(script *s, script_command *c, void *arg)
+static void asm_copy_to_output(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *file;
+    const char *file;
     FILE **fpp;
     FILE *cf;
     /* Arg is pointer to file handle pointer */
@@ -2638,7 +2638,7 @@ static void asm_copy_to_output(script *s, script_command *c, void *arg)
  * @param c Command of type BANK_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_start_bank(script *s, script_command *c, void *arg)
+static void asm_start_bank(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE *fp = *(FILE**)arg;
     start_bank(s, c, arg);
@@ -2651,15 +2651,15 @@ static void asm_start_bank(script *s, script_command *c, void *arg)
  * @param c Command of type LINK_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_write_unit(script *s, script_command *c, void *arg)
+static void asm_write_unit(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp;
     xunit *xu;
-    char *file;
+    const char *file;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
     require_arg(s, c, "file", file);
-    xu = (xunit *)hashtab_get(unit_hash, file);
+    xu = (xunit *)hashtab_get(unit_hash, (void*)file);
     verbose(1, "  appending unit `%s' to output at position %ld...", file, ftell(*fpp));
     write_as_assembly(*fpp, xu);
     bank_offset += xu->code_size;
@@ -2674,24 +2674,24 @@ static void asm_write_unit(script *s, script_command *c, void *arg)
  * @param c Command of type PAD_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_write_pad(script *s, script_command *c, void *arg)
+static void asm_write_pad(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp;
     int count;
     int offset;
     int origin;
-    char *offset_str;
-    char *origin_str;
-    char *size_str;
+    const char *offset_str;
+    const char *origin_str;
+    const char *size_str;
     /* Arg is pointer to file handle pointer */
     fpp = (FILE **)arg;
-    if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
+    if ((offset_str = xlnk_script_get_command_arg(c, "offset")) != NULL) {
         offset = str_to_int(offset_str);
         count = offset - bank_offset;
-    } else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
+    } else if ((origin_str = xlnk_script_get_command_arg(c, "origin")) != NULL) {
         origin = str_to_int(origin_str);
         count = origin - pc;
-    } else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
+    } else if ((size_str = xlnk_script_get_command_arg(c, "size")) != NULL) {
         count = str_to_int(size_str);
     } else {
         scripterr(s, c, "missing argument");
@@ -2717,7 +2717,7 @@ static void asm_write_pad(script *s, script_command *c, void *arg)
  * @param c Command of type BANK_COMMAND
  * @param fp File handle
  */
-static void asm_maybe_pad_bank(script *s, script_command *c, FILE *fp)
+static void asm_maybe_pad_bank(xlnk_script *s, xlnk_script_command *c, FILE *fp)
 {
     if ( (bank_size != 0x7FFFFFFF) && (bank_offset < bank_size) ) {
         fprintf(fp, ".DSB $%X\n", bank_size - bank_offset);
@@ -2730,23 +2730,23 @@ static void asm_maybe_pad_bank(script *s, script_command *c, FILE *fp)
  * @param c Command of type BANK_COMMAND
  * @param arg Pointer to file handle
  */
-static void asm_write_bank(script *s, script_command *c, void *arg)
+static void asm_write_bank(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     FILE **fpp = (FILE **)arg;
     asm_maybe_pad_bank(s, c, *fpp);
     asm_start_bank(s, c, arg);
 }
 
-static void generate_assembly_output(script *sc, FILE *fp)
+static void generate_assembly_output(xlnk_script *sc, FILE *fp)
 {
     /* Table of mappings for our purpose */
-    static script_commandprocmap map[] = {
-        { OUTPUT_COMMAND, asm_set_output },
-        { COPY_COMMAND, asm_copy_to_output },
-        { BANK_COMMAND, asm_write_bank },
-        { LINK_COMMAND, asm_write_unit },
-        { PAD_COMMAND, asm_write_pad },
-        { BAD_COMMAND, NULL }
+    static xlnk_script_commandprocmap map[] = {
+        { XLNK_OUTPUT_COMMAND, asm_set_output },
+        { XLNK_COPY_COMMAND, asm_copy_to_output },
+        { XLNK_BANK_COMMAND, asm_write_bank },
+        { XLNK_LINK_COMMAND, asm_write_unit },
+        { XLNK_PAD_COMMAND, asm_write_pad },
+        { XLNK_BAD_COMMAND, NULL }
     };
     /* Reset offsets */
     bank_size = 0x7FFFFFFF;
@@ -2756,7 +2756,7 @@ static void generate_assembly_output(script *sc, FILE *fp)
     pc = 0;
     fprintf(fp, ".CODESEG\n");
     /* Do the walk */
-    script_walk(sc, map, (void *)&fp);
+    xlnk_script_walk(sc, map, (void *)&fp);
     /* Pad last bank if necessary */
     asm_maybe_pad_bank(sc, sc->first_command, fp);
     fprintf(fp, ".END\n");
@@ -2771,9 +2771,9 @@ static void generate_assembly_output(script *sc, FILE *fp)
  * @param c Command of type COPY_COMMAND
  * @param arg Not used
  */
-static void inc_offset_copy(script *s, script_command *c, void *arg)
+static void inc_offset_copy(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
-    char *file;
+    const char *file;
     FILE *fp;
     require_arg(s, c, "file", file);
     fp = fopen(file, "rb");
@@ -2797,15 +2797,15 @@ static void inc_offset_copy(script *s, script_command *c, void *arg)
  * @param c Command of type LINK_COMMAND
  * @param arg Not used
  */
-static void set_unit_origin(script *s, script_command *c, void *arg)
+static void set_unit_origin(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     xunit *xu;
-    char *file;
-    char *origin_str;
+    const char *file;
+    const char *origin_str;
     int origin;
     require_arg(s, c, "file", file);
-    xu = (xunit *)hashtab_get(unit_hash, file);
-    origin_str = script_get_command_arg(c, "origin");
+    xu = (xunit *)hashtab_get(unit_hash, (void*)file);
+    origin_str = xlnk_script_get_command_arg(c, "origin");
     if (origin_str != NULL) {
         origin = str_to_int(origin_str);
         require_arg_in_range(s, c, "origin", origin, 0x0000, 0xFFFF);
@@ -2829,23 +2829,23 @@ static void set_unit_origin(script *s, script_command *c, void *arg)
  * @param c Command of type PAD_COMMAND
  * @param arg Not used
  */
-static void inc_offset_pad(script *s, script_command *c, void *arg)
+static void inc_offset_pad(xlnk_script *s, xlnk_script_command *c, void *arg)
 {
     int count;
     int offset;
     int origin;
-    char *offset_str;
-    char *origin_str;
-    char *size_str;
-    if ((offset_str = script_get_command_arg(c, "offset")) != NULL) {
+    const char *offset_str;
+    const char *origin_str;
+    const char *size_str;
+    if ((offset_str = xlnk_script_get_command_arg(c, "offset")) != NULL) {
         offset = str_to_int(offset_str);
         count = offset - bank_offset;
     }
-    else if ((origin_str = script_get_command_arg(c, "origin")) != NULL) {
+    else if ((origin_str = xlnk_script_get_command_arg(c, "origin")) != NULL) {
         origin = str_to_int(origin_str);
         count = origin - pc;
     }
-    else if ((size_str = script_get_command_arg(c, "size")) != NULL) {
+    else if ((size_str = xlnk_script_get_command_arg(c, "size")) != NULL) {
         count = str_to_int(size_str);
     }
     else {
@@ -2868,15 +2868,15 @@ static void inc_offset_pad(script *s, script_command *c, void *arg)
  * in the final binary.
  * @param sc Linker script
  */
-static void relocate_units(script *sc)
+static void relocate_units(xlnk_script *sc)
 {
     /* Table of mappings for our purpose */
-    static script_commandprocmap map[] = {
-        { COPY_COMMAND, inc_offset_copy },
-        { BANK_COMMAND, start_bank },
-        { LINK_COMMAND, set_unit_origin },
-        { PAD_COMMAND, inc_offset_pad },
-        { BAD_COMMAND, NULL }
+    static xlnk_script_commandprocmap map[] = {
+        { XLNK_COPY_COMMAND, inc_offset_copy },
+        { XLNK_BANK_COMMAND, start_bank },
+        { XLNK_LINK_COMMAND, set_unit_origin },
+        { XLNK_PAD_COMMAND, inc_offset_pad },
+        { XLNK_BAD_COMMAND, NULL }
     };
     /* Reset offsets */
     bank_size = 0x7FFFFFFF;
@@ -2885,7 +2885,7 @@ static void relocate_units(script *sc)
     bank_id = -1;
     pc = 0;
     /* Do the walk */
-    script_walk(sc, map, NULL);
+    xlnk_script_walk(sc, map, NULL);
 }
 
 /**
@@ -2912,7 +2912,7 @@ static void maybe_print_ram_statistics()
 int main(int argc, char **argv)
 {
     int i;
-    script sc;
+    xlnk_script sc;
 
     parse_arguments(argc, argv);
 
@@ -2921,7 +2921,7 @@ int main(int argc, char **argv)
     warn_count = 0;
 
     verbose(1, "parsing linker script...");
-    if (script_parse(program_args.input_file, &sc) == 0) {
+    if (xlnk_script_parse(program_args.input_file, &sc) == 0) {
         /* Something bad happened when parsing script, halt */
         return(1);
     }
@@ -2933,7 +2933,7 @@ int main(int argc, char **argv)
     label_hash = hashtab_create(23, HASHTAB_STRKEYHSH, HASHTAB_STRKEYCMP);
     unit_hash = hashtab_create(11, HASHTAB_STRKEYHSH, HASHTAB_STRKEYCMP);
 
-    unit_count = script_count_command_type(&sc, LINK_COMMAND);
+    unit_count = xlnk_script_count_command_type(&sc, XLNK_LINK_COMMAND);
     if (unit_count > 0) {
         units = (xunit *)malloc( sizeof(xunit) * unit_count );
     }
@@ -2990,7 +2990,7 @@ int main(int argc, char **argv)
     hashtab_finalize(constant_hash);
     hashtab_finalize(unit_hash);
     finalize_ram_blocks();
-    script_finalize(&sc);
+    xlnk_script_finalize(&sc);
 
     return (err_count == 0) ? 0 : 1;
 }
