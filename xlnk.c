@@ -2104,6 +2104,8 @@ static void map_data_to_ram()
        to ensure that there is no overlap */
     unsigned char *allocated;
     int ram_base, ram_end;
+    if (ram_block_head == NULL)
+        return; /* Nothing to do. */
     {
         avail_ram_block *b;
         ram_base = 10000000;
