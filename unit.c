@@ -89,6 +89,7 @@ static char *get_str_16(FILE *fp)
     s = (char *)malloc(len + 1);
     if (s != NULL) {
         fread(s, 1, len, fp);
+        s[len] = '\0';
     }
     return s;
 }
