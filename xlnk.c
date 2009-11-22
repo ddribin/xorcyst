@@ -360,7 +360,7 @@ static int bank_origin;
 static int bank_id;
 
 /* Debug info */
-static unsigned char *unit_file = NULL; /* length byte followed by chars */
+static const unsigned char *unit_file = NULL; /* length byte followed by chars */
 static int unit_line = -1;
 
 /* Turn on to produce flat (dis)assembly code. The resulting code can be
@@ -407,7 +407,7 @@ static void maybe_print_debug_tip()
  * Issues an error.
  * @param fmt format string for printf
  */
-static void err(char *fmt, ...)
+static void err(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -426,7 +426,7 @@ static void err(char *fmt, ...)
  * Issues a warning.
  * @param fmt format string for printf
  */
-static void warn(char *fmt, ...)
+static void warn(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -446,7 +446,7 @@ static void warn(char *fmt, ...)
  * @param level verbosity level
  * @param fmt format string for printf
  */
-static void verbose(int level, char *fmt, ...)
+static void verbose(int level, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -586,19 +586,19 @@ static void finalize_ram_blocks()
 /* Functions to get big-endian values from byte buffer. */
 
 /* Gets single byte from buffer and increments index. */
-static unsigned char get_1(unsigned char *b, int *i)
+static unsigned char get_1(const unsigned char *b, int *i)
 {
     return b[(*i)++];
 }
 /* Gets big-endian short from buffer and increments index. */
-static unsigned short get_2(unsigned char *b, int *i)
+static unsigned short get_2(const unsigned char *b, int *i)
 {
     unsigned short result = get_1(b, i) << 8;
     result |= get_1(b, i);
     return result;
 }
 /* Gets big-endian 24-bit integer from buffer and increments index. */
-static unsigned int get_3(unsigned char *b, int *i)
+static unsigned int get_3(const unsigned char *b, int *i)
 {
     unsigned int result = get_2(b, i) << 8;
     result |= get_1(b, i);
@@ -617,7 +617,7 @@ static unsigned int get_3(unsigned char *b, int *i)
 /**
  * Calculates the storage occupied by a CMD_LABEL bytecode's arguments.
  */
-static int label_cmd_args_size(unsigned char *bytes)
+static int label_cmd_args_size(const unsigned char *bytes)
 {
     int size = 1;   /* Smallest possible: flag byte */
     int flags = bytes[0];
@@ -628,7 +628,7 @@ static int label_cmd_args_size(unsigned char *bytes)
 }
 
 /** Signature for procedure to process a bytecode */
-typedef void (*bytecodeproc)(unsigned char *, void *);
+typedef void (*bytecodeproc)(const unsigned char *, void *);
 
 /**
  * Walks an array of bytecodes, calling corresponding bytecode handlers
@@ -637,7 +637,7 @@ typedef void (*bytecodeproc)(unsigned char *, void *);
  * @param handlers Array of bytecode handlers (entries can be NULL)
  * @param arg Argument passed to bytecode handler, can be anything
  */
-static void bytecode_walk(unsigned char *bytes, bytecodeproc *handlers, void *arg)
+static void bytecode_walk(const unsigned char *bytes, bytecodeproc *handlers, void *arg)
 {
     int i;
     unsigned char cmd;
@@ -978,7 +978,7 @@ static void inc_pc(int amount, void *arg)
 /**
  * Increases PC by 8-bit value immediately following bytecode command.
  */
-static void inc_pc_count8(unsigned char *b, void *arg)
+static void inc_pc_count8(const unsigned char *b, void *arg)
 {
     int i = 1;
     inc_pc( get_1(b, &i) + 1, arg );
@@ -987,7 +987,7 @@ static void inc_pc_count8(unsigned char *b, void *arg)
 /**
  * Increases PC by 16-bit value immediately following bytecode command.
  */
-static void inc_pc_count16(unsigned char *b, void *arg)
+static void inc_pc_count16(const unsigned char *b, void *arg)
 {
     int i = 1;
     inc_pc( get_2(b, &i) + 1, arg );
@@ -996,7 +996,7 @@ static void inc_pc_count16(unsigned char *b, void *arg)
 /**
  * Increases PC by 1.
  */
-static void inc_pc_1(unsigned char *b, void *arg)
+static void inc_pc_1(const unsigned char *b, void *arg)
 {
     inc_pc( 1, arg );
 }
@@ -1004,7 +1004,7 @@ static void inc_pc_1(unsigned char *b, void *arg)
 /**
  * Increases PC by 2.
  */
-static void inc_pc_2(unsigned char *b, void *arg)
+static void inc_pc_2(const unsigned char *b, void *arg)
 {
     inc_pc( 2, arg );
 }
@@ -1012,7 +1012,7 @@ static void inc_pc_2(unsigned char *b, void *arg)
 /**
  * Increases PC by 4.
  */
-static void inc_pc_4(unsigned char *b, void *arg)
+static void inc_pc_4(const unsigned char *b, void *arg)
 {
     inc_pc( 4, arg );
 }
@@ -1020,7 +1020,7 @@ static void inc_pc_4(unsigned char *b, void *arg)
 /**
  * Increases PC according to size of define data command.
  */
-static void inc_pc_dsb(unsigned char *b, void *arg)
+static void inc_pc_dsb(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     int exid;
@@ -1050,7 +1050,7 @@ static void inc_pc_dsb(unsigned char *b, void *arg)
 /**
  * Increments PC according to the length of this instruction.
  */
-static void inc_pc_instr(unsigned char *b, void *arg)
+static void inc_pc_instr(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     unsigned char op, t;
@@ -1070,7 +1070,7 @@ static void inc_pc_instr(unsigned char *b, void *arg)
         ((t = opcode_zp_equiv(op)) != 0xFF)) {
             /* replace op by ZP-version */
             op = t;
-            b[1] = t;
+            ((unsigned char*)b)[1] = t;
         }
     }
     else if (c.type == XASM_STRING_CONSTANT) {
@@ -1090,7 +1090,7 @@ static void inc_pc_instr(unsigned char *b, void *arg)
 /**
  * Writes an array of bytes.
  */
-static void write_bin8(unsigned char *b, void *arg)
+static void write_bin8(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1104,7 +1104,7 @@ static void write_bin8(unsigned char *b, void *arg)
 /**
  * Writes an array of bytes.
  */
-static void write_bin16(unsigned char *b, void *arg)
+static void write_bin16(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1118,7 +1118,7 @@ static void write_bin16(unsigned char *b, void *arg)
 /**
  * Writes an instruction.
  */
-static void write_instr(unsigned char *b, void *arg)
+static void write_instr(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     unsigned char op;
@@ -1183,7 +1183,7 @@ static void write_instr(unsigned char *b, void *arg)
 /**
  * Writes a byte, word or dword.
  */
-static void write_dx(unsigned char *b, void *arg)
+static void write_dx(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     int i;
@@ -1259,7 +1259,7 @@ static void write_dx(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void write_dsi8(unsigned char *b, void *arg)
+static void write_dsi8(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1275,7 +1275,7 @@ static void write_dsi8(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void write_dsi16(unsigned char *b, void *arg)
+static void write_dsi16(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1291,7 +1291,7 @@ static void write_dsi16(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void write_dsb(unsigned char *b, void *arg)
+static void write_dsb(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     int i;
@@ -1376,7 +1376,7 @@ static void print_chunk(FILE *out, const char *label,
 /**
  * Writes an array of bytes.
  */
-static void asm_write_bin8(unsigned char *b, void *arg)
+static void asm_write_bin8(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1391,7 +1391,7 @@ static void asm_write_bin8(unsigned char *b, void *arg)
 /**
  * Writes an array of bytes.
  */
-static void asm_write_bin16(unsigned char *b, void *arg)
+static void asm_write_bin16(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1406,7 +1406,7 @@ static void asm_write_bin16(unsigned char *b, void *arg)
 /**
  * Writes a label.
  */
-static void asm_write_label(unsigned char *b, void *arg)
+static void asm_write_label(const unsigned char *b, void *arg)
 {
     unsigned char flags;
     int i= 1;
@@ -1432,7 +1432,7 @@ static void asm_write_label(unsigned char *b, void *arg)
 /**
  * Writes an instruction.
  */
-static void asm_write_instr(unsigned char *b, void *arg)
+static void asm_write_instr(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     unsigned char op;
@@ -1522,7 +1522,7 @@ static void asm_write_instr(unsigned char *b, void *arg)
 /**
  * Writes a byte, word or dword.
  */
-static void asm_write_dx(unsigned char *b, void *arg)
+static void asm_write_dx(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     int i;
@@ -1581,7 +1581,7 @@ static void asm_write_dx(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void asm_write_dsi8(unsigned char *b, void *arg)
+static void asm_write_dsi8(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1595,7 +1595,7 @@ static void asm_write_dsi8(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void asm_write_dsi16(unsigned char *b, void *arg)
+static void asm_write_dsi16(const unsigned char *b, void *arg)
 {
     int count;
     int i;
@@ -1609,7 +1609,7 @@ static void asm_write_dsi16(unsigned char *b, void *arg)
 /**
  * Writes a series of zeroes.
  */
-static void asm_write_dsb(unsigned char *b, void *arg)
+static void asm_write_dsb(const unsigned char *b, void *arg)
 {
     xasm_constant c;
     int i;
@@ -1704,7 +1704,7 @@ static const char *bytecode_to_string(unsigned char cmd)
  * @param b Bytecodes
  * @param arg Not used
  */
-static void print_it(unsigned char *b, void *arg)
+static void print_it(const unsigned char *b, void *arg)
 {
     printf("%s\n", bytecode_to_string(b[0]) );
 }
@@ -1713,7 +1713,7 @@ static void print_it(unsigned char *b, void *arg)
  * Prints bytecodes.
  * @param bytes Bytecodes
  */
-static void print_bytecodes(unsigned char *bytes)
+static void print_bytecodes(const unsigned char *bytes)
 {
     bytecodeproc handlers[] =
     {
@@ -1779,7 +1779,7 @@ static void finalize_local_array(local_array *la)
 /**
  * Counts this local.
  */
-static void count_one_local(unsigned char *b, void *arg)
+static void count_one_local(const unsigned char *b, void *arg)
 {
     /* Argument points to the counter */
     int *count = (int *)arg;
@@ -1791,7 +1791,7 @@ static void count_one_local(unsigned char *b, void *arg)
  * @param b Bytecodes, terminated by CMD_END
  * @return Number of locals counted
  */
-static int count_locals(unsigned char *b)
+static int count_locals(const unsigned char *b)
 {
     int count;
     /* Table of callback functions for our purpose. */
@@ -1822,7 +1822,7 @@ static xunit *reg_unit = NULL;
 /**
  * Puts this local into array of locals for current unit.
  */
-static void register_one_local(unsigned char *b, void *arg)
+static void register_one_local(const unsigned char *b, void *arg)
 {
     int len;
     int i= 1;
@@ -1875,7 +1875,7 @@ static void register_one_local(unsigned char *b, void *arg)
  * @param la Pointer to array to receive locals
  * @param xu Owner unit
  */
-static void register_locals(unsigned char *b, local_array *la, xunit *xu)
+static void register_locals(const unsigned char *b, local_array *la, xunit *xu)
 {
     local *lptr;
     local **lpptr;
@@ -1964,7 +1964,7 @@ static void enter_exported_locals(local_array *la, xasm_unit *u)
 /**
  * Sets the virtual address of this local to current PC value.
  */
-static void set_data_address(unsigned char *b, void *arg)
+static void set_data_address(const unsigned char *b, void *arg)
 {
     calc_address_args *args = (calc_address_args *)arg;
     local *l = &args->xu->data_locals.entries[args->index];
@@ -2147,7 +2147,7 @@ static void map_data_to_ram()
 /**
  * Sets the address of this code label to current PC.
  */
-static void set_code_address(unsigned char *b, void *arg)
+static void set_code_address(const unsigned char *b, void *arg)
 {
     calc_address_args *args = (calc_address_args *)arg;
     local *l = &args->xu->code_locals.entries[args->index];
