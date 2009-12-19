@@ -2789,6 +2789,21 @@ static void inc_offset_copy(xlnk_script *s, xlnk_script_command *c, void *arg)
 }
 
 /**
+ * Checks that all external symbols can be resolved.
+ */
+static void check_externals(xasm_unit *u)
+{
+    int i;
+    for (i = 0; i < u->ext_count; ++i) {
+        const char *s = u->externals[i].name;
+        if (!hashtab_get(label_hash, (void*)s)
+            && !hashtab_get(constant_hash, (void*)s)) {
+            err("unknown symbol `%s' referenced from %s", s, u->name);
+        }
+    }
+}
+
+/**
  * Sets the origin of a unit and relocates its code to this location.
  * @param s Linker script
  * @param c Command of type LINK_COMMAND
@@ -2818,6 +2833,7 @@ static void set_unit_origin(xlnk_script *s, xlnk_script_command *c, void *arg)
     calc_code_addresses(xu);
     verbose(1, "  unit `%s' relocated to %.4X", xu->_unit_.name, xu->code_origin);
     bank_offset += xu->code_size;
+    check_externals(&xu->_unit_);
 }
 
 /**
