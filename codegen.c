@@ -688,7 +688,7 @@ static void put_externals(FILE *fp)
     count = 0;
     for (i=0; i<list.size; i++) {
         e = symtab_lookup(list.idents[i]);
-        if (e->flags & EXTRN_FLAG) {
+        if ((e->flags & EXTRN_FLAG) && (e->ref_count != 0)) {
             count++;
         }
     }
@@ -698,7 +698,7 @@ static void put_externals(FILE *fp)
     for (i=0; i<list.size; i++) {
         /* Look it up */
         e = symtab_lookup(list.idents[i]);
-        if (e->flags & EXTRN_FLAG) {
+        if ((e->flags & EXTRN_FLAG) && (e->ref_count != 0)) {
             /* IMPORTANT: Set unique tag so we can refer to it in expressions */
             /* (This probably shouldn't be done here though...???) */
             e->tag = tag++;
