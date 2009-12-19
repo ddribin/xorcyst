@@ -2933,16 +2933,13 @@ int main(int argc, char **argv)
     unit_count = xlnk_script_count_command_type(&sc, XLNK_LINK_COMMAND);
     if (unit_count > 0) {
         units = (xunit *)malloc( sizeof(xunit) * unit_count );
+        memset(units, 0, sizeof(xunit) * unit_count);
     }
     else {
         units = NULL;
     }
     verbose(1, "loading units...");
     register_units(&sc);
-    if (err_count != 0) {
-        // TODO
-        assert(0);
-    }
 
     /* Only continue with processing if no unresolved symbols */
     if (err_count == 0) {
