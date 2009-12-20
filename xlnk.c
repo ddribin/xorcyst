@@ -135,19 +135,21 @@ static int str_to_int(const char *s)
 
 static char program_version[] = "xlnk 1.5.2";
 
-struct tag_arguments {
-    char *input_file;
+struct tag_xlnk_arguments {
+    const char *input_file;
+    const char *output_file;
     int silent;
     int verbose;
 };
 
-typedef struct tag_arguments arguments;
+typedef struct tag_xlnk_arguments xlnk_arguments;
 
 /* Argument variables set by arg parser. */
-static arguments program_args;
+static xlnk_arguments program_args;
 
 /* Long options for getopt_long(). */
 static struct option long_options[] = {
+  { "output",   required_argument, 0, 'o' },
   { "quiet",    no_argument, 0, 'q' },
   { "silent",   no_argument, 0, 's' },
   { "verbose",  no_argument, 0, 'v' },
@@ -162,7 +164,7 @@ static void usage()
 {
     printf("\
 Usage: xlnk [-qsvV] [--quiet] [--silent] [--verbose] [--help] [--usage]\n\
-            [--version] FILE\n\
+            [-o FILE] [--output=FILE] [--version] FILE\n\
 ");
     exit(0);
 }
@@ -174,11 +176,15 @@ static void help()
 Usage: xlnk [OPTION...] FILE\n\
 The XORcyst Linker -- it creates quite a stir\n\
 \n\
+  -o, --output=FILE          Output to FILE\n\
   -q, -s, --quiet, --silent  Don't produce any output\n\
   -v, --verbose              Produce verbose output\n\
       --help                 Give this help list\n\
       --usage                Give a short usage message\n\
   -V, --version              Print program version\n\
+\n\
+Mandatory or optional arguments to long options are also mandatory or optional\n\
+for any corresponding short options.\n\
 \n\
 Report bugs to <kentmhan@gmail.com>.\n\
 ");
@@ -204,8 +210,9 @@ parse_arguments (int argc, char **argv)
     program_args.silent = 0;
     program_args.verbose = 0;
     program_args.input_file = NULL;
+    program_args.output_file = NULL;
 
-    while ((key = getopt_long(argc, argv, "qsvV", long_options, &index)) != -1) {
+    while ((key = getopt_long(argc, argv, "o:qsvV", long_options, &index)) != -1) {
         switch (key) {
             case 'q': case 's':
             program_args.silent = 1;
@@ -213,6 +220,10 @@ parse_arguments (int argc, char **argv)
 
             case 'v':
             ++program_args.verbose;
+            break;
+
+            case 'o':
+            program_args.output_file = optarg;
             break;
 
             case 0:
@@ -2554,8 +2565,9 @@ static void write_bank(xlnk_script *s, xlnk_script_command *c, void *arg)
 /**
  * Generates the final binary output from the linker.
  * @param sc Linker script
+ * @param output_file Default output file (can be NULL)
  */
-static void generate_binary_output(xlnk_script *sc)
+static void generate_binary_output(xlnk_script *sc, const char *output_file)
 {
     FILE *fp = NULL;
     /* Table of mappings for our purpose */
@@ -2573,6 +2585,12 @@ static void generate_binary_output(xlnk_script *sc)
     bank_origin = 0;
     bank_id = -1;
     pc = 0;
+    /* Open default output if one is provided */
+    if (output_file) {
+        fp = fopen(output_file, "wb");
+        if (fp == NULL)
+            err("could not open `%s' for writing", output_file);
+    }
     /* Do the walk */
     xlnk_script_walk(sc, map, (void *)&fp);
     /* Pad last bank if necessary */
@@ -2980,7 +2998,7 @@ int main(int argc, char **argv)
 
             if (err_count == 0) {
                 verbose(1, "generating output...");
-                generate_binary_output(&sc);
+                generate_binary_output(&sc, program_args.output_file);
                 if (generate_assembly)
                     generate_assembly_output(&sc, stdout);
             }
