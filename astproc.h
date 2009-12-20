@@ -66,7 +66,7 @@ void astproc_first_pass(astnode *);
 void astproc_second_pass(astnode *);
 void astproc_third_pass(astnode *);
 void astproc_fourth_pass(astnode *);
-void astproc_fifth_pass(astnode *);
+void astproc_fifth_pass(astnode *, FILE *);
 void astproc_walk(astnode *, void *, const astnodeprocmap *);
 int astproc_err_count();
 

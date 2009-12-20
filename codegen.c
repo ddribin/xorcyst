@@ -779,18 +779,10 @@ static void put_bytecodes(FILE *fp, const astnode *root)
 /**
  * Writes an object file which captures all the information in a syntax tree.
  * @param root Root of the syntax tree
- * @param filename Name of the file to write to (object file)
+ * @param fp Output file
  */
-void codegen_write(const astnode *root, const char *filename)
+void codegen_write(const astnode *root, FILE *fp)
 {
-    /* Attempt to open file for writing */
-    FILE *fp = fopen(filename, "wb");
-    if (fp == NULL) {
-        fprintf(stderr, "codegen_write: could not open '%s' for writing\n", filename);
-        /* ### increase error count */
-        return;
-    }
-
     expr_count = 0;
     buf_file = fp;
 
@@ -810,7 +802,4 @@ void codegen_write(const astnode *root, const char *filename)
 
     /* Write expressions */
     put_expressions(fp);
-
-    /* Close the file */
-    fclose(fp);
 }

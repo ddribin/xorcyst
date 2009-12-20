@@ -421,6 +421,7 @@ static int total_errors()
  * Program entrypoint.
  */
 int main(int argc, char *argv[]) {
+    FILE *output_fp;
     char *default_outfile = 0;
 
     /* Working directory is needed for include statements */
@@ -436,7 +437,7 @@ int main(int argc, char *argv[]) {
     if (!yybegin(xasm_args.input_file,
                  xasm_args.swap_parens,
                  xasm_args.case_insensitive)) {
-        printf("error: could not open `%s' for reading\n", xasm_args.input_file);
+        fprintf(stderr, "error: could not open `%s' for reading\n", xasm_args.input_file);
         symtab_finalize(symbol_table);
         return(1);
     }
@@ -483,12 +484,18 @@ int main(int argc, char *argv[]) {
             change_extension(xasm_args.input_file, default_ext, default_outfile);
             xasm_args.output_file = default_outfile;
         }
-        /* Write it! */
-        verbose("Generating final output...");
-        if (xasm_args.pure_binary) {
-            astproc_fifth_pass(root_node);
+        /* Attempt to open file for writing */
+        output_fp = fopen(xasm_args.output_file, "wb");
+        if (output_fp == NULL) {
+            fprintf(stderr, "error: could not open `%s' for writing\n", xasm_args.output_file);
         } else {
-            codegen_write(root_node, xasm_args.output_file);
+            verbose("Generating final output...");
+            if (xasm_args.pure_binary) {
+                astproc_fifth_pass(root_node, output_fp);
+            } else {
+                codegen_write(root_node, output_fp);
+            }
+            fclose(output_fp);
         }
     }
 

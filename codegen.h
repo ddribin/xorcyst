@@ -36,6 +36,6 @@
 #include "astnode.h"
 
 /* Function prototypes. */
-void codegen_write(const astnode *, const char *);
+void codegen_write(const astnode *, FILE *);
 
 #endif  /* !CODEGEN_H */

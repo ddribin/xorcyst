@@ -4131,14 +4131,8 @@ static int write_binary(astnode *node, void *arg, astnode **next)
  * This pass is only performed if the output format is pure 6502.
  * It writes the binary code.
  */
-void astproc_fifth_pass(astnode *root)
+void astproc_fifth_pass(astnode *root, FILE *fp)
 {
-    FILE *fp = fopen(xasm_args.output_file, "wb");
-    if (!fp) {
-        fprintf(stderr, "could not open '%s' for writing\n", xasm_args.output_file);
-        ++err_count;
-        return;
-    }
     /* Table of callback functions for our purpose. */
     static astnodeprocmap map[] = {
         { DATASEG_NODE, process_dataseg },
@@ -4159,5 +4153,4 @@ void astproc_fifth_pass(astnode *root)
     codeseg_pc = 0;
     /* Do the walk. */
     astproc_walk(root, fp, map);
-    fclose(fp);
 }
