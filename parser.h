@@ -176,7 +176,7 @@ typedef union YYSTYPE {
     astnode *node;
 } YYSTYPE;
 /* Line 1274 of yacc.c.  */
-#line 180 "y.tab.h"
+#line 180 "parser.h"
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

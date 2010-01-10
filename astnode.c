@@ -480,8 +480,10 @@ void astnode_replace(astnode *old_node, astnode *new_node)
     p = astnode_get_parent(old_node);
     if (p != NULL) {
         i = astnode_remove_child(p, old_node);
-        /* Insert new child at old child's position */
-        astnode_insert_child(p, new_node, i);
+        if (new_node) {
+            /* Insert new child at old child's position */
+            astnode_insert_child(p, new_node, i);
+        }
     }
 }
 

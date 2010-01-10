@@ -88,7 +88,7 @@ void handle_incbin(astnode *);  /* See below */
 %token <label> LOCAL_LABEL
 %token <mnemonic> MNEMONIC
 
-%type <node> identifier identifier_opt local_id assembly_unit statement labelable_statement statement_list if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement org_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt indexed_identifier
+%type <node> identifier identifier_opt local_id assembly_unit statement labelable_statement statement_list statement_list_opt if_statement elif_statement elif_statement_list elif_statement_list_opt ifdef_statement ifndef_statement macro_decl_statement macro_statement instruction_statement data_statement storage_statement null_statement incsrc_statement incbin_statement equ_statement assign_statement public_statement extrn_statement dataseg_statement codeseg_statement charmap_statement struc_decl_statement union_decl_statement enum_decl_statement record_decl_statement instruction expression extended_expression expression_opt arithmetic_expression comparison_expression literal label label_decl identifier_list expression_list file_specifier param_list_opt arg_list_opt else_part_opt scope_access struc_access struc_initializer field_initializer_list field_initializer_list_opt field_initializer datatype storage named_data_statement unnamed_data_statement named_storage_statement unnamed_storage_statement proc_statement rept_statement label_statement message_statement warning_statement error_statement while_statement define_statement align_statement org_statement symbol_type enum_item_list enum_item record_field_list record_field sizeof_arg label_addr_part_opt label_type_part_opt from_part_opt indexed_identifier
 
 %token _LABEL_ BYTE CHAR WORD DWORD DSB DSW DSD DATASEG CODESEG IF IFDEF IFNDEF ELSE ELIF ENDIF INCSRC INCBIN MACRO REPT WHILE ENDM ALIGN EQU DEFINE END PUBLIC EXTRN CHARMAP STRUC UNION ENDS RECORD ENUM ENDE PROC ENDP SIZEOF MASK TAG MESSAGE WARNING ERROR ZEROPAGE ORG
 
@@ -134,6 +134,11 @@ statement_list:
          if ($1 != NULL) { $$ = $1; astnode_add_sibling($$, $2); }
          else { $$ = $2; }
         }
+    ;
+
+statement_list_opt:
+    statement_list { $$ = $1; }
+    | { $$ = NULL; }
     ;
 
 labelable_statement:
@@ -212,23 +217,23 @@ label_type_part_opt:
     ;
 
 while_statement:
-    WHILE expression line_tail statement_list ENDM line_tail { $$ = astnode_create_while($2, $4, @$); }
+    WHILE expression line_tail statement_list_opt ENDM line_tail { $$ = astnode_create_while($2, $4, @$); }
     ;
 
 rept_statement:
-    REPT expression line_tail statement_list ENDM line_tail { $$ = astnode_create_rept($2, $4, @$); }
+    REPT expression line_tail statement_list_opt ENDM line_tail { $$ = astnode_create_rept($2, $4, @$); }
     ;
 
 proc_statement:
-    PROC identifier line_tail statement_list ENDP line_tail { $$ = astnode_create_proc($2, $4, @$); }
+    PROC identifier line_tail statement_list_opt ENDP line_tail { $$ = astnode_create_proc($2, $4, @$); }
     ;
 
 struc_decl_statement:
-    STRUC identifier line_tail statement_list ENDS line_tail { $$ = astnode_create_struc_decl($2, $4, @$); }
+    STRUC identifier line_tail statement_list_opt ENDS line_tail { $$ = astnode_create_struc_decl($2, $4, @$); }
     ;
 
 union_decl_statement:
-    UNION identifier_opt line_tail statement_list ENDS line_tail { $$ = astnode_create_union_decl($2, $4, @$); }
+    UNION identifier_opt line_tail statement_list_opt ENDS line_tail { $$ = astnode_create_union_decl($2, $4, @$); }
     ;
 
 enum_decl_statement:
@@ -426,7 +431,7 @@ literal:
     ;
 
 if_statement:
-    IF expression line_tail statement_list elif_statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_if($2, $4, $5, $6, @$); }
+    IF expression line_tail statement_list_opt elif_statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_if($2, $4, $5, $6, @$); }
     ;
 
 elif_statement_list_opt:
@@ -440,20 +445,20 @@ elif_statement_list:
     ;
 
 elif_statement:
-    ELIF expression line_tail statement_list { $$ = astnode_create_case($2, $4, @$); }
+    ELIF expression line_tail statement_list_opt { $$ = astnode_create_case($2, $4, @$); }
     ;
 
 else_part_opt:
-    ELSE line_tail statement_list { $$ = $3; }
+    ELSE line_tail statement_list_opt { $$ = $3; }
     | { $$ = NULL; }
     ;
 
 ifdef_statement:
-    IFDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifdef($2, $4, $5, @$); }
+    IFDEF identifier line_tail statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_ifdef($2, $4, $5, @$); }
     ;
 
 ifndef_statement:
-    IFNDEF identifier line_tail statement_list else_part_opt ENDIF line_tail { $$ = astnode_create_ifndef($2, $4, $5, @$); }
+    IFNDEF identifier line_tail statement_list_opt else_part_opt ENDIF line_tail { $$ = astnode_create_ifndef($2, $4, $5, @$); }
     ;
 
 data_statement:
@@ -503,7 +508,7 @@ file_specifier:
     ;
 
 macro_decl_statement:
-    MACRO identifier param_list_opt line_tail statement_list ENDM line_tail { $$ = astnode_create_macro_decl($2, $3, $5, @$); }
+    MACRO identifier param_list_opt line_tail statement_list_opt ENDM line_tail { $$ = astnode_create_macro_decl($2, $3, $5, @$); }
     ;
 
 param_list_opt:
