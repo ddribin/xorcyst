@@ -3389,7 +3389,7 @@ void remove_unused_labels()
     for (i=0; i<list.size; i++) {
         id = list.idents[i];
         symtab_entry * e = symtab_lookup(id);
-        if ((e->ref_count == 0) && ((e->flags & PUBLIC_FLAG) == 0)) {
+        if ((e->ref_count == 0) && ((e->flags & (PUBLIC_FLAG | EXTRN_FLAG)) == 0)) {
             n = e->def;
             strtok(n->label, "#");  /* Remove globalize junk */
             warn(n->loc, "`%s' defined but not used", n->label);
