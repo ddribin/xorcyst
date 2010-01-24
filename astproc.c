@@ -2961,8 +2961,8 @@ static int validate_ref(astnode *n, void *arg, astnode **next)
             e = symtab_enter(n->ident, LABEL_SYMBOL, NULL, EXTRN_FLAG);
         }
     }
-    assert(e);
-    e->ref_count++;
+    if (e)
+        e->ref_count++;
     return ret;
 }
 
