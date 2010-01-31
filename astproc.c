@@ -2225,24 +2225,28 @@ static int enter_label(astnode *label, void *arg, astnode **next)
 {
     symtab_entry *e;
     astnode *addr;
-    /* Make sure it's unique first */
-    if (symtab_lookup(label->ident)) {
-        err(label->loc, "duplicate symbol `%s'", label->ident);
-        astnode_remove(label);
-        astnode_finalize(label);
-    } else {
-        e = symtab_enter(label->ident, LABEL_SYMBOL, label, (in_dataseg ? DATA_FLAG : 0) | symbol_modifiers );
-        /* Check if hardcoded address */
-        addr = reduce_expression_complete(RHS(label));
-        if (astnode_is_type(addr, INTEGER_NODE)) {
-            /* Store it */
-            e->address = addr->integer;
-            e->flags |= ADDR_FLAG;
-        } else if (!astnode_is_type(addr, CURRENT_PC_NODE)) {
-            err(label->loc, "label address does not evaluate to literal");
+    e = symtab_lookup(label->ident);
+    if (e) {
+        if (!(e->flags & EXTRN_FLAG) || (e->type != LABEL_SYMBOL)) {
+            err(label->loc, "duplicate symbol `%s'", label->ident);
+            astnode_remove(label);
+            astnode_finalize(label);
+            return 0;
         }
-        label_count++;
+        /* Allow a symbol declared as extrn to be defined in the same unit */
+        symtab_remove(label->ident);
     }
+    e = symtab_enter(label->ident, LABEL_SYMBOL, label, (in_dataseg ? DATA_FLAG : 0) | symbol_modifiers );
+    /* Check if hardcoded address */
+    addr = reduce_expression_complete(RHS(label));
+    if (astnode_is_type(addr, INTEGER_NODE)) {
+        /* Store it */
+        e->address = addr->integer;
+        e->flags |= ADDR_FLAG;
+    } else if (!astnode_is_type(addr, CURRENT_PC_NODE)) {
+        err(label->loc, "label address does not evaluate to literal");
+    }
+    label_count++;
     return 0;
 }
 
