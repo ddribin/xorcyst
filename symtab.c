@@ -209,9 +209,7 @@ static void binary_delete(symtab *st, symtab_entry *z)
         z->def = y->def;
         z->symtab = y->symtab;
         z->tag = y->tag;
-    }
-
-    if (y != NULL) {
+    } else {
         symtab_entry_finalize(y);
     }
 }
