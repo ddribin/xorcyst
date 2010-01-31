@@ -2252,21 +2252,26 @@ static int enter_label(astnode *label, void *arg, astnode **next)
  */
 static int enter_var(astnode *var, void *arg, astnode **next)
 {
+    symtab_entry *e;
     astnode *id = LHS(var);
     assert(astnode_get_type(id) == IDENTIFIER_NODE);
-    if (symtab_lookup(id->ident)) {
-        err(var->loc, "duplicate symbol `%s'", id->ident);
-        astnode_remove(var);
-        astnode_finalize(var);
-        return 0;
-    } else {
-        if ((var->modifiers & ZEROPAGE_FLAG) && !in_dataseg) {
-            warn(var->loc, "zeropage modifier has no effect in code segment");
-            var->modifiers &= ~ZEROPAGE_FLAG;
+    e = symtab_lookup(id->ident);
+    if (e) {
+        if (!(e->flags & EXTRN_FLAG) || (e->type != VAR_SYMBOL)) {
+            err(var->loc, "duplicate symbol `%s'", id->ident);
+            astnode_remove(var);
+            astnode_finalize(var);
+            return 0;
         }
-        symtab_enter(id->ident, VAR_SYMBOL, astnode_clone(RHS(var), var->loc), (in_dataseg ? DATA_FLAG : 0) | var->modifiers | symbol_modifiers);
-        return 1;
+        /* Allow a symbol declared as extrn to be defined in the same unit */
+        symtab_remove(id->ident);
     }
+    if ((var->modifiers & ZEROPAGE_FLAG) && !in_dataseg) {
+        warn(var->loc, "zeropage modifier has no effect in code segment");
+        var->modifiers &= ~ZEROPAGE_FLAG;
+    }
+    symtab_enter(id->ident, VAR_SYMBOL, astnode_clone(RHS(var), var->loc), (in_dataseg ? DATA_FLAG : 0) | var->modifiers | symbol_modifiers);
+    return 1;
 }
 
 /**
@@ -2276,6 +2281,7 @@ static int enter_var(astnode *var, void *arg, astnode **next)
 static int enter_proc(astnode *proc, void *arg, astnode **next)
 {
     astnode *id;
+    symtab_entry *e;
     if (in_dataseg) {
         err(proc->loc, "procedures not allowed in data segment");
         astnode_remove(proc);
@@ -2284,17 +2290,21 @@ static int enter_proc(astnode *proc, void *arg, astnode **next)
     }
     id = LHS(proc);
     assert(astnode_get_type(id) == IDENTIFIER_NODE);
-    if (symtab_lookup(id->ident)) {
-        err(proc->loc, "duplicate symbol `%s'", id->ident);
-        astnode_remove(proc);
-        astnode_finalize(proc);
-        return 0;
-    } else {
-        /* Enter it! RHS(proc) is the list of procedure statements */
-        symtab_enter(id->ident, PROC_SYMBOL, RHS(proc), (in_dataseg ? DATA_FLAG : 0) );
-        label_count++;
-        return 1;
+    e = symtab_lookup(id->ident);
+    if (e) {
+        if (!(e->flags & EXTRN_FLAG) || (e->type != PROC_SYMBOL)) {
+            err(proc->loc, "duplicate symbol `%s'", id->ident);
+            astnode_remove(proc);
+            astnode_finalize(proc);
+            return 0;
+        }
+        /* Allow a symbol declared as extrn to be defined in the same unit */
+        symtab_remove(id->ident);
     }
+    /* Enter it! RHS(proc) is the list of procedure statements */
+    symtab_enter(id->ident, PROC_SYMBOL, RHS(proc), (in_dataseg ? DATA_FLAG : 0) );
+    label_count++;
+    return 1;
 }
 
 /**
